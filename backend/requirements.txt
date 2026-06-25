@@ -1,0 +1,38 @@
+# --- Web framework ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-multipart==0.0.17
+
+# --- Data / DB ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+redis==5.2.0
+
+# --- Background jobs ---
+celery==5.4.0
+
+# --- Market / data providers (all free tier) ---
+yfinance==0.2.50          # global market data, no key required
+pandas==2.2.3
+polars==1.17.1
+feedparser==6.0.11        # RSS news (free)
+praw==7.8.1               # Reddit API (free app credentials)
+pytrends==4.9.2           # Google Trends (free, unofficial)
+httpx==0.28.1
+
+# --- AI layer ---
+anthropic==0.40.0
+openai==1.57.0
+
+# --- Portfolio analysis ---
+numpy==1.26.4
+scipy==1.14.1
+
+# --- Utils ---
+tenacity==9.0.0
+structlog==24.4.0
+sse-starlette==2.1.3
+pyjwt==2.10.1

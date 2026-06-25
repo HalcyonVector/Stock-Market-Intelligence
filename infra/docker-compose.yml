@@ -1,0 +1,77 @@
+# Full local stack: db + cache + api + worker + beat + web.
+# Bring up with:  docker compose -f infra/docker-compose.yml up --build
+name: sdi
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sdi
+      POSTGRES_PASSWORD: sdi
+      POSTGRES_DB: sdi
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ../backend
+    env_file: ../backend/.env
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://sdi:sdi@postgres:5432/sdi
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: ../backend
+    command: celery -A app.etl.celery_app.celery_app worker --loglevel=info
+    env_file: ../backend/.env
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis: { condition: service_healthy }
+
+  beat:
+    build: ../backend
+    command: celery -A app.etl.celery_app.celery_app beat --loglevel=info
+    env_file: ../backend/.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis: { condition: service_healthy }
+
+  web:
+    build: ../frontend
+    environment:
+      BACKEND_URL: http://api:8000
+    ports: ["9000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  redisdata:
