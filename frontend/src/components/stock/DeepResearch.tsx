@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Brain, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
@@ -100,10 +102,30 @@ export function DeepResearch({ symbol }: { symbol: string }) {
         </div>
 
         {/* AI analysis text */}
-        <div className="prose prose-invert prose-sm max-w-none">
-          <div className="whitespace-pre-wrap rounded-xl border border-white/5 bg-black/20 p-5 text-sm leading-relaxed text-ink-200">
+        <div className="rounded-xl border border-white/5 bg-black/20 p-5 text-sm leading-relaxed text-ink-200">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ node, ...props }) => <h1 className="mt-4 mb-2 text-base font-semibold text-ink-100 first:mt-0" {...props} />,
+              h2: ({ node, ...props }) => <h2 className="mt-4 mb-2 text-sm font-semibold uppercase tracking-wide text-crimson-300 first:mt-0" {...props} />,
+              h3: ({ node, ...props }) => <h3 className="mt-3 mb-1.5 text-sm font-semibold text-ink-100" {...props} />,
+              p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+              strong: ({ node, ...props }) => <strong className="font-semibold text-ink-100" {...props} />,
+              em: ({ node, ...props }) => <em className="italic text-ink-100" {...props} />,
+              ul: ({ node, ...props }) => <ul className="mb-3 ml-4 list-disc space-y-1 marker:text-crimson-400" {...props} />,
+              ol: ({ node, ...props }) => <ol className="mb-3 ml-4 list-decimal space-y-1 marker:text-ink-500" {...props} />,
+              li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+              a: ({ node, ...props }) => <a className="text-crimson-300 underline underline-offset-2 hover:text-crimson-400" target="_blank" rel="noreferrer" {...props} />,
+              blockquote: ({ node, ...props }) => <blockquote className="my-3 border-l-2 border-crimson-500/30 pl-3 text-ink-300 italic" {...props} />,
+              code: ({ node, ...props }) => <code className="rounded bg-white/5 px-1 py-0.5 font-mono text-[12px] text-ember-400" {...props} />,
+              hr: ({ node, ...props }) => <hr className="my-4 border-white/10" {...props} />,
+              table: ({ node, ...props }) => <div className="my-3 overflow-x-auto"><table className="w-full border-collapse text-xs" {...props} /></div>,
+              th: ({ node, ...props }) => <th className="border border-white/10 bg-white/5 px-2 py-1 text-left font-semibold text-ink-100" {...props} />,
+              td: ({ node, ...props }) => <td className="border border-white/10 px-2 py-1" {...props} />,
+            }}
+          >
             {data.analysis}
-          </div>
+          </ReactMarkdown>
         </div>
 
         {/* Disclaimer */}

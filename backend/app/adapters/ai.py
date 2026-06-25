@@ -63,11 +63,11 @@ class OllamaAIProvider(AIProvider):
             client = AsyncOpenAI(
                 base_url=settings.OLLAMA_BASE_URL,
                 api_key="ollama",
-                timeout=120.0,
+                timeout=85.0,
             )
             resp = await client.chat.completions.create(
                 model=settings.OLLAMA_MODEL,
-                max_tokens=1200,
+                max_tokens=900,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": prompt},

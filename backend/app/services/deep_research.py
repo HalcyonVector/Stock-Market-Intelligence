@@ -11,8 +11,17 @@ Goes beyond "why moving" to produce a full research report:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timezone
+
+from app.core.logging import get_logger
+
+log = get_logger("services.deep_research")
+
+# How long to wait on each phase before returning a graceful partial report.
+DATA_TIMEOUT = 25.0   # gathering quote/news/technicals/fundamentals/sentiment
+AI_TIMEOUT = 90.0     # local model synthesis
 
 from app.adapters.registry import providers
 from app.core.redis import get_redis
@@ -43,7 +52,7 @@ Rules:
 """
 
 
-async def research(symbol: str) -> dict:
+async def analyze(symbol: str) -> dict:
     cache_key = f"deep_research:{symbol}"
     r = get_redis()
     try:
@@ -53,25 +62,65 @@ async def research(symbol: str) -> dict:
     except Exception:
         pass
 
-    # Gather all data in parallel
-    import asyncio
     from app.services.sentiment import for_symbol
 
-    quote, news, tech, fund, sentiment = await asyncio.gather(
-        providers.market.quote(symbol),
-        providers.news.latest(symbol, limit=8),
-        technicals.compute(symbol, 180),
-        fundamentals.get_fundamentals(symbol),
-        for_symbol(symbol),
-    )
+    # Gather all data in parallel, bounded so a slow/hanging provider can't
+    # stall the whole report. Missing pieces degrade gracefully to defaults.
+    quote = news = tech = fund = sentiment = None
+    try:
+        quote, news, tech, fund, sentiment = await asyncio.wait_for(
+            asyncio.gather(
+                providers.market.quote(symbol),
+                providers.news.latest(symbol, limit=8),
+                technicals.compute(symbol, 180),
+                fundamentals.get_fundamentals(symbol),
+                for_symbol(symbol),
+            ),
+            timeout=DATA_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        log.warning("deep_research.data_timeout", symbol=symbol)
+    except Exception as e:  # noqa: BLE001
+        log.warning("deep_research.data_error", symbol=symbol, error=str(e))
+
+    news = news or []
+    tech = tech or {}
+    fund = fund or {}
+    sentiment = sentiment or {}
+
+    if quote is None:
+        # Without a quote we can't build a meaningful report.
+        return {
+            "symbol": symbol,
+            "name": fund.get("name", symbol),
+            "sector": fund.get("sector", "—"),
+            "industry": fund.get("industry", "—"),
+            "analysis": "Research data is temporarily unavailable. Please retry in a moment.",
+            "data_summary": {},
+            "news": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "disclaimer": "Educational research only. Not investment advice.",
+            "partial": True,
+        }
 
     # Build comprehensive prompt
     prompt = _build_research_prompt(symbol, quote, tech, fund, news, sentiment)
 
-    # Call AI
+    # Call AI, bounded so a slow local model returns a graceful message
+    # instead of hanging until the client/proxy kills the request.
     try:
-        analysis = await providers.ai.explain(SYSTEM_PROMPT, prompt)
-    except Exception as e:
+        analysis = await asyncio.wait_for(
+            providers.ai.explain(SYSTEM_PROMPT, prompt), timeout=AI_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        log.warning("deep_research.ai_timeout", symbol=symbol)
+        analysis = (
+            "AI synthesis timed out (the local model is busy). "
+            "The structured metrics below are still current — please retry the "
+            "full report in a moment."
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("deep_research.ai_error", symbol=symbol, error=str(e))
         analysis = f"AI analysis unavailable: {e}"
 
     result = {
@@ -158,3 +207,7 @@ def _build_research_prompt(symbol, quote, tech, fund, news, sentiment) -> str:
     ]
 
     return "\n".join(sections)
+
+
+# Backward-compatible alias (older callers used research()).
+research = analyze
