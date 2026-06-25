@@ -181,7 +181,7 @@ const FEATURES = [
   },
   {
     icon: Cpu, title: "ML Price Forecast",
-    desc: "Ensemble model: linear regression + Holt exponential smoothing with 80%/95% confidence intervals",
+    desc: "SARIMA seasonal time-series model with 80%/95% confidence intervals (linear + Holt ensemble fallback)",
     color: "from-cyan-500/20 to-cyan-600/5", glow: "shadow-cyan-500/10",
   },
   {
@@ -290,7 +290,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           className="mt-6 max-w-2xl text-lg text-white/40 md:text-xl"
         >
           Full-stack market intelligence platform with AI research, portfolio optimization,
-          strategy backtesting, ML forecasting, and a safe investment guide — all running locally.
+          strategy backtesting, ML price forecasting, and a safe investment guide — all running locally.
         </motion.p>
 
         {/* CTA Buttons */}

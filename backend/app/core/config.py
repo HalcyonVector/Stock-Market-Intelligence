@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     REFRESH_SENTIMENT: int = 1800   # 30 min
     REFRESH_SCORES: int = 1800      # 30 min
 
+    # --- Market-aware back-off ---
+    # The base cadences above apply during US market hours. When the market is
+    # closed the ETL backs off (intervals are multiplied) so we don't burn free
+    # provider rate limits refreshing data that isn't moving. Set both to 1 to
+    # disable and refresh at a constant cadence around the clock.
+    SCHEDULE_MARKET_AWARE: bool = True
+    OFFHOURS_BACKOFF: float = 4.0    # weekday, outside 09:30–16:00 ET
+    WEEKEND_BACKOFF: float = 12.0    # Saturday / Sunday
+
     # --- Optional free-tier API keys ---
     FINNHUB_API_KEY: str = ""
     ALPHAVANTAGE_API_KEY: str = ""

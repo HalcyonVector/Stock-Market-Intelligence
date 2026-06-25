@@ -1,9 +1,14 @@
 # 📈 Stock Discovery & Intelligence — AI-Powered Market Intelligence Platform
 
-A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with ML ensembles, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Ollama, and Docker.
+A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Ollama, and Docker.
 
-> **Educational and informational use only. Not personalized investment advice.**
-> No brokerage credentials are stored, no trades are executed.
+---
+
+## ⚠️ Disclaimer
+
+**This project is for educational and informational purposes only. It is NOT financial, investment, or trading advice.**
+
+Nothing in this application constitutes a recommendation to buy, sell, or hold any security. All forecasts, scores, and "opportunity" signals are illustrative outputs of statistical models and may be inaccurate or out of date. Market data is sourced from free-tier providers and may be delayed or wrong. No brokerage credentials are stored and **no trades are ever executed**. Past performance does not guarantee future results. Always do your own research and consult a licensed financial advisor before making any financial decision. The author accepts no liability for any losses arising from use of this software.
 
 ---
 
@@ -29,7 +34,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 
 - **Technical Indicators** — RSI, MACD, Bollinger Bands, Stochastic, ATR, OBV with interactive multi-timeframe charts
 - **Fundamental Analysis** — P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
-- **ML Price Forecast** — Ensemble model (linear regression + Holt exponential smoothing) with 80%/95% confidence intervals
+- **ML Price Forecast** — SARIMA (Seasonal ARIMA) time-series model fitted on log prices with model-derived 80%/95% confidence intervals. Gracefully falls back to a linear-regression + Holt exponential-smoothing ensemble if the fit fails to converge
 - **Smart Screener** — Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
 - **Market Heatmap** — Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and Celery pre-computation
 - **Stock Comparison** — Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
@@ -47,11 +52,13 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 
 - **16 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS, Post Office TD, SCSS, SSY, Liquid Fund, Debt Fund, SGB, NPS, ELSS, Index Fund
 - **6 US Instruments** — HYSA, Treasury, Money Market, Bond ETF, CD, S&P 500 ETF
-- **SIP Calculator** — Compound interest with annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.)
+- **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.)
 - **Goal Planner** — Reverse SIP: how much monthly for a target (Emergency Fund, Bike, House, Education)
-- **Allocation Builder** — Multi-instrument combined returns with blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
+- **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
+- **Withdrawal & Lock-in View** — Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
 - **AI Advisor** — Ollama-powered Q&A for personalized (educational) investment guidance
 - **4 Risk Profiles** — Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
+- **Dated Rates** — Government small-savings rates are official (current as of Q1 FY2026-27); market-linked rates are flagged as estimates
 
 ### UI/UX
 
@@ -75,7 +82,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 | **Styling** | Tailwind CSS 3 | Custom dark theme with crimson/ink/ember palettes |
 | **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
-| **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines (30s/5m/10m/15m) |
+| **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines; market-aware cadences that back off when the US market is closed |
 | **AI Provider** | Ollama (qwen2.5:7b) | Local LLM via OpenAI-compatible API, zero API cost |
 | **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
@@ -83,6 +90,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 | **Database** | PostgreSQL 16 | Persistent storage for watchlists, alerts, history |
 | **Cache/PubSub** | Redis 7 | Price caching, alert storage, real-time event relay |
 | **Portfolio Math** | NumPy + SciPy | SLSQP optimizer, covariance matrices, Monte Carlo |
+| **Forecasting** | statsmodels | SARIMA seasonal time-series model (linear + Holt ensemble fallback) |
 | **Data Processing** | Pandas + Polars | Market data wrangling and indicator computation |
 | **Containerization** | Docker Compose | 6-service stack: postgres, redis, api, worker, beat, web |
 | **Auth** | JWT (HS256) | Token-based auth with demo user fallback |
@@ -213,7 +221,7 @@ stock-discovery-intelligence/
 │   │   │   ├── portfolio.py            # Mean-variance optimization, Monte Carlo, stress testing
 │   │   │   ├── safe_invest.py          # 22 instruments, SIP calc, goal planner, allocation engine
 │   │   │   ├── backtester.py           # RSI/MACD/SMA/Bollinger strategy engine
-│   │   │   ├── forecast.py             # Linear regression + Holt exponential smoothing ensemble
+│   │   │   ├── forecast.py             # SARIMA time-series model (linear + Holt ensemble fallback)
 │   │   │   ├── deep_research.py        # Ollama-powered comprehensive stock research
 │   │   │   ├── technicals.py           # RSI, MACD, Bollinger, Stochastic, ATR, OBV
 │   │   │   ├── fundamentals.py         # P/E, P/B, EPS, dividends, revenue from yfinance
@@ -245,13 +253,14 @@ stock-discovery-intelligence/
 │   │   │   └── indicators.py           # Technical indicator calculations
 │   │   ├── etl/                        # Background jobs
 │   │   │   ├── celery_app.py           # Celery + Beat configuration
-│   │   │   └── tasks.py               # 7 tasks: market, news, sentiment, sectors, heatmap, briefing, scores (5m–30m)
+│   │   │   ├── market_calendar.py      # Market-aware schedule (back off when market closed)
+│   │   │   └── tasks.py               # 7 tasks: market, news, sentiment, sectors, heatmap, briefing, scores
 │   │   ├── models/entities.py          # SQLAlchemy ORM models
 │   │   ├── schemas/                    # Pydantic request/response models
 │   │   ├── db/session.py               # Async engine + session factory
 │   │   └── realtime/manager.py         # WebSocket connection manager + Redis relay
 │   ├── scripts/validate_live.py        # Live adapter smoke test
-│   └── tests/                          # 4 test modules (API, auth, scoring, watchlists)
+│   └── tests/                          # 10 test modules (api, auth, scoring, watchlists, hardening, forecast, portfolio, backtester, safe_invest, schedule)
 │
 ├── frontend/
 │   ├── Dockerfile                      # Multi-stage Node 20 Alpine build
@@ -306,7 +315,7 @@ stock-discovery-intelligence/
 │   │   │   │   ├── PriceChart.tsx       # Interactive candlestick/line chart
 │   │   │   │   ├── TechnicalIndicators.tsx # RSI, MACD, Bollinger panels
 │   │   │   │   ├── FundamentalsCard.tsx # Key financial metrics
-│   │   │   │   ├── PriceForecast.tsx    # ML prediction chart
+│   │   │   │   ├── PriceForecast.tsx    # Price trend projection chart
 │   │   │   │   └── DeepResearch.tsx     # Full AI research report
 │   │   │   ├── layout/                 # Shell components
 │   │   │   │   ├── ShellLayout.tsx     # Sidebar + ticker + main wrapper
@@ -367,7 +376,7 @@ stock-discovery-intelligence/
 | GET | `/api/v1/stocks/{symbol}/technicals` | RSI, MACD, Bollinger, Stochastic, ATR, OBV |
 | GET | `/api/v1/stocks/{symbol}/fundamentals` | P/E, P/B, EPS, revenue, margins |
 | GET | `/api/v1/stocks/{symbol}/research` | AI deep research report |
-| GET | `/api/v1/stocks/{symbol}/forecast` | ML price prediction (30-day default) |
+| GET | `/api/v1/stocks/{symbol}/forecast` | SARIMA price forecast (30-day default) |
 
 ### Portfolio
 
@@ -385,9 +394,9 @@ stock-discovery-intelligence/
 |--------|----------|-------------|
 | GET | `/api/v1/invest/instruments` | List instruments by country (IN/US) |
 | GET | `/api/v1/invest/profiles` | Risk profiles with preset allocations |
-| GET | `/api/v1/invest/sip` | SIP calculator (monthly, rate, years, step_up) |
+| GET | `/api/v1/invest/sip` | SIP calculator (monthly, rate, years, step_up, lump_sum) |
 | GET | `/api/v1/invest/goal` | Goal planner (target, years, rate) |
-| POST | `/api/v1/invest/allocate` | Multi-instrument allocation projection |
+| POST | `/api/v1/invest/allocate` | Multi-instrument allocation projection (lump sum + monthly, with lock-in/liquidity) |
 | POST | `/api/v1/invest/advise` | AI advisor Q&A |
 
 ### Alerts, Screener, Backtest
@@ -444,6 +453,11 @@ All config is in `backend/.env` (copy from `.env.example`):
 | `OPENAI_API_KEY` | *(empty)* | Optional: for OpenAI-based AI |
 | `REDDIT_CLIENT_ID` | *(empty)* | Optional: Reddit API for sentiment |
 | `REDDIT_CLIENT_SECRET` | *(empty)* | Optional: Reddit API for sentiment |
+| `SCHEDULE_MARKET_AWARE` | `true` | Back off ETL refresh cadences when the US market is closed (set `false` for constant cadence) |
+| `OFFHOURS_BACKOFF` | `4.0` | Interval multiplier on weekday off-hours (outside 09:30–16:00 ET) |
+| `WEEKEND_BACKOFF` | `12.0` | Interval multiplier on weekends |
+
+**Refresh cadences** (`REFRESH_MARKET` 5m, `REFRESH_NEWS` 10m, `REFRESH_SENTIMENT`/`REFRESH_SCORES` 30m) apply during US market hours. When `SCHEDULE_MARKET_AWARE=true`, Celery Beat multiplies these intervals by `OFFHOURS_BACKOFF` off-hours and `WEEKEND_BACKOFF` on weekends to conserve free-tier provider rate limits (see `app/etl/market_calendar.py`).
 
 In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub → Alpha Vantage → mock**. Each provider is wrapped in a circuit breaker (opens on repeated 429/403/quota errors, half-opens after a cooldown) so a rate-limited or down source is skipped instead of retried per-symbol; yfinance additionally retries 429s with exponential backoff over a shared connection-pooled session. Results are Redis-cached, and `/sectors/rotation` and `/insights/briefing` serve from cache and recompute in the background (never blocking the request). Zero-config mock mode works out of the box.
 
@@ -505,12 +519,23 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
 
 ```bash
 cd backend
-pytest -q                    # Run all tests
-pytest tests/test_api.py     # API route tests
-pytest tests/test_auth.py    # JWT auth tests
-pytest tests/test_scoring.py # Scoring engine tests
-pytest tests/test_watchlists.py # Watchlist CRUD tests
+pip install -r requirements.txt  # includes statsmodels, needed by the forecast tests
+pytest -q                        # Run all tests
+
+# By module
+pytest tests/test_api.py         # API route smoke tests
+pytest tests/test_auth.py        # JWT auth tests
+pytest tests/test_scoring.py     # Scoring engine tests
+pytest tests/test_watchlists.py  # Watchlist CRUD tests
+pytest tests/test_hardening.py   # Circuit breakers, provider fallbacks, guards
+pytest tests/test_forecast.py    # SARIMA + linear/Holt forecast (+ fallback path)
+pytest tests/test_portfolio.py   # Optimizer, risk metrics, frontier, analyze()
+pytest tests/test_backtester.py  # Signal generation + trade simulation
+pytest tests/test_safe_invest.py # SIP/lump-sum/goal/allocation math + lock-in
+pytest tests/test_schedule.py    # Market-hours back-off scheduling
 ```
+
+Tests are network-free (providers and Redis are faked), so no live keys are required. The forecast suite skips the SARIMA assertions automatically if `statsmodels` isn't installed.
 
 ---
 

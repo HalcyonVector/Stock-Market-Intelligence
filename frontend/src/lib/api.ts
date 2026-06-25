@@ -84,10 +84,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ question, ...context }),
     }),
-  investAllocate: (totalMonthly: number, allocations: Array<{instrument_id: string; pct: number}>, years: number, country = "IN") =>
+  investAllocate: (totalMonthly: number, allocations: Array<{instrument_id: string; pct: number}>, years: number, country = "IN", lumpSum = 0) =>
     req<any>("/invest/allocate", {
       method: "POST",
-      body: JSON.stringify({ total_monthly: totalMonthly, allocations, years, country }),
+      body: JSON.stringify({ total_monthly: totalMonthly, allocations, years, country, lump_sum: lumpSum }),
     }),
 
   // --- Alerts ---

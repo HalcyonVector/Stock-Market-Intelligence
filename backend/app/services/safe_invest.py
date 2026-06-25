@@ -17,6 +17,13 @@ from app.core.redis import get_redis
 
 # ── Instrument Database ──────────────────────────────────────────────────────
 
+# Indian government small-savings rates (PPF, SCSS, SSY, NSC, KVP, POMIS, POTD,
+# RD) are official, notified quarterly by the Ministry of Finance, and are
+# current as of the quarter below. Bank-FD, mutual-fund, NPS/ELSS/index and the
+# US instruments are market-linked *estimates* that drift — treat them as
+# indicative, not guaranteed.
+RATES_AS_OF = "Q1 FY2026-27 (Apr–Jun 2026)"
+
 INSTRUMENTS = {
     "IN": {
         "currency": "₹",
@@ -436,13 +443,20 @@ def sip_calculator(
     annual_rate: float,
     years: int,
     step_up_pct: float = 0,  # annual increase in SIP amount
+    lump_sum: float = 0,     # one-time amount invested upfront
 ) -> dict:
-    """Calculate SIP returns with optional annual step-up."""
+    """Calculate returns for a one-time lump sum plus a monthly SIP.
+
+    The lump sum is invested at the start and compounds for the full duration;
+    the monthly contribution (with optional annual step-up) is added on top. Set
+    ``monthly_amount=0`` for a pure lump-sum projection, or ``lump_sum=0`` for a
+    pure SIP.
+    """
     months = years * 12
     monthly_rate = annual_rate / 100 / 12
 
-    total_invested = 0
-    current_value = 0
+    total_invested = lump_sum
+    current_value = lump_sum  # lump sum starts compounding immediately
     current_sip = monthly_amount
     yearly_data = []
 
@@ -465,6 +479,7 @@ def sip_calculator(
 
     return {
         "monthly_sip": round(monthly_amount),
+        "lump_sum": round(lump_sum),
         "annual_rate": annual_rate,
         "years": years,
         "step_up_pct": step_up_pct,
@@ -508,10 +523,16 @@ def allocation_calc(
     allocations: list[dict],  # [{"instrument_id": "ppf", "pct": 50}, ...]
     years: int,
     country: str = "IN",
+    lump_sum: float = 0,      # one-time amount invested upfront, split by the same pcts
 ) -> dict:
-    """Calculate combined returns from a multi-instrument allocation."""
+    """Calculate combined returns from a multi-instrument allocation.
+
+    Supports a one-time ``lump_sum`` invested upfront in addition to the recurring
+    ``total_monthly`` SIP — both are split across instruments by their pct weights.
+    Each instrument's lock-in / liquidity is surfaced so the caller knows when the
+    money can actually be withdrawn.
+    """
     insts = {i["id"]: i for i in INSTRUMENTS.get(country, INSTRUMENTS["IN"])["instruments"]}
-    cur = "₹" if country == "IN" else "$"
 
     results = []
     total_invested = 0
@@ -519,6 +540,8 @@ def allocation_calc(
     combined_yearly: dict[int, dict] = {}
     max_risk = "zero"
     risk_order = ["zero", "very_low", "low", "low_to_medium", "medium"]
+    # Most→least liquid, for finding the binding (longest) lock-in.
+    liquidity_order = ["very_high", "high", "medium", "low", "very_low"]
 
     for alloc in allocations:
         inst = insts.get(alloc["instrument_id"])
@@ -527,6 +550,7 @@ def allocation_calc(
 
         pct = alloc["pct"]
         monthly = total_monthly * pct / 100
+        inst_lump = lump_sum * pct / 100
         rate = inst["current_rate"]
 
         # Track highest risk
@@ -535,7 +559,7 @@ def allocation_calc(
         if inst_risk_idx > max_risk_idx:
             max_risk = inst["risk"]
 
-        sip = sip_calculator(monthly, rate, years)
+        sip = sip_calculator(monthly, rate, years, lump_sum=inst_lump)
         total_invested += sip["total_invested"]
         total_value += sip["final_value"]
 
@@ -553,9 +577,13 @@ def allocation_calc(
             "rate": rate,
             "pct": pct,
             "monthly": round(monthly),
+            "lump_sum": round(inst_lump),
             "invested": sip["total_invested"],
             "final_value": sip["final_value"],
             "gains": sip["total_gains"],
+            # Withdrawal / access info
+            "lock_in": inst.get("lock_in", "—"),
+            "liquidity": inst.get("liquidity", "medium"),
         })
 
     yearly = sorted(combined_yearly.values(), key=lambda x: x["year"])
@@ -567,9 +595,18 @@ def allocation_calc(
     guaranteed_pct = sum(r["pct"] for r in results if r["risk"] == "zero")
     weighted_rate = sum(r["rate"] * r["pct"] / 100 for r in results) if results else 0
 
+    # Liquidity summary: which slice is locked up longest vs. accessible anytime.
+    def _liq_rank(r):
+        return liquidity_order.index(r["liquidity"]) if r["liquidity"] in liquidity_order else 2
+
+    most_restrictive = max(results, key=_liq_rank) if results else None
+    liquid_now_pct = sum(r["pct"] for r in results if r["liquidity"] in ("very_high", "high"))
+
     return {
         "total_monthly": round(total_monthly),
+        "lump_sum": round(lump_sum),
         "years": years,
+        "rates_as_of": RATES_AS_OF,
         "total_invested": round(total_invested),
         "total_value": round(total_value),
         "total_gains": round(total_value - total_invested),
@@ -577,6 +614,11 @@ def allocation_calc(
         "weighted_rate": round(weighted_rate, 2),
         "max_risk": max_risk,
         "guaranteed_pct": round(guaranteed_pct),
+        "liquidity": {
+            "liquid_now_pct": round(liquid_now_pct),
+            "longest_lock_in": most_restrictive["lock_in"] if most_restrictive else "—",
+            "longest_lock_in_instrument": most_restrictive["name"] if most_restrictive else None,
+        },
         "instruments": results,
         "yearly_data": yearly,
     }

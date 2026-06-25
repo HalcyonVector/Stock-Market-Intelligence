@@ -42,6 +42,20 @@ const RISK_LABELS: Record<string, string> = {
   low_to_medium: "Low-Med",
   medium: "Medium",
 };
+const LIQUIDITY_LABELS: Record<string, string> = {
+  very_high: "Anytime",
+  high: "Easy exit",
+  medium: "Some notice",
+  low: "Locked-in",
+  very_low: "Long lock-in",
+};
+const LIQUIDITY_COLORS: Record<string, string> = {
+  very_high: "text-blue-400",
+  high: "text-cyan-400",
+  medium: "text-yellow-400",
+  low: "text-orange-400",
+  very_low: "text-red-400",
+};
 
 const TABS = [
   { id: "instruments", label: "Where to Invest", icon: Landmark },
@@ -304,6 +318,7 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
 
   const instruments = instData?.instruments ?? [];
   const [totalMonthly, setTotalMonthly] = useState(1000);
+  const [lumpSum, setLumpSum] = useState(0);
   const [years, setYears] = useState(10);
   const [allocs, setAllocs] = useState<Array<{ instrument_id: string; pct: number }>>([
     { instrument_id: "ppf", pct: 40 },
@@ -314,8 +329,8 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
   const totalPct = allocs.reduce((s, a) => s + a.pct, 0);
 
   const { data: result, isFetching } = useQuery({
-    queryKey: ["allocate", totalMonthly, years, allocs, country],
-    queryFn: () => api.investAllocate(totalMonthly, allocs, years, country),
+    queryKey: ["allocate", totalMonthly, lumpSum, years, allocs, country],
+    queryFn: () => api.investAllocate(totalMonthly, allocs, years, country, lumpSum),
     enabled: totalPct === 100 && allocs.length > 0,
     staleTime: Infinity,
   });
@@ -365,12 +380,19 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Left: allocation inputs */}
         <div className="lg:col-span-2 space-y-4">
-          <BentoCard title="Monthly Budget & Duration">
+          <BentoCard title="Budget & Duration">
             <div className="space-y-3">
-              <SliderInput label="Total Monthly" value={totalMonthly} min={100} max={100000} step={100}
-                onChange={setTotalMonthly} format={(v) => `${cur}${v.toLocaleString()}`} />
+              <SliderInput label="One-Time Lump Sum" value={lumpSum} min={0} max={1000000} step={1000}
+                onChange={setLumpSum} format={(v) => v === 0 ? "None" : `${cur}${v.toLocaleString()}`} />
+              <SliderInput label="Total Monthly" value={totalMonthly} min={0} max={100000} step={100}
+                onChange={setTotalMonthly} format={(v) => v === 0 ? "None" : `${cur}${v.toLocaleString()}`} />
               <SliderInput label="Duration" value={years} min={1} max={30} step={1}
                 onChange={setYears} format={(v) => `${v} years`} />
+              {lumpSum > 0 && totalMonthly > 0 && (
+                <p className="text-[10px] text-ink-500">
+                  {cur}{lumpSum.toLocaleString()} invested upfront + {cur}{totalMonthly.toLocaleString()}/mo, both split by the weights below.
+                </p>
+              )}
             </div>
           </BentoCard>
 
@@ -449,7 +471,7 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
                 <MiniCard label="Blended Rate" value={`${result.weighted_rate}%`} accent="amber" />
               </div>
 
-              {/* Risk + guarantee strip */}
+              {/* Risk + guarantee + liquidity strip */}
               <div className="flex gap-3">
                 <div className={cn("flex-1 rounded-xl border p-3 text-center", RISK_BG[result.max_risk])}>
                   <p className="text-[10px] text-ink-500">Portfolio Risk</p>
@@ -461,7 +483,35 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
                   <p className="text-[10px] text-ink-500">Guaranteed Portion</p>
                   <p className="text-sm font-semibold text-emerald-400">{result.guaranteed_pct}%</p>
                 </div>
+                <div className="flex-1 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-center">
+                  <p className="text-[10px] text-ink-500">Accessible Anytime</p>
+                  <p className="text-sm font-semibold text-blue-400">{result.liquidity?.liquid_now_pct ?? 0}%</p>
+                </div>
               </div>
+
+              {/* Withdrawal / lock-in */}
+              <BentoCard title="When Can You Withdraw?">
+                <div className="space-y-1.5">
+                  {result.instruments.map((inst: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }} />
+                      <span className="w-32 shrink-0 truncate text-xs text-ink-300">{inst.name.split("(")[0].trim()}</span>
+                      <span className="flex-1 text-[11px] text-ink-400 truncate">{inst.lock_in}</span>
+                      <span className={cn("text-[10px] shrink-0", LIQUIDITY_COLORS[inst.liquidity] ?? "text-ink-500")}>
+                        {LIQUIDITY_LABELS[inst.liquidity] ?? inst.liquidity}
+                      </span>
+                    </div>
+                  ))}
+                  {result.liquidity?.longest_lock_in_instrument && (
+                    <p className="mt-2 rounded-lg bg-amber-500/5 border border-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-400/90">
+                      ⏳ Longest lock-in: <span className="font-medium">{result.liquidity.longest_lock_in}</span> ({result.liquidity.longest_lock_in_instrument.split("(")[0].trim()}). Plan around this before committing money you may need sooner.
+                    </p>
+                  )}
+                  {result.rates_as_of && (
+                    <p className="text-[10px] text-ink-600">Rates as of {result.rates_as_of}. Govt small-savings rates are official; market-linked rates are estimates.</p>
+                  )}
+                </div>
+              </BentoCard>
 
               {/* Pie chart + breakdown */}
               <BentoCard title="Your Split">

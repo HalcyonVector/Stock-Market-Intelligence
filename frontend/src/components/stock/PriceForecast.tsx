@@ -21,7 +21,7 @@ export function PriceForecast({ symbol }: { symbol: string }) {
   if (!enabled) {
     return (
       <BentoCard span="col-span-12" title="ML Price Forecast"
-        subtitle="Linear Regression + Exponential Smoothing Ensemble">
+        subtitle="SARIMA seasonal time-series model">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setEnabled(true)}
