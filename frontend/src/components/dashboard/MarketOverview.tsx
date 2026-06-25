@@ -1,8 +1,25 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { TrendingUp, TrendingDown, BarChart3, Clock } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  Clock,
+  Activity,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  DollarSign,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function formatLargeNumber(n: number): string {
+  if (n >= 1e12) return (n / 1e12).toFixed(1) + "T";
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+  return n.toFixed(0);
+}
 
 export function MarketOverview() {
   const { data: movers } = useQuery({ queryKey: ["movers"], queryFn: () => api.movers() });
@@ -12,12 +29,29 @@ export function MarketOverview() {
     ...(movers?.gainers ?? []),
     ...(movers?.losers ?? []),
   ];
-  const avgChange = allQuotes.length
-    ? allQuotes.reduce((s, q) => s + q.change_pct, 0) / allQuotes.length
+
+  // Deduplicate by symbol
+  const seen = new Set<string>();
+  const unique = allQuotes.filter((q) => {
+    if (seen.has(q.symbol)) return false;
+    seen.add(q.symbol);
+    return true;
+  });
+
+  const avgChange = unique.length
+    ? unique.reduce((s, q) => s + q.change_pct, 0) / unique.length
     : 0;
   const totalTracked = discovery?.length ?? 0;
   const topGainer = movers?.gainers?.[0];
   const topLoser = movers?.losers?.[0];
+
+  // Breadth: advancers vs decliners
+  const advancers = unique.filter((q) => q.change_pct > 0).length;
+  const decliners = unique.filter((q) => q.change_pct < 0).length;
+
+  // Total market cap + volume
+  const totalMcap = unique.reduce((s, q) => s + (q.market_cap ?? 0), 0);
+  const totalVolume = unique.reduce((s, q) => s + (q.volume ?? 0), 0);
 
   const now = new Date();
   const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
@@ -38,6 +72,13 @@ export function MarketOverview() {
       color: avgChange >= 0 ? "text-emerald-400" : "text-crimson-400",
     },
     {
+      icon: ArrowUpCircle,
+      label: "Breadth",
+      value: `${advancers}↑ / ${decliners}↓`,
+      sub: advancers > decliners ? "bullish" : advancers < decliners ? "bearish" : "neutral",
+      color: advancers > decliners ? "text-emerald-400" : advancers < decliners ? "text-crimson-400" : "text-ink-300",
+    },
+    {
       icon: TrendingUp,
       label: "Top Gainer",
       value: topGainer?.symbol ?? "—",
@@ -50,6 +91,20 @@ export function MarketOverview() {
       value: topLoser?.symbol ?? "—",
       sub: topLoser ? `${topLoser.change_pct.toFixed(1)}%` : "",
       color: "text-crimson-400",
+    },
+    {
+      icon: DollarSign,
+      label: "Mkt Cap",
+      value: totalMcap > 0 ? "$" + formatLargeNumber(totalMcap) : "—",
+      sub: "total",
+      color: "text-ink-300",
+    },
+    {
+      icon: Activity,
+      label: "Volume",
+      value: totalVolume > 0 ? formatLargeNumber(totalVolume) : "—",
+      sub: "shares",
+      color: "text-ink-300",
     },
     {
       icon: Clock,

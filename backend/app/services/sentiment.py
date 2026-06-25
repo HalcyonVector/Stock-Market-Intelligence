@@ -1,7 +1,20 @@
-"""Retail sentiment aggregation across sources (Reddit/X/Trends)."""
+"""Retail sentiment aggregation across sources (Reddit/X/Trends/StockTwits).
+
+Pre-computed by Celery beat and cached in Redis for instant API response.
+"""
 from __future__ import annotations
 
+import asyncio
+import json
+
 from app.adapters.registry import providers
+from app.core.logging import get_logger
+from app.core.redis import get_redis
+
+log = get_logger("services.sentiment")
+
+TRENDING_CACHE_KEY = "sentiment:trending:{market}"
+TRENDING_TTL = 600  # 10 min
 
 
 async def for_symbol(symbol: str) -> dict:
@@ -21,11 +34,45 @@ async def for_symbol(symbol: str) -> dict:
     }
 
 
-async def trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
+async def _fetch_one(s: str, sem: asyncio.Semaphore) -> dict | None:
+    async with sem:
+        try:
+            data = await asyncio.wait_for(for_symbol(s), timeout=8)
+            return {"symbol": s, **data["aggregate"]}
+        except Exception as e:
+            log.warning("sentiment.symbol.skip", symbol=s, error=str(e))
+            return None
+
+
+async def compute_trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
+    """Heavy computation — called by Celery beat."""
     syms = await providers.market.universe(market)
-    rows = []
-    for s in syms:
-        data = await for_symbol(s)
-        rows.append({"symbol": s, **data["aggregate"]})
+    sem = asyncio.Semaphore(5)
+    results = await asyncio.gather(*(_fetch_one(s, sem) for s in syms))
+    rows = [r for r in results if r is not None and r.get("attention_score", 0) > 0]
     rows.sort(key=lambda r: r.get("attention_score", 0), reverse=True)
-    return rows[:limit]
+    result = rows[:limit]
+
+    # Cache
+    try:
+        key = TRENDING_CACHE_KEY.format(market=market)
+        await get_redis().set(key, json.dumps(result), ex=TRENDING_TTL)
+        log.info("sentiment.cached", market=market, items=len(result))
+    except Exception:
+        pass
+
+    return result
+
+
+async def trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
+    """API-facing — reads from cache. Falls back to live compute if empty."""
+    key = TRENDING_CACHE_KEY.format(market=market)
+    try:
+        hit = await get_redis().get(key)
+        if hit:
+            return json.loads(hit)
+    except Exception:
+        pass
+
+    # Cache miss — compute inline (first load only)
+    return await compute_trending(market, limit)

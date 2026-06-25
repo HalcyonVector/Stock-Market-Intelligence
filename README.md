@@ -28,10 +28,10 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 ### Analysis Tools
 
 - **Technical Indicators** — RSI, MACD, Bollinger Bands, Stochastic, ATR, OBV with interactive multi-timeframe charts
-- **Fundamental Analysis** — P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance
+- **Fundamental Analysis** — P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
 - **ML Price Forecast** — Ensemble model (linear regression + Holt exponential smoothing) with 80%/95% confidence intervals
-- **Smart Screener** — Filter 50+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
-- **Market Heatmap** — Treemap visualization of sector/stock performance with color-coded returns
+- **Smart Screener** — Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
+- **Market Heatmap** — Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and Celery pre-computation
 - **Stock Comparison** — Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
 
 ### Market Data
@@ -77,8 +77,9 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
 | **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines (30s/5m/10m/15m) |
 | **AI Provider** | Ollama (qwen2.5:14b) | Local LLM via OpenAI-compatible API, zero API cost |
-| **Market Data** | yfinance | Global stock data, no API key required |
-| **News/Sentiment** | RSS + Reddit (PRAW) + Google Trends | Free-tier data sources with fallback to mock |
+| **Market Data** | yfinance → Finnhub → Alpha Vantage | Provider fallback chain, live quotes + candles + fundamentals |
+| **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
+| **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
 | **Database** | PostgreSQL 16 | Persistent storage for watchlists, alerts, history |
 | **Cache/PubSub** | Redis 7 | Price caching, alert storage, real-time event relay |
 | **Portfolio Math** | NumPy + SciPy | SLSQP optimizer, covariance matrices, Monte Carlo |
@@ -229,17 +230,18 @@ stock-discovery-intelligence/
 │   │   │   └── watchlist.py            # Watchlist CRUD
 │   │   ├── adapters/                   # Data source abstraction
 │   │   │   ├── base.py                 # Abstract adapter interface
-│   │   │   ├── live.py                 # yfinance + RSS + Reddit + Trends
-│   │   │   ├── mock.py                 # Deterministic offline data
+│   │   │   ├── live.py                 # yfinance + RSS adapter
+│   │   │   ├── finnhub_provider.py     # Finnhub: quotes, profiles, candles, news, fundamentals
+│   │   │   ├── mock.py                 # Deterministic offline data (115+ stocks)
 │   │   │   ├── ai.py                   # Ollama (OpenAI-compat) + Anthropic providers
-│   │   │   ├── sentiment_live.py       # Reddit + Google Trends adapter
+│   │   │   ├── sentiment_live.py       # StockTwits + Reddit + Google Trends adapter
 │   │   │   └── registry.py             # Adapter selection by config
 │   │   ├── scoring/                    # Discovery scoring engine
 │   │   │   ├── engine.py               # Composite scoring pipeline
 │   │   │   └── indicators.py           # Technical indicator calculations
 │   │   ├── etl/                        # Background jobs
 │   │   │   ├── celery_app.py           # Celery + Beat configuration
-│   │   │   └── tasks.py               # 4 tasks: market, news, sentiment, scores (30s–15m)
+│   │   │   └── tasks.py               # 5 tasks: market, news, sentiment, scores, heatmap (30s–15m)
 │   │   ├── models/entities.py          # SQLAlchemy ORM models
 │   │   ├── schemas/                    # Pydantic request/response models
 │   │   ├── db/session.py               # Async engine + session factory
@@ -426,16 +428,20 @@ All config is in `backend/.env` (copy from `.env.example`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATA_MODE` | `mock` | `mock` for offline data, `live` for yfinance + RSS |
+| `DATA_MODE` | `mock` | `mock` for offline data, `live` for real market data |
 | `AI_PROVIDER` | `ollama` | `ollama`, `anthropic`, or `openai` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:14b` | Model for AI features |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./sdi.db` | PostgreSQL in Docker, SQLite locally |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| `FINNHUB_API_KEY` | *(empty)* | Free tier: quotes, profiles, basic financials, news |
+| `ALPHAVANTAGE_API_KEY` | *(empty)* | Optional: additional market data fallback |
 | `ANTHROPIC_API_KEY` | *(empty)* | Optional: for Claude-based AI |
 | `OPENAI_API_KEY` | *(empty)* | Optional: for OpenAI-based AI |
+| `REDDIT_CLIENT_ID` | *(empty)* | Optional: Reddit API for sentiment |
+| `REDDIT_CLIENT_SECRET` | *(empty)* | Optional: Reddit API for sentiment |
 
-Every live adapter **falls back to mock** if its dependency or key is missing. Zero-config works out of the box.
+In `live` mode, providers fall back in chain: **yfinance → Finnhub → Alpha Vantage → mock**. Zero-config mock mode works out of the box.
 
 ---
 
@@ -478,6 +484,9 @@ Every live adapter **falls back to mock** if its dependency or key is missing. Z
 | Source | Type | API Key? | What It Provides |
 |--------|------|----------|-----------------|
 | **yfinance** | Market data | No | Quotes, OHLCV candles, fundamentals, earnings |
+| **Finnhub** | Market data | Free (60 calls/min) | Quotes, company profiles, basic financials, news, candles |
+| **Alpha Vantage** | Market data | Free (25 calls/day) | Additional market data fallback |
+| **StockTwits** | Sentiment | No | Social sentiment and trending tickers |
 | **RSS feeds** | News | No | Market news from major financial outlets |
 | **Reddit (PRAW)** | Sentiment | Free app | r/wallstreetbets, r/stocks trending analysis |
 | **Google Trends** | Sentiment | No | Search interest for tickers |

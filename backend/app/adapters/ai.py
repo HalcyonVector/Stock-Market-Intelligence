@@ -63,6 +63,7 @@ class OllamaAIProvider(AIProvider):
             client = AsyncOpenAI(
                 base_url=settings.OLLAMA_BASE_URL,
                 api_key="ollama",
+                timeout=120.0,
             )
             resp = await client.chat.completions.create(
                 model=settings.OLLAMA_MODEL,
@@ -76,4 +77,3 @@ class OllamaAIProvider(AIProvider):
         except Exception as e:  # noqa: BLE001
             log.warning("ollama.fallback", error=str(e))
             return await MockAIProvider().explain(system, prompt)
-ovider().explain(system, prompt)

@@ -13,15 +13,9 @@ from app.adapters.registry import providers
 from app.core.redis import get_redis
 from app.services import technicals, fundamentals
 
-# Default universe — top US symbols
-DEFAULT_UNIVERSE = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B",
-    "JPM", "V", "JNJ", "WMT", "PG", "XOM", "UNH", "HD", "MA", "DIS",
-    "BAC", "ABBV", "PFE", "KO", "COST", "MRK", "TMO", "CSCO", "ACN",
-    "LLY", "AVGO", "CRM", "ADBE", "AMD", "NFLX", "INTC", "QCOM",
-    "ORCL", "TXN", "IBM", "GS", "MS", "WFC", "BLK", "PYPL", "SQ",
-    "SHOP", "SNOW", "PLTR", "COIN", "RIVN", "SOFI", "NIO", "BABA",
-]
+# Use the main universe from mock — single source of truth
+from app.adapters.mock import _UNIVERSE
+DEFAULT_UNIVERSE = _UNIVERSE["US"]
 
 
 async def screen(filters: dict[str, Any], universe: list[str] | None = None) -> list[dict]:

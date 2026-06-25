@@ -43,8 +43,20 @@ celery_app.conf.beat_schedule = {
         "task": "app.etl.tasks.refresh_sentiment",
         "schedule": schedule(settings.REFRESH_SENTIMENT),
     },
+    "refresh-sectors": {
+        "task": "app.etl.tasks.refresh_sectors",
+        "schedule": schedule(settings.REFRESH_SCORES),  # same cadence as scores
+    },
     "recompute-scores": {
         "task": "app.etl.tasks.recompute_scores",
         "schedule": schedule(settings.REFRESH_SCORES),
+    },
+    "refresh-heatmap": {
+        "task": "app.etl.tasks.refresh_heatmap",
+        "schedule": schedule(settings.REFRESH_SCORES),  # same cadence as scores
+    },
+    "refresh-briefing": {
+        "task": "app.etl.tasks.refresh_briefing",
+        "schedule": schedule(settings.REFRESH_NEWS),  # keep the AI briefing warm
     },
 }

@@ -45,6 +45,7 @@ export const api = {
   news: (limit = 20) => get<any[]>(`/insights/news?limit=${limit}`),
   earnings: () => get<any[]>(`/insights/earnings`),
   economicCalendar: () => get<any>(`/insights/economic-calendar`),
+  insiderActivity: () => get<any[]>(`/insights/insider-activity`),
   backtestStrategies: () => get<any[]>(`/backtest/strategies`),
   backtest: (symbol: string, strategy: string, params?: any, capital?: number, lookback?: number) =>
     req<any>("/backtest", {

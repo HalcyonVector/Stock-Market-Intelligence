@@ -1,6 +1,7 @@
 "use client";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Newspaper, Rss, TrendingUp, MessageCircle, ExternalLink, Loader2 } from "lucide-react";
+import { Newspaper, Rss, TrendingUp, MessageCircle, ExternalLink, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,12 @@ function NewsFeed() {
 
 function SentimentRadar() {
   const { data, isLoading } = useQuery({ queryKey: ["trending"], queryFn: () => api.trending() });
+  const [page, setPage] = useState(0);
+  const perPage = 5;
+  const all = data ?? [];
+  const totalPages = Math.max(1, Math.ceil(all.length / perPage));
+  const slice = all.slice(page * perPage, (page + 1) * perPage);
+
   return (
     <BentoCard span="col-span-12 lg:col-span-4" title="Social Buzz" subtitle="Attention & sentiment across tickers">
       {isLoading ? (
@@ -61,43 +68,79 @@ function SentimentRadar() {
           <Loader2 className="animate-spin text-ink-500" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {(data ?? []).map((r: any) => {
-            const sentColor = r.sentiment_score > 0.15
-              ? "text-emerald-400 bg-emerald-500/10"
-              : r.sentiment_score < -0.15
-                ? "text-crimson-400 bg-crimson-600/10"
-                : "text-ink-300 bg-white/5";
-            const attBar = Math.min(100, r.attention_score ?? 0);
-            return (
-              <div key={r.symbol} className="rounded-lg border border-white/[0.03] bg-black/10 p-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-medium text-ink-100">{r.symbol}</span>
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-mono", sentColor)}>
-                    {r.sentiment_score > 0 ? "+" : ""}{r.sentiment_score?.toFixed(2) ?? "0.00"}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="flex-1">
-                    <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-crimson-500/40 transition-all"
-                        style={{ width: `${attBar}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-ink-500">{r.mention_volume?.toLocaleString()} mentions</span>
-                </div>
-                {r.growth_rate !== undefined && (
-                  <p className="mt-1 text-[10px] text-ink-500">
-                    Growth: <span className={cn("font-mono", r.growth_rate > 0 ? "text-emerald-400" : "text-crimson-400")}>
-                      {r.growth_rate > 0 ? "+" : ""}{r.growth_rate}%
+        <div className="flex flex-col">
+          <div className="space-y-2 min-h-[420px]">
+            {slice.map((r: any) => {
+              const sentColor = r.sentiment_score > 0.15
+                ? "text-emerald-400 bg-emerald-500/10"
+                : r.sentiment_score < -0.15
+                  ? "text-crimson-400 bg-crimson-600/10"
+                  : "text-ink-300 bg-white/5";
+              const attBar = Math.min(100, r.attention_score ?? 0);
+              return (
+                <div key={r.symbol} className="rounded-lg border border-white/[0.03] bg-black/10 p-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-medium text-ink-100">{r.symbol}</span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-mono", sentColor)}>
+                      {r.sentiment_score > 0 ? "+" : ""}{r.sentiment_score?.toFixed(2) ?? "0.00"}
                     </span>
-                  </p>
-                )}
-              </div>
-            );
-          })}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-crimson-500/40 transition-all"
+                          style={{ width: `${attBar}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-ink-500">{r.mention_volume?.toLocaleString()} mentions</span>
+                  </div>
+                  {r.growth_rate !== undefined && (
+                    <p className="mt-1 text-[10px] text-ink-500">
+                      Growth: <span className={cn("font-mono", r.growth_rate > 0 ? "text-emerald-400" : "text-crimson-400")}>
+                        {r.growth_rate > 0 ? "+" : ""}{r.growth_rate}%
+                      </span>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="rounded p-1 text-ink-500 hover:bg-white/5 hover:text-ink-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={cn(
+                    "h-6 w-6 rounded text-[11px] font-mono transition",
+                    i === page
+                      ? "bg-crimson-600/30 text-crimson-300 font-semibold"
+                      : "text-ink-500 hover:bg-white/5 hover:text-ink-200"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page === totalPages - 1}
+                className="rounded p-1 text-ink-500 hover:bg-white/5 hover:text-ink-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </BentoCard>

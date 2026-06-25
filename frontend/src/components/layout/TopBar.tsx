@@ -13,8 +13,8 @@ export function TopBar() {
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-crimson-grad shadow-glow">
             <Activity size={18} />
           </span>
-          <span className="text-lg font-semibold tracking-normal">
-            Stock<span className="text-crimson-400">Intel</span>
+          <span>
+            <span className="text-lg font-bold tracking-tight text-white">Stock</span><span className="text-lg font-bold tracking-tight text-crimson-400">Intel</span>
           </span>
         </Link>
         <button

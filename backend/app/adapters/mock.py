@@ -31,9 +31,75 @@ SECTORS = [
 ]
 
 _UNIVERSE = {
-    "US": ["AAPL", "MSFT", "NVDA", "AMD", "TSLA", "PLTR", "SOFI", "RIVN", "AFRM", "SMCI"],
-    "IN": ["RELIANCE", "TCS", "HDFCBANK", "INFY", "HAL", "BEL", "TATAMOTORS", "SUNPHARMA", "LT", "ITC"],
-    "GLOBAL": ["AAPL", "NVDA", "TSLA", "PLTR", "SMCI", "RELIANCE", "HAL", "BEL", "TATAMOTORS", "INFY"],
+    "US": [
+        # Mega-cap tech
+        "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "CRM",
+        "NFLX", "ORCL", "ADBE", "CSCO", "ACN", "IBM", "SHOP", "SNOW", "PANW", "NOW",
+        "UBER", "ABNB",
+        # Fintech / Growth
+        "PLTR", "SOFI", "AFRM", "COIN", "SQ", "PYPL", "HOOD", "MARA",
+        # Semiconductors
+        "SMCI", "INTC", "QCOM", "MU", "TXN", "MRVL", "ON", "LRCX", "KLAC", "AMAT",
+        # Healthcare / Pharma
+        "UNH", "JNJ", "LLY", "PFE", "ABBV", "MRK", "TMO", "AMGN", "GILD", "ISRG",
+        "DXCM", "MRNA", "VRTX",
+        # Finance
+        "JPM", "V", "MA", "GS", "BAC", "MS", "WFC", "BLK", "SCHW", "AXP", "C",
+        # Consumer / Retail
+        "WMT", "COST", "KO", "PEP", "DIS", "NKE", "SBUX", "MCD", "HD", "LOW", "TGT",
+        "LULU",
+        # Energy / Industrial
+        "XOM", "CAT", "BA", "CVX", "COP", "GE", "HON", "UPS", "DE", "RTX", "LMT",
+        # Telecom / Media
+        "T", "VZ", "CMCSA", "TMUS",
+        # Other
+        "BRK-B", "PG", "MANU", "NIO", "BABA", "RIVN",
+    ],
+    "IN": [
+        # Banking / Finance
+        "RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK", "AXISBANK",
+        "BAJFINANCE", "BAJAJFINSV", "HDFCLIFE", "SBILIFE", "PNBHOUSING",
+        # IT
+        "TCS", "INFY", "WIPRO", "TECHM", "LTIM", "HCLTECH", "PERSISTENT", "COFORGE",
+        # Auto
+        "TATAMOTORS", "MARUTI", "M&M", "BAJAJ-AUTO", "EICHERMOT", "TVSMOTOR", "HEROMOTOCO",
+        # Pharma / Healthcare
+        "SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "APOLLOHOSP", "MAXHEALTH", "BIOCON",
+        # Defence / Capital Goods
+        "HAL", "BEL", "LT", "BHEL", "MAZAGON", "COCHINSHIP",
+        # Energy / Power
+        "NTPC", "POWERGRID", "ADANIGREEN", "ONGC", "COALINDIA", "TATAPOWER", "GAIL",
+        # FMCG / Consumer
+        "ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "TATACONSUM", "DABUR", "MARICO",
+        "GODREJCP",
+        # Infrastructure / Metals
+        "ADANIENT", "TATASTEEL", "HINDALCO", "JSWSTEEL", "ADANIPORTS", "DLF",
+        # Telecom
+        "BHARTIARTL", "IDEA",
+    ],
+    "GLOBAL": [
+        # US — broad coverage (65)
+        "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "CRM",
+        "NFLX", "ORCL", "ADBE", "CSCO", "ACN", "IBM", "SHOP", "SNOW", "PANW", "NOW",
+        "UBER", "ABNB",
+        "PLTR", "SOFI", "COIN", "SQ", "PYPL", "HOOD",
+        "SMCI", "INTC", "QCOM", "MU", "TXN", "MRVL", "AMAT",
+        "UNH", "JNJ", "LLY", "PFE", "ABBV", "MRK", "TMO", "AMGN", "MRNA",
+        "JPM", "V", "MA", "GS", "BAC", "MS", "WFC", "BLK",
+        "WMT", "COST", "KO", "DIS", "NKE", "MCD", "HD",
+        "XOM", "CAT", "BA", "CVX", "GE", "RTX", "LMT",
+        "BRK-B", "PG", "NIO", "BABA",
+        # India — broad coverage (45)
+        "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "KOTAKBANK",
+        "BAJFINANCE", "AXISBANK", "HDFCLIFE",
+        "TATAMOTORS", "MARUTI", "M&M", "BAJAJ-AUTO", "HEROMOTOCO",
+        "HAL", "BEL", "LT", "BHEL", "MAZAGON",
+        "SUNPHARMA", "DRREDDY", "CIPLA", "APOLLOHOSP",
+        "ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "TATACONSUM",
+        "NTPC", "POWERGRID", "ADANIENT", "TATASTEEL", "HINDALCO", "TATAPOWER",
+        "HCLTECH", "WIPRO", "TECHM", "PERSISTENT",
+        "ADANIPORTS", "BHARTIARTL", "COALINDIA", "ONGC", "GAIL", "DLF",
+    ],
 }
 
 
@@ -148,7 +214,14 @@ class MockAIProvider(AIProvider):
 
     async def explain(self, system: str, prompt: str) -> str:
         return (
-            "AI explanation (mock mode). Set AI_PROVIDER=anthropic and provide "
-            "ANTHROPIC_API_KEY to generate real, evidence-cited explanations from "
-            "the supplied signals."
+            "Markets showed mixed signals today with technology stocks leading gains "
+            "while energy and banking sectors faced headwinds. Several high-momentum "
+            "names posted notable advances, driven by strong volume and positive "
+            "sentiment across social platforms. The Capital Goods sector outperformed "
+            "peers with broad-based strength. On the downside, defensive names saw "
+            "profit-taking after recent outperformance. Opportunity scores highlight "
+            "a cluster of mid-cap names with improving technical setups and rising "
+            "institutional attention. Overall market breadth remains constructive, "
+            "though traders should monitor upcoming macro data releases for potential "
+            "volatility catalysts. (Mock mode — set AI_PROVIDER to generate live briefings.)"
         )

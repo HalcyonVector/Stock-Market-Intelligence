@@ -196,11 +196,11 @@ function InstrumentsTab({ country, cur }: { country: string; cur: string }) {
       <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
         <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-400" />
         <div>
-          <p className="text-sm font-medium text-emerald-300">Understanding "Zero Risk"</p>
+          <p className="text-sm font-medium text-emerald-300">Understanding &ldquo;Zero Risk&rdquo;</p>
           <p className="mt-1 text-xs text-ink-400">
-            Instruments marked as "Zero Risk" are backed by government guarantee or DICGC/FDIC insurance.
+            Instruments marked as &ldquo;Zero Risk&rdquo; are backed by government guarantee or DICGC/FDIC insurance.
             Your principal is protected. However, returns may not beat inflation in all periods.
-            "Very Low" risk means extremely rare chance of minor fluctuation — but historically no losses over 3+ months.
+            &ldquo;Very Low&rdquo; risk means extremely rare chance of minor fluctuation — but historically no losses over 3+ months.
           </p>
         </div>
       </div>
@@ -966,7 +966,7 @@ function AdvisorTab({ country, cur }: { country: string; cur: string }) {
         <div className="flex items-start gap-2 rounded-lg bg-yellow-500/5 border border-yellow-500/10 px-3 py-2">
           <AlertTriangle size={12} className="mt-0.5 shrink-0 text-yellow-500" />
           <p className="text-[10px] text-yellow-500/70">
-            This is educational guidance, not financial advice. Past returns don't guarantee future results.
+            This is educational guidance, not financial advice. Past returns don&apos;t guarantee future results.
             Always do your own research before investing. Consult a SEBI-registered advisor for personalized advice.
           </p>
         </div>

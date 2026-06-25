@@ -1,8 +1,9 @@
 """
 Live retail-sentiment adapters (all free).
 
-  * RedditSentimentProvider  — praw, free Reddit app credentials.
-  * GoogleTrendsProvider     — pytrends, free (unofficial).
+  * StockTwitsSentimentProvider — free, no API key needed.
+  * RedditSentimentProvider    — praw, free Reddit app credentials.
+  * GoogleTrendsProvider       — pytrends, free (unofficial).
   * CompositeSentimentProvider — merges whatever sources are configured and
     fills the rest from mock, so the API always returns a full snapshot set.
 
@@ -17,8 +18,11 @@ import math
 import re
 from datetime import datetime, timezone
 
+import httpx
+
 from app.adapters.base import SentimentProvider, SentimentSnapshot
 from app.adapters.mock import MockSentimentProvider
+from app.adapters.resilience import get_async_client, get_breaker, is_rate_limit_error
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -42,6 +46,70 @@ def score_text(text: str) -> float:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class StockTwitsSentimentProvider(SentimentProvider):
+    """Free social sentiment from StockTwits — no API key needed."""
+    name = "stocktwits"
+
+    async def snapshot(self, symbol: str) -> list[SentimentSnapshot]:
+        # StockTwits frequently rate-limits / blocks anonymous traffic, returning
+        # a null body (which used to crash with "'NoneType' has no attribute get").
+        # A breaker stops us hammering it once it starts refusing.
+        breaker = get_breaker("stocktwits", fail_threshold=3, cooldown=300)
+        if not breaker.allow():
+            return []
+        try:
+            client = get_async_client("stocktwits")
+            r = await client.get(
+                f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json",
+                headers={"User-Agent": "sdi-research/0.1"},
+            )
+            r.raise_for_status()
+            data = r.json()
+
+            # Null / non-dict body => rate-limited or blocked; degrade quietly.
+            if not isinstance(data, dict):
+                breaker.record_failure()
+                return []
+            breaker.record_success()
+
+            messages = data.get("messages") or []
+            if not messages:
+                return []
+
+            # Count bullish / bearish sentiment tags
+            bullish = sum(1 for m in messages if m.get("entities", {}).get("sentiment", {}).get("basic") == "Bullish")
+            bearish = sum(1 for m in messages if m.get("entities", {}).get("sentiment", {}).get("basic") == "Bearish")
+            total_tagged = bullish + bearish
+            total_msgs = len(messages)
+
+            # Sentiment score: -1 (all bearish) to +1 (all bullish)
+            if total_tagged > 0:
+                polarity = (bullish - bearish) / total_tagged
+            else:
+                # Fall back to lexicon scoring on message body text
+                texts = [m.get("body", "") for m in messages]
+                polarity = sum(score_text(t) for t in texts) / len(texts) if texts else 0.0
+
+            samples = [m.get("body", "")[:150] for m in messages[:3]]
+
+            log.info("stocktwits.ok", symbol=symbol, messages=total_msgs, bullish=bullish, bearish=bearish)
+            return [SentimentSnapshot(
+                symbol=symbol,
+                source="twitter",  # maps to "twitter" slot in the UI
+                mention_volume=total_msgs,
+                sentiment_score=round(polarity, 2),
+                attention_score=round(min(100.0, math.log10(total_msgs + 1) * 33), 1),
+                growth_rate=0.0,
+                ts=_now(),
+                samples=samples,
+            )]
+        except Exception as e:
+            if is_rate_limit_error(e):
+                breaker.record_failure()
+            log.warning("stocktwits.error", symbol=symbol, error=str(e))
+            return []
 
 
 class RedditSentimentProvider(SentimentProvider):
@@ -90,9 +158,18 @@ class GoogleTrendsProvider(SentimentProvider):
         self._fallback = MockSentimentProvider()
 
     async def snapshot(self, symbol: str) -> list[SentimentSnapshot]:
+        # Google rate-limits the unofficial pytrends endpoint hard (429s in logs).
+        # Once it starts refusing, skip it for 10 min and serve mock trends.
+        breaker = get_breaker("trends", fail_threshold=2, cooldown=600)
+        if not breaker.allow():
+            return [s for s in await self._fallback.snapshot(symbol) if s.source == "trends"]
         try:
-            return await asyncio.to_thread(self._fetch, symbol)
+            res = await asyncio.to_thread(self._fetch, symbol)
+            breaker.record_success()
+            return res
         except Exception as e:  # noqa: BLE001
+            if is_rate_limit_error(e):
+                breaker.record_failure()
             log.warning("trends.fallback", symbol=symbol, error=str(e))
             return [s for s in await self._fallback.snapshot(symbol) if s.source == "trends"]
 
@@ -123,12 +200,18 @@ class CompositeSentimentProvider(SentimentProvider):
     name = "composite"
 
     def __init__(self) -> None:
+        # StockTwits — free, no key needed (fills the "twitter" slot)
+        self._stocktwits = StockTwitsSentimentProvider()
+        # Reddit — needs API approval (pending); falls back to mock
         self._reddit = RedditSentimentProvider()
+        # Google Trends — free but rate-limited (429s common)
         self._trends = GoogleTrendsProvider()
+        # Mock fills any remaining gaps so the UI always has data
         self._mock = MockSentimentProvider()
 
     async def snapshot(self, symbol: str) -> list[SentimentSnapshot]:
         results = await asyncio.gather(
+            self._stocktwits.snapshot(symbol),
             self._reddit.snapshot(symbol),
             self._trends.snapshot(symbol),
             return_exceptions=True,
@@ -137,6 +220,7 @@ class CompositeSentimentProvider(SentimentProvider):
         for r in results:
             if isinstance(r, list):
                 out.extend(r)
+        # Fill any missing sources from mock so UI always renders
         have = {s.source for s in out}
         for s in await self._mock.snapshot(symbol):
             if s.source not in have:

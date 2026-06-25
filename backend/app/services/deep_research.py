@@ -53,14 +53,17 @@ async def research(symbol: str) -> dict:
     except Exception:
         pass
 
-    # Gather all data
-    quote = await providers.market.quote(symbol)
-    news = await providers.news.latest(symbol, limit=8)
-    tech = await technicals.compute(symbol, 180)
-    fund = await fundamentals.get_fundamentals(symbol)
-
+    # Gather all data in parallel
+    import asyncio
     from app.services.sentiment import for_symbol
-    sentiment = await for_symbol(symbol)
+
+    quote, news, tech, fund, sentiment = await asyncio.gather(
+        providers.market.quote(symbol),
+        providers.news.latest(symbol, limit=8),
+        technicals.compute(symbol, 180),
+        fundamentals.get_fundamentals(symbol),
+        for_symbol(symbol),
+    )
 
     # Build comprehensive prompt
     prompt = _build_research_prompt(symbol, quote, tech, fund, news, sentiment)

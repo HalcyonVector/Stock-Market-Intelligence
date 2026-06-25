@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   Area, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
   ComposedChart, CartesianGrid,
 } from "recharts";
+import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +20,11 @@ const TIMEFRAMES = [
 export function PriceChart({ symbol }: { symbol: string }) {
   const [timeframe, setTimeframe] = useState(2); // default 3M
 
-  const { data } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["candles", symbol, TIMEFRAMES[timeframe].lookback],
     queryFn: () => api.candles(symbol, "1d", TIMEFRAMES[timeframe].lookback),
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
   });
 
   const series = (data ?? []).map((c: any) => ({
@@ -33,8 +36,17 @@ export function PriceChart({ symbol }: { symbol: string }) {
     volume: c.volume,
   }));
 
+  if (isLoading) {
+    return (
+      <div className="flex h-[260px] items-center justify-center gap-2 text-xs text-ink-500">
+        <Loader2 size={16} className="animate-spin text-crimson-400" />
+        Loading price data…
+      </div>
+    );
+  }
+
   if (series.length === 0) {
-    return <div className="flex h-[260px] items-center justify-center text-xs text-ink-500">No price data</div>;
+    return <div className="flex h-[260px] items-center justify-center text-xs text-ink-500">No price data available</div>;
   }
 
   const minPrice = Math.min(...series.map((s) => s.low ?? s.close)) * 0.99;

@@ -8,6 +8,7 @@ so every claim is traceable to a signal — never an unsourced assertion.
 """
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 from app.adapters.registry import providers
@@ -34,12 +35,17 @@ def _confidence(signals: dict) -> float:
 
 
 async def why_moving(symbol: str) -> dict:
-    quote = await providers.market.quote(symbol)
-    candles = await providers.market.candles(symbol, "1d", 60)
-    news = await providers.news.latest(symbol, limit=5)
-    snaps = await providers.sentiment.snapshot(symbol)
     from app.services.sentiment import for_symbol
-    sentiment = await for_symbol(symbol)
+
+    # Fetch all data in parallel
+    quote_t, candles_t, news_t, snaps_t, sentiment_t = await asyncio.gather(
+        providers.market.quote(symbol),
+        providers.market.candles(symbol, "1d", 60),
+        providers.news.latest(symbol, limit=5),
+        providers.sentiment.snapshot(symbol),
+        for_symbol(symbol),
+    )
+    quote, candles, news, snaps, sentiment = quote_t, candles_t, news_t, snaps_t, sentiment_t
 
     inputs = build_inputs(quote, candles, snaps)
     scores = all_scores(inputs)

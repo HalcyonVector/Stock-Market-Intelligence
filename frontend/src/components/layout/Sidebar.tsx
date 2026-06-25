@@ -69,8 +69,8 @@ export function Sidebar() {
             <Activity size={18} />
           </span>
           {expanded && (
-            <span className="text-lg font-semibold tracking-normal whitespace-nowrap overflow-hidden">
-              Stock<span className="text-crimson-400">Intel</span>
+            <span className="whitespace-nowrap overflow-hidden">
+              <span className="text-lg font-bold tracking-tight text-white">Stock</span><span className="text-lg font-bold tracking-tight text-crimson-400">Intel</span>
             </span>
           )}
         </div>

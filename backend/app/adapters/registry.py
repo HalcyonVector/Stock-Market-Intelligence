@@ -2,14 +2,18 @@
 Provider registry — single place that decides which concrete adapter to use.
 
 Business code calls `providers.market`, `providers.news`, etc. and never knows
-whether it is talking to a mock, yfinance, or a paid vendor. Selection is driven
-purely by configuration (DATA_MODE / AI_PROVIDER).
+whether it is talking to a mock, yfinance, Finnhub, or Alpha Vantage. Selection
+is driven by configuration (DATA_MODE / AI_PROVIDER).
+
+In live mode, providers use a fallback chain:
+  market: yfinance → Finnhub → Alpha Vantage → mock
+  news:   RSS → Finnhub → mock
 """
 from __future__ import annotations
 
 from functools import cached_property
 
-from app.adapters import ai, live, mock
+from app.adapters import ai, mock
 from app.adapters.base import (
     AIProvider, MarketDataProvider, NewsProvider, SentimentProvider,
 )
@@ -20,13 +24,15 @@ class ProviderRegistry:
     @cached_property
     def market(self) -> MarketDataProvider:
         if settings.DATA_MODE == "live":
-            return live.YFinanceMarketProvider()
+            from app.adapters.fallback import FallbackMarketProvider
+            return FallbackMarketProvider()
         return mock.MockMarketProvider()
 
     @cached_property
     def news(self) -> NewsProvider:
         if settings.DATA_MODE == "live":
-            return live.RSSNewsProvider()
+            from app.adapters.fallback import FallbackNewsProvider
+            return FallbackNewsProvider()
         return mock.MockNewsProvider()
 
     @cached_property

@@ -100,10 +100,26 @@ function ParticleField() {
 function GlowOrbs() {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-crimson-600/10 blur-[120px] animate-pulse" />
-      <div className="absolute top-1/3 -right-40 h-[400px] w-[400px] rounded-full bg-blue-600/8 blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
-      <div className="absolute -bottom-40 left-1/3 h-[450px] w-[450px] rounded-full bg-purple-600/8 blur-[110px] animate-pulse" style={{ animationDelay: "4s" }} />
+      <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-crimson-600/15 blur-[140px] animate-pulse" />
+      <div className="absolute top-[20%] right-[10%] h-[400px] w-[400px] rounded-full bg-crimson-700/10 blur-[120px] animate-pulse" style={{ animationDelay: "1.5s" }} />
+      <div className="absolute top-[50%] -left-20 h-[350px] w-[350px] rounded-full bg-red-900/10 blur-[100px] animate-pulse" style={{ animationDelay: "3s" }} />
+      <div className="absolute -bottom-40 left-1/3 h-[450px] w-[450px] rounded-full bg-crimson-800/8 blur-[110px] animate-pulse" style={{ animationDelay: "4s" }} />
     </div>
+  );
+}
+
+/* ── Section wrapper with scroll animation ──────────────────────── */
+function AnimatedSection({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 60 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -214,7 +230,7 @@ function FeatureCard({ feature, index }: { feature: typeof FEATURES[0]; index: n
 
 /* ── Stats bar ───────────────────────────────────────────────────── */
 const STATS = [
-  { value: 50, suffix: "+", label: "Stocks Tracked" },
+  { value: 115, suffix: "+", label: "Stocks Tracked" },
   { value: 15, suffix: "+", label: "AI-Powered Features" },
   { value: 4, suffix: "", label: "Backtest Strategies" },
   { value: 16, suffix: "", label: "Indian Safe Instruments" },
@@ -286,7 +302,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
         >
           <button
             onClick={onEnter}
-            className="group flex items-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-8 py-4 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-all hover:shadow-xl hover:shadow-crimson-500/30 hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-10 py-4 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-all hover:shadow-xl hover:shadow-crimson-500/30 hover:scale-[1.02] active:scale-[0.98] min-w-[200px]"
           >
             Launch Dashboard
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
@@ -295,7 +311,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
             onClick={() => {
               document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-sm font-medium text-white/70 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white"
+            className="group flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-10 py-4 text-sm font-semibold text-white/70 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white hover:scale-[1.02] active:scale-[0.98] min-w-[200px]"
           >
             Explore Features
           </button>
@@ -320,15 +336,22 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       </section>
 
       {/* ─── Stats Section ─────────────────────────────────────── */}
-      <section className="relative z-10 border-y border-white/[0.04] bg-white/[0.01] py-16 backdrop-blur-sm">
+      <section className="relative z-10 border-y border-white/[0.04] bg-crimson-600/[0.03] py-16 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-12 px-6 md:gap-20">
-          {STATS.map((s) => (
-            <div key={s.label} className="text-center">
+          {STATS.map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.15 }}
+              className="text-center"
+            >
               <p className="text-3xl font-bold text-white md:text-4xl">
                 <Counter value={s.value} suffix={s.suffix} />
               </p>
               <p className="mt-1 text-sm text-white/30">{s.label}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -336,27 +359,29 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       {/* ─── Features Section ──────────────────────────────────── */}
       <section id="features" className="relative z-10 py-24 px-6">
         <div className="mx-auto max-w-6xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-1.5 text-xs font-medium text-white/40">
-              <Layers size={12} />
-              Platform Features
-            </span>
-            <h2 className="mt-6 text-3xl font-bold text-white md:text-4xl">
-              Everything you need.{" "}
-              <span className="bg-gradient-to-r from-crimson-400 to-pink-400 bg-clip-text text-transparent">
-                Nothing you don't.
-              </span>
-            </h2>
-            <p className="mt-4 text-white/30">
-              From real-time market data to AI-powered research — built for learning, not gambling.
-            </p>
-          </motion.div>
+          <AnimatedSection>
+            <div className="text-center">
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, type: "spring" }}
+                className="inline-flex items-center gap-2 rounded-full border border-crimson-500/10 bg-crimson-500/[0.04] px-4 py-1.5 text-xs font-medium text-white/40"
+              >
+                <Layers size={12} />
+                Platform Features
+              </motion.span>
+              <h2 className="mt-6 text-3xl font-bold text-white md:text-4xl">
+                Everything you need.{" "}
+                <span className="bg-gradient-to-r from-crimson-400 to-crimson-300 bg-clip-text text-transparent">
+                  Nothing you don&apos;t.
+                </span>
+              </h2>
+              <p className="mt-4 text-white/30">
+                From real-time market data to AI-powered research — built for learning, not gambling.
+              </p>
+            </div>
+          </AnimatedSection>
 
           <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
@@ -369,68 +394,96 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       {/* ─── Tech Stack Section ────────────────────────────────── */}
       <section className="relative z-10 py-20 px-6">
         <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
+          <AnimatedSection>
             <h2 className="text-2xl font-bold text-white md:text-3xl">
               Built with{" "}
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-crimson-400 to-crimson-300 bg-clip-text text-transparent">
                 modern tech
               </span>
             </h2>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {TECH.map((t, i) => (
-                <motion.span
-                  key={t}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm text-white/50 backdrop-blur-sm transition hover:border-white/[0.12] hover:text-white/70"
-                >
-                  {t}
-                </motion.span>
-              ))}
-            </div>
-          </motion.div>
+          </AnimatedSection>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {TECH.map((t, i) => (
+              <motion.span
+                key={t}
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ scale: 1.08, borderColor: "rgba(225,29,58,0.3)" }}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm text-white/50 backdrop-blur-sm transition hover:text-white/70"
+              >
+                {t}
+              </motion.span>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ─── CTA Section ───────────────────────────────────────── */}
       <section className="relative z-10 py-24 px-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-crimson-600/10 via-transparent to-blue-600/10 p-12 text-center backdrop-blur-xl"
+          initial={{ opacity: 0, scale: 0.9, y: 40 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-crimson-500/10 bg-gradient-to-br from-crimson-600/15 via-crimson-900/5 to-transparent p-12 text-center backdrop-blur-xl"
         >
-          <div className="inline-flex rounded-full bg-crimson-500/10 p-4">
+          <motion.div
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+            className="inline-flex rounded-full bg-crimson-500/10 p-4"
+          >
             <Activity size={28} className="text-crimson-400" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-white md:text-4xl">
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="mt-6 text-3xl font-bold text-white md:text-4xl"
+          >
             Ready to explore?
-          </h2>
-          <p className="mt-4 text-white/40">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="mt-4 text-white/40"
+          >
             Zero API keys needed. Runs entirely on your machine with Docker.
-          </p>
-          <button
+          </motion.p>
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.6, duration: 0.5 }}
             onClick={onEnter}
-            className="group mt-8 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-10 py-4 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-all hover:shadow-xl hover:shadow-crimson-500/30 hover:scale-[1.02] active:scale-[0.98]"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            className="group mt-8 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-10 py-4 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-shadow hover:shadow-xl hover:shadow-crimson-500/30"
           >
             Enter the Platform
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </button>
+          </motion.button>
         </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/[0.04] py-8 text-center">
+      <motion.footer
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+        className="relative z-10 border-t border-white/[0.04] py-8 text-center"
+      >
         <p className="text-xs text-white/20">
           Stock Discovery & Intelligence — Educational use only. Not financial advice.
         </p>
-      </footer>
+      </motion.footer>
     </div>
   );
 }

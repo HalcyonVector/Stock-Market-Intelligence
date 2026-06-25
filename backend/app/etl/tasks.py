@@ -78,10 +78,47 @@ def refresh_sentiment() -> dict:
 
 
 async def _refresh_sentiment() -> dict:
-    from app.services.sentiment import trending
-    rows = await trending()
+    from app.services.sentiment import compute_trending
+    rows = await compute_trending()
     log.info("etl.refresh_sentiment", count=len(rows))
     return {"count": len(rows)}
+
+
+@celery_app.task(name="app.etl.tasks.refresh_sectors")
+def refresh_sectors() -> dict:
+    return _run(_refresh_sectors())
+
+
+async def _refresh_sectors() -> dict:
+    from app.services.sector import compute_rotation
+    rows = await compute_rotation()
+    log.info("etl.refresh_sectors", count=len(rows))
+    return {"count": len(rows)}
+
+
+@celery_app.task(name="app.etl.tasks.refresh_heatmap")
+def refresh_heatmap() -> dict:
+    return _run(_refresh_heatmap())
+
+
+async def _refresh_heatmap() -> dict:
+    from app.services.heatmap import compute_heatmap
+    result = await compute_heatmap()
+    log.info("etl.refresh_heatmap", stocks=result.get("total_stocks", 0))
+    return {"stocks": result.get("total_stocks", 0)}
+
+
+@celery_app.task(name="app.etl.tasks.refresh_briefing")
+def refresh_briefing() -> dict:
+    return _run(_refresh_briefing())
+
+
+async def _refresh_briefing() -> dict:
+    from app.core.config import settings
+    from app.services.briefing import compute_daily
+    await compute_daily(settings.DEFAULT_MARKET)
+    log.info("etl.refresh_briefing", market=settings.DEFAULT_MARKET)
+    return {"ok": True}
 
 
 @celery_app.task(name="app.etl.tasks.recompute_scores")

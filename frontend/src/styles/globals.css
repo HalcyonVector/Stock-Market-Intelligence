@@ -6,7 +6,7 @@
 
 body {
   @apply bg-base-950 text-ink-100 antialiased;
-  background: linear-gradient(135deg, #2a0d12 0%, #120709 25%, #0a0506 50%, #0d0a14 75%, #1a0b0e 100%);
+  background: linear-gradient(135deg, #2e0e14 0%, #1e0a0e 25%, #120709 50%, #0a0506 75%, #1a0b0e 100%);
   background-size: 400% 400%;
   animation: gradientShift 20s ease infinite;
   background-attachment: fixed;

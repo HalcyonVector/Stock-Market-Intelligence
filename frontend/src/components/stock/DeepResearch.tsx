@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils";
 export function DeepResearch({ symbol }: { symbol: string }) {
   const [enabled, setEnabled] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["research", symbol],
     queryFn: () => api.research(symbol),
     enabled,
     staleTime: 10 * 60 * 1000,
+    retry: 1,
+    gcTime: 15 * 60 * 1000,
   });
 
   if (!enabled) {
@@ -47,7 +49,23 @@ export function DeepResearch({ symbol }: { symbol: string }) {
     );
   }
 
-  if (!data) return null;
+  if (isError || !data) {
+    return (
+      <BentoCard span="col-span-12" title="AI Deep Research">
+        <div className="flex flex-col items-center gap-3 py-8">
+          <p className="text-sm text-ink-300">
+            {isError ? "Analysis timed out or failed — Ollama may be busy." : "No data returned."}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 rounded-xl border border-crimson-500/20 bg-crimson-600/5 px-5 py-2 text-sm font-medium text-crimson-300 transition hover:bg-crimson-600/10"
+          >
+            <Brain size={16} /> Retry
+          </button>
+        </div>
+      </BentoCard>
+    );
+  }
 
   return (
     <>

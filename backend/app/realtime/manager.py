@@ -32,6 +32,18 @@ class ConnectionManager:
         async with self._lock:
             self._sockets.add(ws)
         log.info("ws.connect", clients=len(self._sockets))
+        # Send recent cached events so the feed isn't empty on connect
+        try:
+            r = get_redis()
+            recent = await r.lrange("recent:events", 0, 19)
+            for raw in recent:
+                try:
+                    payload = json.loads(raw)
+                    await ws.send_json(payload)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     async def disconnect(self, ws: WebSocket) -> None:
         async with self._lock:
@@ -78,4 +90,14 @@ manager = ConnectionManager()
 
 async def publish_event(channel: str, payload: dict[str, Any]) -> None:
     """Producers call this (from API or workers) to emit a live event."""
-    await get_redis().publish(channel, json.dumps(payload, default=str))
+    r = get_redis()
+    raw = json.dumps(payload, default=str)
+    await r.publish(channel, raw)
+    # Keep last 20 events for new client hydration
+    msg = json.dumps({"channel": channel, "data": payload}, default=str)
+    try:
+        await r.lpush("recent:events", msg)
+        await r.ltrim("recent:events", 0, 19)
+        await r.expire("recent:events", 600)
+    except Exception:
+        pass
