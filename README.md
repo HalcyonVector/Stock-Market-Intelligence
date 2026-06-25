@@ -77,7 +77,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
 | **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines (30s/5m/10m/15m) |
 | **AI Provider** | Ollama (qwen2.5:14b) | Local LLM via OpenAI-compatible API, zero API cost |
-| **Market Data** | yfinance → Finnhub → Alpha Vantage | Provider fallback chain, live quotes + candles + fundamentals |
+| **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
 | **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
 | **Database** | PostgreSQL 16 | Persistent storage for watchlists, alerts, history |
@@ -230,18 +230,22 @@ stock-discovery-intelligence/
 │   │   │   └── watchlist.py            # Watchlist CRUD
 │   │   ├── adapters/                   # Data source abstraction
 │   │   │   ├── base.py                 # Abstract adapter interface
-│   │   │   ├── live.py                 # yfinance + RSS adapter
-│   │   │   ├── finnhub_provider.py     # Finnhub: quotes, profiles, candles, news, fundamentals
+│   │   │   ├── resilience.py           # Circuit breakers, shared yfinance session, pooled httpx clients
+│   │   │   ├── live.py                 # yfinance (breaker + 429 backoff) + RSS adapter
+│   │   │   ├── stooq_provider.py       # Stooq: free no-key daily OHLCV fallback
+│   │   │   ├── finnhub_provider.py     # Finnhub: quotes, profiles, news, fundamentals (candles are paid → skipped)
+│   │   │   ├── alphavantage_provider.py # Alpha Vantage: last-resort quotes/candles, daily-quota breaker
+│   │   │   ├── fallback.py             # Ordered provider chain + Redis caching
 │   │   │   ├── mock.py                 # Deterministic offline data (115+ stocks)
 │   │   │   ├── ai.py                   # Ollama (OpenAI-compat) + Anthropic providers
-│   │   │   ├── sentiment_live.py       # StockTwits + Reddit + Google Trends adapter
+│   │   │   ├── sentiment_live.py       # StockTwits + Reddit + Google Trends (breakers + null-body guard)
 │   │   │   └── registry.py             # Adapter selection by config
 │   │   ├── scoring/                    # Discovery scoring engine
 │   │   │   ├── engine.py               # Composite scoring pipeline
 │   │   │   └── indicators.py           # Technical indicator calculations
 │   │   ├── etl/                        # Background jobs
 │   │   │   ├── celery_app.py           # Celery + Beat configuration
-│   │   │   └── tasks.py               # 5 tasks: market, news, sentiment, scores, heatmap (30s–15m)
+│   │   │   └── tasks.py               # 7 tasks: market, news, sentiment, sectors, heatmap, briefing, scores (5m–30m)
 │   │   ├── models/entities.py          # SQLAlchemy ORM models
 │   │   ├── schemas/                    # Pydantic request/response models
 │   │   ├── db/session.py               # Async engine + session factory
@@ -441,7 +445,7 @@ All config is in `backend/.env` (copy from `.env.example`):
 | `REDDIT_CLIENT_ID` | *(empty)* | Optional: Reddit API for sentiment |
 | `REDDIT_CLIENT_SECRET` | *(empty)* | Optional: Reddit API for sentiment |
 
-In `live` mode, providers fall back in chain: **yfinance → Finnhub → Alpha Vantage → mock**. Zero-config mock mode works out of the box.
+In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub → Alpha Vantage → mock**. Each provider is wrapped in a circuit breaker (opens on repeated 429/403/quota errors, half-opens after a cooldown) so a rate-limited or down source is skipped instead of retried per-symbol; yfinance additionally retries 429s with exponential backoff over a shared connection-pooled session. Results are Redis-cached, and `/sectors/rotation` and `/insights/briefing` serve from cache and recompute in the background (never blocking the request). Zero-config mock mode works out of the box.
 
 ---
 
@@ -471,8 +475,9 @@ In `live` mode, providers fall back in chain: **yfinance → Finnhub → Alpha V
                                 │
                     ┌───────────▼──────────────────┐
                     │   Celery Worker + Beat       │
-                    │   ETL: 30s / 5m / 10m / 15m  │
+                    │   ETL: 5m / 10m / 30m        │
                     │   market, news, sentiment,   │
+                    │   sectors, heatmap, briefing,│
                     │   scoring pipelines           │
                     └──────────────────────────────┘
 ```
@@ -483,10 +488,11 @@ In `live` mode, providers fall back in chain: **yfinance → Finnhub → Alpha V
 
 | Source | Type | API Key? | What It Provides |
 |--------|------|----------|-----------------|
-| **yfinance** | Market data | No | Quotes, OHLCV candles, fundamentals, earnings |
-| **Finnhub** | Market data | Free (60 calls/min) | Quotes, company profiles, basic financials, news, candles |
-| **Alpha Vantage** | Market data | Free (25 calls/day) | Additional market data fallback |
-| **StockTwits** | Sentiment | No | Social sentiment and trending tickers |
+| **yfinance** | Market data | No | Quotes, OHLCV candles, fundamentals, earnings (breaker + 429 backoff) |
+| **Stooq** | Market data | No | Free daily OHLCV fallback (US coverage) when yfinance is rate-limited |
+| **Finnhub** | Market data | Free (60 calls/min) | Quotes, company profiles, basic financials, news (candles are paid-only → skipped) |
+| **Alpha Vantage** | Market data | Free (25 calls/day) | Last-resort quotes/candles; trips a 6h breaker when the daily quota is hit |
+| **StockTwits** | Sentiment | No | Social sentiment and trending tickers (null-body guarded; breaker on block) |
 | **RSS feeds** | News | No | Market news from major financial outlets |
 | **Reddit (PRAW)** | Sentiment | Free app | r/wallstreetbets, r/stocks trending analysis |
 | **Google Trends** | Sentiment | No | Search interest for tickers |
