@@ -30,33 +30,43 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
+# Refresh at 80% of each cache's TTL so the entry is always rewritten *before*
+# it expires, eliminating cold-miss windows. (Each cache's TTL is driven by the
+# same REFRESH_* setting, so 0.8x guarantees an overwrite within the live window.)
+_WARM_RATIO = 0.8
+
+
+def _warm(ttl_seconds: int) -> schedule:
+    return schedule(max(5, int(ttl_seconds * _WARM_RATIO)))
+
+
 celery_app.conf.beat_schedule = {
     "refresh-market": {
         "task": "app.etl.tasks.refresh_market",
-        "schedule": schedule(settings.REFRESH_MARKET),
+        "schedule": _warm(settings.REFRESH_MARKET),
     },
     "refresh-news": {
         "task": "app.etl.tasks.refresh_news",
-        "schedule": schedule(settings.REFRESH_NEWS),
+        "schedule": _warm(settings.REFRESH_NEWS),
     },
     "refresh-sentiment": {
         "task": "app.etl.tasks.refresh_sentiment",
-        "schedule": schedule(settings.REFRESH_SENTIMENT),
+        "schedule": _warm(settings.REFRESH_SENTIMENT),
     },
     "refresh-sectors": {
         "task": "app.etl.tasks.refresh_sectors",
-        "schedule": schedule(settings.REFRESH_SCORES),  # same cadence as scores
+        "schedule": _warm(settings.REFRESH_SCORES),  # same cadence as scores
     },
     "recompute-scores": {
         "task": "app.etl.tasks.recompute_scores",
-        "schedule": schedule(settings.REFRESH_SCORES),
+        "schedule": _warm(settings.REFRESH_SCORES),
     },
     "refresh-heatmap": {
         "task": "app.etl.tasks.refresh_heatmap",
-        "schedule": schedule(settings.REFRESH_SCORES),  # same cadence as scores
+        "schedule": _warm(settings.REFRESH_SCORES),  # same cadence as scores
     },
     "refresh-briefing": {
         "task": "app.etl.tasks.refresh_briefing",
-        "schedule": schedule(settings.REFRESH_NEWS),  # keep the AI briefing warm
+        "schedule": _warm(settings.REFRESH_NEWS),  # keep the AI briefing warm
     },
 }

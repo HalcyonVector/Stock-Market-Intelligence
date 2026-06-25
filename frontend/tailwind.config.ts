@@ -12,8 +12,8 @@ const config: Config = {
         ink: { 100: "#f5eef0", 300: "#c9b8bd", 500: "#8a7479", 700: "#4a3b3f" },
       },
       fontFamily: {
-        sans: ["var(--font-geist)", "ui-sans-serif", "system-ui"],
-        mono: ["var(--font-mono)", "ui-monospace"],
+        sans: ["var(--font-geist-sans, ui-sans-serif)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-geist-mono, ui-monospace)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       backgroundImage: {
         "radial-ember": "radial-gradient(120% 120% at 0% 0%, #2a0d12 0%, #120709 45%, #0a0506 100%)",

@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 
+from celery.signals import worker_ready
+
 from app.core.logging import get_logger
 from app.core.redis import CH_MARKET_EVENTS, CH_PRICE_TICKS
 from app.etl.celery_app import celery_app
@@ -137,3 +139,20 @@ async def _recompute_scores() -> dict:
         })
     log.info("etl.recompute_scores", count=len(rows))
     return {"count": len(rows)}
+
+
+@worker_ready.connect
+def _warm_caches_on_startup(sender=None, **kwargs) -> None:
+    """
+    Pre-warm every cached card the moment the worker boots.
+
+    Celery beat's first run only fires after one full interval, which leaves a
+    cold window (up to 30 min) where the first visitor triggers a live scan.
+    Enqueuing the refresh tasks on worker_ready closes that window.
+    """
+    for task in (
+        refresh_market, refresh_news, refresh_sentiment,
+        refresh_sectors, refresh_heatmap, refresh_briefing, recompute_scores,
+    ):
+        task.delay()
+    log.info("etl.warm_on_startup", tasks=7)

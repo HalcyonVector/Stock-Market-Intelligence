@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
@@ -53,8 +54,15 @@ export function MarketOverview() {
   const totalMcap = unique.reduce((s, q) => s + (q.market_cap ?? 0), 0);
   const totalVolume = unique.reduce((s, q) => s + (q.volume ?? 0), 0);
 
-  const now = new Date();
-  const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  // Render local time only after mount to avoid an SSR/client hydration mismatch.
+  const [time, setTime] = useState("—");
+  useEffect(() => {
+    const fmt = () =>
+      new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    setTime(fmt());
+    const id = setInterval(() => setTime(fmt()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const stats = [
     {
