@@ -48,3 +48,7 @@ build/
 
 # Local docs
 INSTRUCTIONS.md
+
+.corrupted-backup-20260625/
+.write_test.txt
+.recovery_probe.py
