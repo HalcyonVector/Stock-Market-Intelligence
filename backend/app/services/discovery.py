@@ -4,13 +4,21 @@ quotes + candles + sentiment and ranking by opportunity sub-signals.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 
 from app.adapters.registry import providers
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.core.redis import get_redis
 from app.scoring.engine import all_scores
 from app.scoring.indicators import build_inputs
+
+log = get_logger("services.discovery")
+
+# Cap concurrent symbol scans so live providers stay under free-tier rate limits
+# while still finishing the full universe in seconds instead of minutes.
+_SCAN_CONCURRENCY = 8
 
 
 async def scan(market: str | None = None) -> list[dict]:
@@ -25,21 +33,31 @@ async def scan(market: str | None = None) -> list[dict]:
         pass
 
     syms = await providers.market.universe(market)
-    rows: list[dict] = []
-    for sym in syms:
-        quote = await providers.market.quote(sym)
-        candles = await providers.market.candles(sym, "1d", 60)
-        sentiment = await providers.sentiment.snapshot(sym)
-        inputs = build_inputs(quote, candles, sentiment)
-        scores = all_scores(inputs)
-        rows.append({
-            "symbol": sym,
-            "price": quote.price,
-            "change_pct": quote.change_pct,
-            "volume_ratio": round(inputs.volume_ratio, 2),
-            "scores": {k: v.value for k, v in scores.items()},
-            "opportunity": scores["opportunity"].value,
-        })
+    sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
+
+    async def _score_symbol(sym: str) -> dict | None:
+        """Score one symbol. A single symbol's failure must not sink the scan."""
+        async with sem:
+            try:
+                quote = await providers.market.quote(sym)
+                candles = await providers.market.candles(sym, "1d", 60)
+                sentiment = await providers.sentiment.snapshot(sym)
+                inputs = build_inputs(quote, candles, sentiment)
+                scores = all_scores(inputs)
+                return {
+                    "symbol": sym,
+                    "price": quote.price,
+                    "change_pct": quote.change_pct,
+                    "volume_ratio": round(inputs.volume_ratio, 2),
+                    "scores": {k: v.value for k, v in scores.items()},
+                    "opportunity": scores["opportunity"].value,
+                }
+            except Exception as e:  # noqa: BLE001
+                log.warning("discovery.symbol_failed", symbol=sym, error=str(e))
+                return None
+
+    scored = await asyncio.gather(*(_score_symbol(s) for s in syms))
+    rows: list[dict] = [r for r in scored if r is not None]
     rows.sort(key=lambda x: x["opportunity"], reverse=True)
     try:
         await r.set(key, json.dumps(rows, default=str), ex=settings.REFRESH_SCORES)
