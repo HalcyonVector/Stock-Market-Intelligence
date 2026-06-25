@@ -13,7 +13,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 
 - **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and Ollama-powered AI briefings
 - **"Why Is This Stock Moving?"** — Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
-- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Ollama (qwen2.5:14b)
+- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Ollama (qwen2.5:7b)
 - **Command Palette** — Global `Cmd-K` / `Ctrl-K` search across all tickers and pages
 
 ### Portfolio & Optimization
@@ -76,7 +76,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 | **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
 | **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines (30s/5m/10m/15m) |
-| **AI Provider** | Ollama (qwen2.5:14b) | Local LLM via OpenAI-compatible API, zero API cost |
+| **AI Provider** | Ollama (qwen2.5:7b) | Local LLM via OpenAI-compatible API, zero API cost |
 | **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
 | **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
@@ -137,7 +137,7 @@ npm run dev
 #### Ollama (for AI features)
 
 ```bash
-ollama pull qwen2.5:14b
+ollama pull qwen2.5:7b
 ollama serve   # runs on port 11434
 ```
 
@@ -435,7 +435,7 @@ All config is in `backend/.env` (copy from `.env.example`):
 | `DATA_MODE` | `mock` | `mock` for offline data, `live` for real market data |
 | `AI_PROVIDER` | `ollama` | `ollama`, `anthropic`, or `openai` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `qwen2.5:14b` | Model for AI features |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | Model for AI features |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./sdi.db` | PostgreSQL in Docker, SQLite locally |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
 | `FINNHUB_API_KEY` | *(empty)* | Free tier: quotes, profiles, basic financials, news |
@@ -468,7 +468,7 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
                        │        │        │
               ┌────────▼─┐ ┌───▼────┐ ┌─▼────────────┐
               │ Postgres  │ │ Redis  │ │ Ollama       │
-              │ (history, │ │ (cache,│ │ (qwen2.5:14b)│
+              │ (history, │ │ (cache,│ │ (qwen2.5:7b)│
               │  watchlists│ │  alerts│ │ local LLM    │
               │  alerts)  │ │  pubsub│ │ zero cost    │
               └───────────┘ └───┬────┘ └──────────────┘
@@ -575,7 +575,7 @@ uvicorn app.main:app --reload --port 8001
 ```bash
 ollama serve                    # Start Ollama server
 ollama list                     # Check installed models
-ollama pull qwen2.5:14b         # Download if missing
+ollama pull qwen2.5:7b         # Download if missing
 ```
 
 For Docker: Ollama runs on the host, so the API container uses `host.docker.internal:11434` to reach it. Ensure `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1` in `.env`.
