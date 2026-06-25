@@ -2,9 +2,12 @@
 Celery application + beat schedule.
 
 The ETL layer runs the periodic scans that keep the platform feeling "alive":
-quotes refresh every ~30s, news every 5m, sentiment every ~10m, discovery scores
-every 15m (see docs/STREAMING.md). Each task writes to Postgres + Redis cache and
-publishes live events to the Redis bus consumed by the WebSocket layer.
+quotes, news, sentiment and discovery scores refresh on cadences derived from
+their cache TTLs (see docs/STREAMING.md). The cadences apply during US market
+hours and automatically back off when the market is closed (see
+``market_calendar.MarketAwareSchedule``) to conserve free-tier rate limits. Each
+task writes to Postgres + Redis cache and publishes live events to the Redis bus
+consumed by the WebSocket layer.
 """
 from __future__ import annotations
 
@@ -12,6 +15,7 @@ from celery import Celery
 from celery.schedules import schedule
 
 from app.core.config import settings
+from app.etl.market_calendar import MarketAwareSchedule
 
 celery_app = Celery(
     "sdi",
@@ -37,7 +41,22 @@ _WARM_RATIO = 0.8
 
 
 def _warm(ttl_seconds: int) -> schedule:
-    return schedule(max(5, int(ttl_seconds * _WARM_RATIO)))
+    """Beat cadence for a cache with the given TTL.
+
+    During US market hours this fires at 80% of the TTL (so the entry is always
+    rewritten before it expires). When the market is closed the interval backs
+    off — by ``OFFHOURS_BACKOFF`` on weekday off-hours and ``WEEKEND_BACKOFF`` on
+    weekends — to conserve free-tier provider rate limits. Disable via
+    ``SCHEDULE_MARKET_AWARE=false`` to refresh at a constant cadence.
+    """
+    base = max(5, int(ttl_seconds * _WARM_RATIO))
+    if settings.SCHEDULE_MARKET_AWARE and MarketAwareSchedule is not None:
+        return MarketAwareSchedule(
+            base,
+            offhours_mult=settings.OFFHOURS_BACKOFF,
+            weekend_mult=settings.WEEKEND_BACKOFF,
+        )
+    return schedule(base)
 
 
 celery_app.conf.beat_schedule = {

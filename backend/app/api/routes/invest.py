@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.services.safe_invest import (
-    INSTRUMENTS, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
+    INSTRUMENTS, RATES_AS_OF, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
 )
 
 router = APIRouter(prefix="/invest", tags=["invest"])
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/invest", tags=["invest"])
 async def instruments(country: str = Query("IN")):
     """List safe investment instruments for a country."""
     data = INSTRUMENTS.get(country.upper(), INSTRUMENTS["IN"])
-    return {"data": data}
+    return {"data": data, "rates_as_of": RATES_AS_OF}
 
 
 @router.get("/profiles")
@@ -28,9 +28,10 @@ async def sip(
     rate: float = Query(7.0),
     years: int = Query(10),
     step_up: float = Query(0),
+    lump_sum: float = Query(0),
 ):
-    """SIP calculator with optional annual step-up."""
-    return {"data": sip_calculator(monthly, rate, years, step_up)}
+    """SIP calculator with optional one-time lump sum and annual step-up."""
+    return {"data": sip_calculator(monthly, rate, years, step_up, lump_sum)}
 
 
 @router.get("/goal")
@@ -52,6 +53,7 @@ class AllocationRequest(BaseModel):
     allocations: list[AllocationItem]
     years: int = 10
     country: str = "IN"
+    lump_sum: float = 0
 
 @router.post("/allocate")
 async def allocate(body: AllocationRequest):
@@ -61,6 +63,7 @@ async def allocate(body: AllocationRequest):
         [a.model_dump() for a in body.allocations],
         body.years,
         body.country,
+        lump_sum=body.lump_sum,
     )}
 
 
