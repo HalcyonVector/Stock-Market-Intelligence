@@ -4,10 +4,11 @@ Central application configuration.
 All settings are read from environment variables (12-factor). A `.env` file is
 loaded automatically in development. Nothing secret is ever hard-coded.
 """
+import json
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,17 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors(cls, v):  # noqa: N805
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else [v]
+            except (json.JSONDecodeError, TypeError):
+                return [s.strip() for s in v.split(",") if s.strip()]
+        return v
 
     # --- Data provider selection ---
     DATA_MODE: Literal["mock", "live"] = "mock"
