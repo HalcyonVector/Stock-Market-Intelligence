@@ -50,6 +50,8 @@ class ProviderRegistry:
             return ai.AnthropicAIProvider()
         if settings.AI_PROVIDER == "openai" and settings.OPENAI_API_KEY:
             return ai.OpenAIAIProvider()
+        if settings.AI_PROVIDER == "groq" and settings.GROQ_API_KEY:
+            return ai.GroqAIProvider()
         if settings.AI_PROVIDER == "ollama":
             return ai.OllamaAIProvider()
         return mock.MockAIProvider()

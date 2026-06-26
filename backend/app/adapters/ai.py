@@ -1,4 +1,4 @@
-"""AI provider implementations (Anthropic / OpenAI / Ollama) with mock fallback."""
+"""AI provider implementations (Anthropic / OpenAI / Groq / Ollama) with mock fallback."""
 from __future__ import annotations
 
 from app.adapters.base import AIProvider
@@ -76,4 +76,32 @@ class OllamaAIProvider(AIProvider):
             return resp.choices[0].message.content or ""
         except Exception as e:  # noqa: BLE001
             log.warning("ollama.fallback", error=str(e))
+            return await MockAIProvider().explain(system, prompt)
+
+
+class GroqAIProvider(AIProvider):
+    """Use Groq's LPU inference via its OpenAI-compatible API (free tier)."""
+
+    name = "groq"
+
+    async def explain(self, system: str, prompt: str) -> str:
+        try:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(
+                base_url=settings.GROQ_BASE_URL,
+                api_key=settings.GROQ_API_KEY,
+                timeout=30.0,
+            )
+            resp = await client.chat.completions.create(
+                model=settings.GROQ_MODEL,
+                max_tokens=600,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return resp.choices[0].message.content or ""
+        except Exception as e:  # noqa: BLE001
+            log.warning("groq.fallback", error=str(e))
             return await MockAIProvider().explain(system, prompt)
