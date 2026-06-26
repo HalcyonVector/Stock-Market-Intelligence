@@ -13,10 +13,11 @@ from app.services import discovery, market, sector
 log = get_logger("services.briefing")
 
 SYSTEM = (
-    "You are a market analyst. Write a daily briefing in 2 short paragraphs "
-    "(7-8 sentences total, around 100-130 words). Use ONLY the data provided. No advice, no targets.\n\n"
-    "Paragraph 1: Cover the top gainers and losers with their percentage moves.\n"
-    "Paragraph 2: Note leading sectors and highlight the top opportunity score names to watch."
+    "You are a market analyst. Write a daily briefing in 3 paragraphs "
+    "(10-12 sentences total, around 180-220 words). Use ONLY the data provided. No advice, no targets.\n\n"
+    "Paragraph 1: Cover the top gainers with their percentage moves and briefly note what sectors they belong to.\n"
+    "Paragraph 2: Cover the top losers, their percentage drops, and any patterns (e.g. sector-wide weakness).\n"
+    "Paragraph 3: Highlight leading sectors, sector rotation signals, and the top opportunity score names to watch with a brief note on why they stand out."
 )
 
 BRIEFING_TTL = 900  # cache for 15 minutes
@@ -78,16 +79,18 @@ async def compute_daily(market_code: str = "GLOBAL") -> dict:
     sectors = await sector.rotation(market_code)
     top = (await discovery.scan(market_code))[:5]
 
-    top_g = ", ".join(f"{m['symbol']} {m['change_pct']:+.1f}%" for m in movers["gainers"][:4])
-    top_l = ", ".join(f"{m['symbol']} {m['change_pct']:+.1f}%" for m in movers["losers"][:4])
+    top_g = ", ".join(f"{m['symbol']} {m['change_pct']:+.1f}%" for m in movers["gainers"][:5])
+    top_l = ", ".join(f"{m['symbol']} {m['change_pct']:+.1f}%" for m in movers["losers"][:5])
     lead_sec = sectors[0]["sector"] if sectors else "n/a"
-    sec_summary = ", ".join(s["sector"] for s in sectors[:3]) if sectors else "n/a"
-    opp_names = ", ".join(t["symbol"] for t in top[:3])
+    sec_summary = ", ".join(
+        f"{s['sector']} ({s.get('change_pct', 0):+.1f}%)" for s in sectors[:4]
+    ) if sectors else "n/a"
+    opp_names = ", ".join(t["symbol"] for t in top[:4])
     prompt = (
         f"Gainers: {top_g}. Losers: {top_l}. "
         f"Top sectors: {sec_summary}. Leading: {lead_sec}. "
         f"Top opportunity scores: {opp_names}. "
-        f"Write the 2-paragraph briefing."
+        f"Write the 3-paragraph briefing."
     )
     text = await providers.ai.explain(SYSTEM, prompt)
     result = {
