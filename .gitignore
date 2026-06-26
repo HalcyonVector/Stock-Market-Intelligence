@@ -48,6 +48,7 @@ build/
 
 # Local docs
 INSTRUCTIONS.md
+docs/DEPLOY-FREE-TIER.md
 
 .corrupted-backup-20260625/
 .write_test.txt

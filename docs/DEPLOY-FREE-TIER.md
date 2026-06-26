@@ -41,9 +41,11 @@ Browser → Vercel (Next.js frontend)
    ```
    postgresql://neondb_owner:xxxx@ep-xxx-xxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
    ```
-4. **Change the driver prefix** for SQLAlchemy async:
+4. **Change two things** in the connection string for SQLAlchemy async:
+   - Add `+asyncpg` after `postgresql`
+   - Change `?sslmode=require` to `?ssl=require` (asyncpg uses `ssl`, not `sslmode`)
    ```
-   postgresql+asyncpg://neondb_owner:xxxx@ep-xxx-xxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+   postgresql+asyncpg://neondb_owner:xxxx@ep-xxx-xxx-pooler.us-east-2.aws.neon.tech/neondb?ssl=require
    ```
 5. Run the schema against Neon. In the Neon console's **SQL Editor**, paste the contents of `db/schema.sql`, then `db/seed.sql`, and run them.
 
@@ -56,12 +58,12 @@ Browser → Vercel (Next.js frontend)
 1. Go to https://console.upstash.com → **Create Database**
 2. Name: `stockintel`, Region: `us-east-1` (match Render/Neon)
 3. After creation, go to the database details page
-4. Copy the **REST URL** — you don't need this, but note the **Redis connection string** (click "Connect to your database"):
+4. Click the **TCP** tab (not REST), then click the eye icon to reveal the password. Copy the **Redis connection string**:
    ```
    rediss://default:xxxx@us1-xxx-xxx.upstash.io:6379
    ```
    The `rediss://` (double s) means TLS — this is required.
-5. You need three Redis URLs (different logical databases):
+5. You need three Redis URLs (different logical databases). Append `/0`, `/1`, `/2`:
    ```
    REDIS_URL=rediss://default:xxxx@us1-xxx.upstash.io:6379/0
    CELERY_BROKER_URL=rediss://default:xxxx@us1-xxx.upstash.io:6379/1
@@ -103,7 +105,7 @@ In the Render dashboard under **Environment**, add these:
 | `REDIS_URL` | `rediss://...@.../0` (from Step 3) |
 | `CELERY_BROKER_URL` | `rediss://...@.../1` (from Step 3) |
 | `CELERY_RESULT_BACKEND` | `rediss://...@.../2` (from Step 3) |
-| `CORS_ORIGINS` | `["https://stockintel.vercel.app"]` (update after Vercel deploy) |
+| `CORS_ORIGINS` | `https://your-app.vercel.app` (plain string, update after Vercel deploy) |
 | `AUTH_SECRET` | Generate one: `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `AUTO_CREATE_TABLES` | `true` |
 | `FINNHUB_API_KEY` | Your Finnhub key (optional) |
@@ -150,12 +152,12 @@ Click **Deploy**. Vercel will build and assign a URL like `https://stockintel-xx
 
 ### 5d. Update CORS on Render
 
-Go back to Render → `stockintel-api` → Environment, update `CORS_ORIGINS` to match your actual Vercel URL:
+Go back to Render → `stockintel-api` → Environment, update `CORS_ORIGINS` to match your actual Vercel URL (plain string, no brackets or quotes):
 ```
-["https://stockintel-xxx.vercel.app"]
+https://stockintel-xxx.vercel.app
 ```
 
-Trigger a manual redeploy on Render after changing this.
+Save changes — Render will auto-redeploy.
 
 ---
 
@@ -209,14 +211,24 @@ Added Groq config block and commented-out cloud deployment section with Neon/Ups
 
 ## Troubleshooting
 
+**Dashboard empty / "No data" on first deploy:** This is expected. The Celery tasks need 15–20 minutes to warm up the Redis cache with market data. The AI briefing also depends on cached market data, so it won't generate until the cache is populated. Just wait and refresh.
+
+**yfinance 429 errors / "possibly delisted" in logs:** Yahoo Finance rate-limits requests from shared cloud IPs (Render, Railway, etc.). The fallback chain handles this — it retries, then falls through to Finnhub/Alpha Vantage. Once data is cached in Redis, subsequent requests don't hit Yahoo. This noise is heaviest during cold start and subsides within 20–30 minutes.
+
 **Celery tasks not running:** Check that the cron pinger is active. Render logs should show celery beat scheduling messages. If the service is sleeping, tasks won't fire.
+
+**Redis URL parsing error (`must specify one of the following schemes`):** The env var value in Render has the key name baked in (e.g. `REDIS_URL=rediss://...` instead of just `rediss://...`). Render already uses the key field — the value should only contain the URL itself.
 
 **SSL errors with Upstash Redis:** Ensure URLs use `rediss://` (not `redis://`). If Celery still fails, append `?ssl_cert_reqs=required` to broker and result backend URLs.
 
+**`sslmode` error on startup (`connect() got an unexpected keyword argument 'sslmode'`):** asyncpg doesn't support `sslmode`. Change `?sslmode=require` to `?ssl=require` in your `DATABASE_URL`.
+
 **AI returns mock responses:** Verify `AI_PROVIDER=groq` and `GROQ_API_KEY` is set in Render env vars. Check Render logs for `groq.fallback` warnings.
 
-**CORS errors in browser:** Update `CORS_ORIGINS` on Render to exactly match your Vercel URL (including `https://`). Redeploy after changing.
+**CORS errors in browser:** Update `CORS_ORIGINS` on Render to exactly match your Vercel URL (including `https://`). Use a plain string, not JSON brackets — the config validator handles both formats.
 
 **Neon connection timeouts:** Neon scales to zero after 5 minutes of inactivity. First query after wake-up takes 1-3s. The app handles this gracefully — SQLAlchemy retries automatically.
 
 **WebSocket disconnects:** If the pinger stops, Render sleeps the service, killing WS connections. The frontend's `useLiveFeed` hook auto-reconnects after 4s. Data will be stale during sleep periods but refreshes on wake.
+
+**Google Trends 429 errors:** Google aggressively rate-limits `pytrends` from cloud IPs. The circuit breaker opens after 2 failures (600s cooldown). Sentiment falls back to StockTwits + mock data. Not fixable without a proxy — harmless for a portfolio project.

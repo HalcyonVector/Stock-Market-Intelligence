@@ -119,6 +119,9 @@ export const api = {
     req<any>(`/watchlists/${id}/items/${symbol}`, { method: "DELETE" }),
 };
 
-export const WS_URL =
-  (typeof window !== "undefined" ? window.location.origin.replace(/^http/, "ws") : "") +
-  "/api/v1/ws/live";
+// Vercel rewrites only proxy HTTP, not WebSocket.
+// In production, connect WS directly to the backend.
+const _wsBase =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== "undefined" ? window.location.origin.replace(/^http/, "ws") : "");
+export const WS_URL = _wsBase + "/api/v1/ws/live";

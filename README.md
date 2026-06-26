@@ -1,6 +1,8 @@
 # 📈 Stock Discovery & Intelligence — AI-Powered Market Intelligence Platform
 
-A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Ollama, and Docker.
+A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Groq/Ollama, and Docker.
+
+> **Live demo:** [stock-market-intelligence-sable.vercel.app](https://stock-market-intelligence-sable.vercel.app) — deployed for free on Vercel + Render + Neon + Upstash + Groq ($0/month)
 
 ---
 
@@ -16,9 +18,9 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ### Core Intelligence
 
-- **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and Ollama-powered AI briefings
+- **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
 - **"Why Is This Stock Moving?"** — Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
-- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Ollama (qwen2.5:7b)
+- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (llama-3.3-70b) or Ollama (qwen2.5:7b)
 - **Command Palette** — Global `Cmd-K` / `Ctrl-K` search across all tickers and pages
 
 ### Portfolio & Optimization
@@ -56,7 +58,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Goal Planner** — Reverse SIP: how much monthly for a target (Emergency Fund, Bike, House, Education)
 - **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
 - **Withdrawal & Lock-in View** — Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
-- **AI Advisor** — Ollama-powered Q&A for personalized (educational) investment guidance
+- **AI Advisor** — LLM-powered Q&A for personalized (educational) investment guidance
 - **4 Risk Profiles** — Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
 - **Dated Rates** — Government small-savings rates are official (current as of Q1 FY2026-27); market-linked rates are flagged as estimates
 
@@ -83,7 +85,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 | **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
 | **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines; market-aware cadences that back off when the US market is closed |
-| **AI Provider** | Ollama (qwen2.5:7b) | Local LLM via OpenAI-compatible API, zero API cost |
+| **AI Provider** | Groq (llama-3.3-70b) / Ollama (qwen2.5:7b) | Groq free cloud LLM (30 RPM) or local Ollama, both via OpenAI-compatible API |
 | **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
 | **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
@@ -155,6 +157,20 @@ ollama serve   # runs on port 11434
 | **API Docs** | http://localhost:8000/docs |
 | **Ollama** | http://localhost:11434 |
 
+### Option 3: Free Cloud Deployment ($0/month)
+
+Deploy the full stack using free tiers of Vercel + Render + Neon + Upstash + Groq:
+
+| Service | Role | Free Tier |
+|---------|------|-----------|
+| **Vercel** | Next.js frontend | 100 GB BW |
+| **Render** | FastAPI + Celery (Docker) | 750 instance-hrs/mo |
+| **Neon** | Managed Postgres | 0.5 GB, scale-to-zero |
+| **Upstash** | Managed Redis (TLS) | 256 MB, 500K cmds/mo |
+| **Groq** | LLM (llama-3.3-70b) | 30 RPM, 1K RPD |
+
+See `docs/DEPLOY-FREE-TIER.md` for the step-by-step guide.
+
 ---
 
 ## 📖 How to Use the App
@@ -197,7 +213,7 @@ stock-discovery-intelligence/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI app, lifespan, CORS, router registration
 │   │   ├── core/
-│   │   │   ├── config.py               # Pydantic Settings (DB, Redis, Ollama, CORS)
+│   │   │   ├── config.py               # Pydantic Settings (DB, Redis, Groq/Ollama, CORS)
 │   │   │   ├── redis.py                # Redis client + pub/sub channels
 │   │   │   ├── security.py             # JWT encode/decode
 │   │   │   └── logging.py              # Structured logging
@@ -222,7 +238,7 @@ stock-discovery-intelligence/
 │   │   │   ├── safe_invest.py          # 22 instruments, SIP calc, goal planner, allocation engine
 │   │   │   ├── backtester.py           # RSI/MACD/SMA/Bollinger strategy engine
 │   │   │   ├── forecast.py             # SARIMA time-series model (linear + Holt ensemble fallback)
-│   │   │   ├── deep_research.py        # Ollama-powered comprehensive stock research
+│   │   │   ├── deep_research.py        # AI-powered comprehensive stock research
 │   │   │   ├── technicals.py           # RSI, MACD, Bollinger, Stochastic, ATR, OBV
 │   │   │   ├── fundamentals.py         # P/E, P/B, EPS, dividends, revenue from yfinance
 │   │   │   ├── rebalance.py            # Drift detection, trade suggestions
@@ -245,7 +261,7 @@ stock-discovery-intelligence/
 │   │   │   ├── alphavantage_provider.py # Alpha Vantage: last-resort quotes/candles, daily-quota breaker
 │   │   │   ├── fallback.py             # Ordered provider chain + Redis caching
 │   │   │   ├── mock.py                 # Deterministic offline data (115+ stocks)
-│   │   │   ├── ai.py                   # Ollama (OpenAI-compat) + Anthropic providers
+│   │   │   ├── ai.py                   # Groq + Ollama (OpenAI-compat) + Anthropic providers
 │   │   │   ├── sentiment_live.py       # StockTwits + Reddit + Google Trends (breakers + null-body guard)
 │   │   │   └── registry.py             # Adapter selection by config
 │   │   ├── scoring/                    # Discovery scoring engine
@@ -442,9 +458,11 @@ All config is in `backend/.env` (copy from `.env.example`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATA_MODE` | `mock` | `mock` for offline data, `live` for real market data |
-| `AI_PROVIDER` | `ollama` | `ollama`, `anthropic`, or `openai` |
+| `AI_PROVIDER` | `ollama` | `groq`, `ollama`, `anthropic`, `openai`, or `mock` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Model for AI features |
+| `GROQ_API_KEY` | *(empty)* | Free tier: https://console.groq.com/keys (30 RPM, 1K RPD) |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model for AI features |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./sdi.db` | PostgreSQL in Docker, SQLite locally |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
 | `FINNHUB_API_KEY` | *(empty)* | Free tier: quotes, profiles, basic financials, news |
@@ -481,10 +499,10 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
                     └──┬────────┬────────┬────────┘
                        │        │        │
               ┌────────▼─┐ ┌───▼────┐ ┌─▼────────────┐
-              │ Postgres  │ │ Redis  │ │ Ollama       │
-              │ (history, │ │ (cache,│ │ (qwen2.5:7b)│
-              │  watchlists│ │  alerts│ │ local LLM    │
-              │  alerts)  │ │  pubsub│ │ zero cost    │
+              │ Postgres  │ │ Redis  │ │ Groq/Ollama  │
+              │ (history, │ │ (cache,│ │ (LLM)       │
+              │  watchlists│ │  alerts│ │ free cloud   │
+              │  alerts)  │ │  pubsub│ │ or local     │
               └───────────┘ └───┬────┘ └──────────────┘
                                 │
                     ┌───────────▼──────────────────┐
@@ -510,7 +528,8 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
 | **RSS feeds** | News | No | Market news from major financial outlets |
 | **Reddit (PRAW)** | Sentiment | Free app | r/wallstreetbets, r/stocks trending analysis |
 | **Google Trends** | Sentiment | No | Search interest for tickers |
-| **Ollama** | AI | No (local) | Research reports, briefings, explanations, advisor |
+| **Groq** | AI | Free (30 RPM) | Research reports, briefings, explanations, advisor (cloud, no credit card) |
+| **Ollama** | AI | No (local) | Research reports, briefings, explanations, advisor (local fallback) |
 | **Mock adapter** | Fallback | No | Deterministic offline data for all endpoints |
 
 ---
@@ -679,7 +698,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 | **API endpoints** | 40+ |
 | **Safe investment instruments** | 22 (16 IN + 6 US) |
 | **Documentation files** | 17 |
-| **Test modules** | 4 |
+| **Test modules** | 10 |
 
 ---
 
