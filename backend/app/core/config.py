@@ -36,12 +36,13 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
     # --- Refresh cadences (seconds) ---
-    # With ~50 stocks and free-tier APIs, keep these conservative.
-    # Data is Redis-cached between refreshes so the UI stays fast.
-    REFRESH_MARKET: int = 300       # 5 min (was 30s — way too aggressive)
-    REFRESH_NEWS: int = 600         # 10 min
-    REFRESH_SENTIMENT: int = 1800   # 30 min
-    REFRESH_SCORES: int = 1800      # 30 min
+    # Tuned for free-tier hosting (Upstash 500K cmds/mo).
+    # yfinance data is 15min delayed anyway; RSS updates 2-3x/hr;
+    # sentiment doesn't shift meaningfully in under an hour.
+    REFRESH_MARKET: int = 900       # 15 min (matches yfinance delay)
+    REFRESH_NEWS: int = 1800        # 30 min
+    REFRESH_SENTIMENT: int = 3600   # 60 min
+    REFRESH_SCORES: int = 3600      # 60 min (derived from quotes + sentiment)
 
     # --- Market-aware back-off ---
     # The base cadences above apply during US market hours. When the market is
@@ -68,12 +69,17 @@ class Settings(BaseSettings):
     # --- AI providers ---
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-    AI_PROVIDER: Literal["anthropic", "openai", "ollama", "mock"] = "mock"
+    AI_PROVIDER: Literal["anthropic", "openai", "groq", "ollama", "mock"] = "mock"
     AI_MODEL: str = "claude-sonnet-4-6"
 
     # --- Ollama (local LLM) ---
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
     OLLAMA_MODEL: str = "qwen2.5:7b"
+
+    # --- Groq (free cloud LLM) ---
+    GROQ_API_KEY: str = ""
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
 
 @lru_cache
