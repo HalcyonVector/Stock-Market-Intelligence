@@ -98,13 +98,12 @@ async def _compute_and_clear(market: str) -> None:
 
 
 async def rotation(market: str = "GLOBAL") -> list[dict]:
-    """API-facing — reads from cache; never blocks the request on a live scan.
+    """API-facing — reads from cache; falls back to inline compute on miss.
 
-    On a cache miss we kick a single background recompute and return immediately
-    (empty until it lands). Computing inline meant one request fanned out to ~100
-    upstream calls and routinely outlived the web proxy timeout, producing the
-    ``socket hang up`` / ECONNRESET errors seen in the logs. Celery beat keeps the
-    cache warm in steady state; this just handles the cold-start gap gracefully.
+    The startup cache warm (in main.py lifespan) normally ensures the cache is
+    hot before the first browser request.  If the cache is still cold (e.g.
+    startup warm hasn't finished yet), we compute inline so the user sees data
+    instead of an empty card.
     """
     key = SECTOR_CACHE_KEY.format(market=market)
     try:
@@ -114,13 +113,21 @@ async def rotation(market: str = "GLOBAL") -> list[dict]:
     except Exception:
         pass
 
-    # Cache miss — trigger one background recompute, return what we have (nothing).
+    # Cache miss — compute inline (guarded against concurrent duplicates).
     if market not in _inflight:
         _inflight.add(market)
         try:
-            asyncio.create_task(_compute_and_clear(market))
-        except RuntimeError:
-            # No running event loop (sync/test context) — compute inline instead.
-            _inflight.discard(market)
             return await compute_rotation(market)
+        finally:
+            _inflight.discard(market)
+
+    # Another request is already computing — wait briefly for it to land.
+    for _ in range(10):
+        await asyncio.sleep(1)
+        try:
+            hit = await get_redis().get(key)
+            if hit:
+                return json.loads(hit)
+        except Exception:
+            pass
     return []

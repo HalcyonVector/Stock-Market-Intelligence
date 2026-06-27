@@ -6,7 +6,14 @@ import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 
 export function MarketBriefing() {
-  const { data, isLoading } = useQuery({ queryKey: ["briefing"], queryFn: () => api.briefing() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["briefing"],
+    queryFn: () => api.briefing(),
+    // When the briefing is still pending (placeholder), poll faster (5s) so
+    // the card updates as soon as the AI finishes generating.
+    refetchInterval: (query) =>
+      query.state.data?.pending ? 5_000 : 30_000,
+  });
 
   const generatedAt = data?.briefing
     ? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })

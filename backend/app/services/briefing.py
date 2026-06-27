@@ -44,12 +44,14 @@ async def _compute_and_clear(market_code: str) -> None:
 
 
 async def daily(market_code: str = "GLOBAL") -> dict:
-    """API-facing — reads cache; never blocks on the full movers+AI pipeline.
+    """API-facing — reads cache; kicks background compute and returns placeholder
+    on cache miss, but auto-retries via the frontend's 30s polling.
 
-    A cold-cache briefing fans out to movers, sector rotation, discovery and an
-    AI call; computing it inline outlived the web proxy timeout (ECONNRESET in
-    the logs). We instead return a lightweight placeholder and compute in the
-    background; the next request serves the cached result.
+    The startup cache warm (in main.py lifespan) normally ensures the briefing
+    is ready before the first browser request.  On a cold miss we still fire a
+    background task (briefing requires an AI call that can take 10-20s, too slow
+    for inline), but the frontend's refetchInterval will pick up the result on
+    the next poll.
     """
     cache_key = f"briefing:{market_code}"
     r = get_redis()
@@ -65,7 +67,6 @@ async def daily(market_code: str = "GLOBAL") -> dict:
         try:
             asyncio.create_task(_compute_and_clear(market_code))
         except RuntimeError:
-            # No running loop (sync/test context) — compute inline.
             _inflight.discard(market_code)
             return await compute_daily(market_code)
     return _placeholder(market_code)
