@@ -19,7 +19,11 @@ from app.services.heatmap import SECTOR_MAP
 log = get_logger("services.sector")
 
 SECTOR_CACHE_KEY = "sector:rotation:{market}"
-SECTOR_TTL = 600  # 10 min
+# 24 h — Celery beat overwrites this on its own schedule (every ~48 min during
+# market hours, up to ~9.6 h on weekends with the 12x backoff). The TTL just
+# needs to outlast the worst-case gap so the cache never expires between runs
+# and triggers slow inline computation on the API request path.
+SECTOR_TTL = 86_400  # 24 h
 
 # Tracks markets currently being recomputed in the background so a burst of
 # cache-miss requests doesn't spawn duplicate heavy computations.

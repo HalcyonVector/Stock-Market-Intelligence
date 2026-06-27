@@ -14,7 +14,10 @@ from app.core.redis import get_redis
 log = get_logger("services.sentiment")
 
 TRENDING_CACHE_KEY = "sentiment:trending:{market}"
-TRENDING_TTL = 600  # 10 min
+# 24 h — same reasoning as sector.py: Celery beat refreshes this, the TTL just
+# needs to outlast the worst-case weekend backoff (~9.6 h) so requests always
+# hit cache instead of triggering an expensive inline scan.
+TRENDING_TTL = 86_400  # 24 h
 
 
 async def for_symbol(symbol: str) -> dict:

@@ -22,7 +22,10 @@ SYSTEM = (
     "No bullet points, no headers, no line breaks. One paragraph only."
 )
 
-BRIEFING_TTL = 900  # cache for 15 minutes
+# 24 h — Celery beat refreshes this every ~24 min during market hours, up to
+# ~4.8 h on weekends. TTL just needs to outlast that so the last generated
+# briefing is always available instead of returning a placeholder.
+BRIEFING_TTL = 86_400  # 24 h
 
 _inflight: set[str] = set()
 

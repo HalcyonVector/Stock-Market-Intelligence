@@ -11,7 +11,8 @@ function authHeaders(): Record<string, string> {
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    cache: "no-store",
+    // "default" lets the browser use its HTTP cache when the server sends
+    // Cache-Control headers; avoids forcing a network round-trip every time.
     headers: { "Content-Type": "application/json", ...authHeaders(), ...(init.headers || {}) },
     ...init,
   });
