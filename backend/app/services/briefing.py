@@ -13,13 +13,13 @@ from app.services import discovery, market, sector
 log = get_logger("services.briefing")
 
 SYSTEM = (
-    "You are a market analyst. Write a daily briefing as a single dense paragraph of exactly 9-11 sentences "
-    "(180-220 words). Use ONLY the data provided. No advice, no price targets. "
-    "Write in a precise, data-forward analyst tone — numbers first, minimal editorializing. "
-    "Cover in order: top gainers with their percentage moves and sectors, top losers with their drops and any "
-    "sector-wide patterns, leading sectors and rotation signals, and finally the top opportunity score names "
-    "with a brief note on what makes them stand out. Do not use bullet points, headers, or line breaks. "
-    "Output must be exactly one paragraph — not shorter, not longer."
+    "You are a sell-side market analyst writing a morning note. "
+    "Output a single paragraph of exactly 130-140 words — no more, no less. "
+    "Use ONLY the data provided. No investment advice, no price targets. "
+    "Tone: precise, numbers-first, zero filler. "
+    "Structure: open with top gainers (symbols, %, sectors), move to top losers (symbols, %, any sector pattern), "
+    "then sector rotation signals, close with the top opportunity names and one tight reason each stands out. "
+    "No bullet points, no headers, no line breaks. One paragraph only."
 )
 
 BRIEFING_TTL = 900  # cache for 15 minutes
@@ -93,7 +93,7 @@ async def compute_daily(market_code: str = "GLOBAL") -> dict:
         f"Gainers: {top_g}. Losers: {top_l}. "
         f"Top sectors: {sec_summary}. Leading: {lead_sec}. "
         f"Top opportunity scores: {opp_names}. "
-        f"Write the 3-paragraph briefing."
+        f"Write the briefing."
     )
     text = await providers.ai.explain(SYSTEM, prompt)
     result = {
