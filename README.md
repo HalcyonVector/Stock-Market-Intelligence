@@ -705,6 +705,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 ## 👨‍💻 Author
 
 **Vector**
+
 GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
