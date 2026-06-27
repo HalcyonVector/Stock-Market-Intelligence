@@ -13,11 +13,13 @@ from app.services import discovery, market, sector
 log = get_logger("services.briefing")
 
 SYSTEM = (
-    "You are a market analyst. Write a daily briefing in 3 paragraphs "
-    "(10-12 sentences total, around 180-220 words). Use ONLY the data provided. No advice, no targets.\n\n"
-    "Paragraph 1: Cover the top gainers with their percentage moves and briefly note what sectors they belong to.\n"
-    "Paragraph 2: Cover the top losers, their percentage drops, and any patterns (e.g. sector-wide weakness).\n"
-    "Paragraph 3: Highlight leading sectors, sector rotation signals, and the top opportunity score names to watch with a brief note on why they stand out."
+    "You are a market analyst. Write a daily briefing as a single dense paragraph of exactly 9-11 sentences "
+    "(180-220 words). Use ONLY the data provided. No advice, no price targets. "
+    "Write in a precise, data-forward analyst tone — numbers first, minimal editorializing. "
+    "Cover in order: top gainers with their percentage moves and sectors, top losers with their drops and any "
+    "sector-wide patterns, leading sectors and rotation signals, and finally the top opportunity score names "
+    "with a brief note on what makes them stand out. Do not use bullet points, headers, or line breaks. "
+    "Output must be exactly one paragraph — not shorter, not longer."
 )
 
 BRIEFING_TTL = 900  # cache for 15 minutes
