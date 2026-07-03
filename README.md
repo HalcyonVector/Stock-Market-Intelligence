@@ -712,8 +712,7 @@ GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ## 📄 License
 
-No specific license. Contact the author for usage rights.
+No specific license. 
 
 ---
 
-**Made with 📊 for intelligent investors and curious learners**
