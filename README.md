@@ -1,4 +1,4 @@
-# 📈 Stock Discovery & Intelligence — AI-Powered Market Intelligence Platform
+# Stock Discovery & Intelligence — AI-Powered Market Intelligence Platform
 
 A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Groq/Ollama, and Docker.
 
@@ -6,7 +6,7 @@ A full-stack market intelligence platform that surfaces emerging stocks, explain
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **This project is for educational and informational purposes only. It is NOT financial, investment, or trading advice.**
 
@@ -14,7 +14,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ---
 
-## 🎯 Features
+## Features
 
 ### Core Intelligence
 
@@ -72,7 +72,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Details |
 |-------|-----------|---------|
@@ -99,7 +99,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Docker Desktop** — [Download here](https://www.docker.com/products/docker-desktop/) (recommended)
 - **Node.js 18+** — [Download here](https://nodejs.org/) (for local frontend dev)
@@ -108,7 +108,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker Compose (Recommended — One Command)
 
@@ -173,7 +173,7 @@ See `docs/DEPLOY-FREE-TIER.md` for the step-by-step guide.
 
 ---
 
-## 📖 How to Use the App
+## How to Use the App
 
 | Page | Route | What It Does |
 |------|-------|-------------|
@@ -194,7 +194,7 @@ Use **Cmd-K / Ctrl-K** anywhere to open the command palette and search for any t
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 stock-discovery-intelligence/
@@ -372,7 +372,7 @@ stock-discovery-intelligence/
 
 ---
 
-## 🔌 API Endpoints (15 Route Modules, 40+ Endpoints)
+## API Endpoints (15 Route Modules, 40+ Endpoints)
 
 ### Market Data
 
@@ -451,7 +451,7 @@ stock-discovery-intelligence/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 All config is in `backend/.env` (copy from `.env.example`):
 
@@ -481,7 +481,7 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
                     ┌─────────────────────────────┐
@@ -516,7 +516,7 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
 
 ---
 
-## 📊 Data Sources
+## Data Sources
 
 | Source | Type | API Key? | What It Provides |
 |--------|------|----------|-----------------|
@@ -534,7 +534,7 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 cd backend
@@ -558,7 +558,7 @@ Tests are network-free (providers and Redis are faked), so no live keys are requ
 
 ---
 
-## 🔧 Available Scripts
+## Available Scripts
 
 ### Frontend
 
@@ -590,7 +590,7 @@ Tests are network-free (providers and Redis are faked), so no live keys are requ
 
 ---
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Issue: `npm install` fails with peer dependency errors
 
@@ -656,7 +656,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 17 detailed documentation files in the `docs/` folder:
 
@@ -682,7 +682,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 
 ---
 
-## 📈 Project Stats
+## Project Stats
 
 | Metric | Count |
 |--------|-------|
@@ -702,9 +702,9 @@ docker compose -f infra/docker-compose.yml logs postgres
 
 ---
 
-## 👨‍💻 Author
+## Author
 
-**Vector**
+**Sagnik**
 
 GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
