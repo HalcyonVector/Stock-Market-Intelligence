@@ -52,15 +52,16 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ### Safe Investment Guide (India + US)
 
-- **16 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS, Post Office TD, SCSS, SSY, Liquid Fund, Debt Fund, SGB, NPS, ELSS, Index Fund
-- **6 US Instruments** — HYSA, Treasury, Money Market, Bond ETF, CD, S&P 500 ETF
+- **31 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings, SCSS, SSY, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
+- **12 US Instruments** — HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
+- **Live Rate Overlay** — Mutual fund category returns (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU funds) computed from real trailing-1-year NAV history via mfapi.in, and US Treasury Bill rates from Treasury.gov's FiscalData API, both with a stale-while-revalidate cache so a slow upstream never blocks the page. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
 - **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.)
 - **Goal Planner** — Reverse SIP: how much monthly for a target (Emergency Fund, Bike, House, Education)
 - **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
 - **Withdrawal & Lock-in View** — Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
 - **AI Advisor** — LLM-powered Q&A for personalized (educational) investment guidance
 - **4 Risk Profiles** — Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
-- **Dated Rates** — Government small-savings rates are official (current as of Q1 FY2026-27); market-linked rates are flagged as estimates
+- **Dated Rates** — Government small-savings rates are official (current as of Q1 FY2026-27); bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
 
 ### UI/UX
 
@@ -233,9 +234,10 @@ stock-discovery-intelligence/
 │   │   │   ├── auth.py                 # /token, /me
 │   │   │   ├── realtime.py             # WebSocket /ws/live
 │   │   │   └── health.py               # /health
-│   │   ├── services/                   # 18 service modules
+│   │   ├── services/                   # 19 service modules
 │   │   │   ├── portfolio.py            # Mean-variance optimization, Monte Carlo, stress testing
-│   │   │   ├── safe_invest.py          # 22 instruments, SIP calc, goal planner, allocation engine
+│   │   │   ├── safe_invest.py          # 43 instruments, SIP calc, goal planner, allocation engine
+│   │   │   ├── live_rates.py           # Live mutual-fund NAV returns (mfapi.in) + US Treasury yields, stale-while-revalidate cache
 │   │   │   ├── backtester.py           # RSI/MACD/SMA/Bollinger strategy engine
 │   │   │   ├── forecast.py             # SARIMA time-series model (linear + Holt ensemble fallback)
 │   │   │   ├── deep_research.py        # AI-powered comprehensive stock research
@@ -288,7 +290,7 @@ stock-discovery-intelligence/
 │   │   │   ├── layout.tsx              # Root layout with ShellLayout wrapper
 │   │   │   ├── page.tsx                # Landing page overlay → Dashboard
 │   │   │   ├── portfolio/page.tsx      # Portfolio optimizer (1011 lines)
-│   │   │   ├── invest/page.tsx         # Safe Investment Guide (1011 lines)
+│   │   │   ├── invest/page.tsx         # Safe Investment Guide (1075 lines)
 │   │   │   ├── alerts/page.tsx         # Price alerts CRUD
 │   │   │   ├── backtest/page.tsx       # Strategy backtester
 │   │   │   ├── compare/page.tsx        # Stock comparison
@@ -494,7 +496,7 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
                     ┌──────────▼──────────────────┐
                     │   FastAPI (Port 8000)        │
                     │   15 route modules           │
-                    │   18 service modules          │
+                    │   19 service modules          │
                     │   Adapter pattern (mock/live)│
                     └──┬────────┬────────┬────────┘
                        │        │        │
@@ -686,17 +688,17 @@ docker compose -f infra/docker-compose.yml logs postgres
 
 | Metric | Count |
 |--------|-------|
-| **Total files** | 127 |
-| **Backend Python files** | 76 |
+| **Total files** | 128 |
+| **Backend Python files** | 77 |
 | **Frontend TSX/TS files** | 39 |
 | **API route modules** | 15 |
-| **Service modules** | 18 |
+| **Service modules** | 19 |
 | **Dashboard widgets** | 12 |
 | **Portfolio components** | 10 |
 | **Stock detail components** | 7 |
 | **Pages** | 11 |
 | **API endpoints** | 40+ |
-| **Safe investment instruments** | 22 (16 IN + 6 US) |
+| **Safe investment instruments** | 43 (31 IN + 12 US) |
 | **Documentation files** | 17 |
 | **Test modules** | 10 |
 
