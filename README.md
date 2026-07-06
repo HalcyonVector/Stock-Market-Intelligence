@@ -714,7 +714,7 @@ GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ## 📄 License
 
-No specific license. 
+MIT License — see [LICENSE](./LICENSE). Free to use, modify, and distribute, with no warranty.
 
 ---
 
