@@ -12,6 +12,7 @@ from collections import defaultdict
 from app.adapters.registry import providers
 from app.core.logging import get_logger
 from app.core.redis import get_redis
+from app.core import snapshot
 from app.scoring.indicators import build_inputs
 from app.scoring.engine import momentum_score
 from app.services.heatmap import SECTOR_MAP
@@ -91,6 +92,7 @@ async def compute_rotation(market: str = "GLOBAL") -> list[dict]:
     except Exception:
         pass
 
+    await snapshot.write(SECTOR_CACHE_KEY.format(market=market), out)
     return out
 
 
@@ -101,37 +103,17 @@ async def _compute_and_clear(market: str) -> None:
         _inflight.discard(market)
 
 
+# Serve stale rotation instantly if older than the score cadence, refresh in bg.
+SECTOR_MAX_AGE = 3600  # 1 h
+
+
 async def rotation(market: str = "GLOBAL") -> list[dict]:
-    """API-facing — reads from cache; falls back to inline compute on miss.
-
-    The startup cache warm (in main.py lifespan) normally ensures the cache is
-    hot before the first browser request.  If the cache is still cold (e.g.
-    startup warm hasn't finished yet), we compute inline so the user sees data
-    instead of an empty card.
-    """
+    """API-facing — serves the durable snapshot instantly and refreshes in the
+    background when stale. Never blocks the request on the heavy inline scan."""
     key = SECTOR_CACHE_KEY.format(market=market)
-    try:
-        hit = await get_redis().get(key)
-        if hit:
-            return json.loads(hit)
-    except Exception:
-        pass
-
-    # Cache miss — compute inline (guarded against concurrent duplicates).
-    if market not in _inflight:
-        _inflight.add(market)
-        try:
-            return await compute_rotation(market)
-        finally:
-            _inflight.discard(market)
-
-    # Another request is already computing — wait briefly for it to land.
-    for _ in range(10):
-        await asyncio.sleep(1)
-        try:
-            hit = await get_redis().get(key)
-            if hit:
-                return json.loads(hit)
-        except Exception:
-            pass
-    return []
+    return await snapshot.serve(
+        key,
+        lambda: compute_rotation(market),
+        max_age=SECTOR_MAX_AGE,
+        empty=[],
+    )

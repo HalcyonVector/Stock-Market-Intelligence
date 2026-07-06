@@ -27,7 +27,16 @@ export function TopAnalystsPicks() {
     queryFn: () => api.discovery(),
   });
 
-  const picks = (data ?? []).slice(0, 12);
+  // The discovery feed is sorted by opportunity score (desc). Taking the top 12
+  // therefore only ever surfaces Strong Buy / Buy names. To reflect a realistic
+  // analyst mix, blend the strongest opportunities (buys) with the weakest ones
+  // (genuine sells) — roughly a 70/30 buy-to-sell split. Ratings still come
+  // straight from each name's own opportunity score, so nothing is faked.
+  const all: any[] = data ?? [];
+  const picks =
+    all.length > 12
+      ? [...all.slice(0, 8), ...all.slice(-4)] // 8 top buys + 4 real sells
+      : all;
 
   return (
     <BentoCard

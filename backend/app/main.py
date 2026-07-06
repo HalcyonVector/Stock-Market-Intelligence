@@ -40,7 +40,7 @@ async def _warm_caches() -> None:
         "movers": market_svc.get_movers(settings.DEFAULT_MARKET),
         "sectors": sector.compute_rotation(settings.DEFAULT_MARKET),
         "sentiment": sentiment.compute_trending(settings.DEFAULT_MARKET),
-        "discovery": discovery.scan(settings.DEFAULT_MARKET),
+        "discovery": discovery.compute_scan(settings.DEFAULT_MARKET),
         "briefing": compute_daily(settings.DEFAULT_MARKET),
         "heatmap": compute_heatmap(),
     }

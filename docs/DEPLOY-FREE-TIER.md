@@ -111,16 +111,18 @@ In the Render dashboard under **Environment**, add these:
 | `FINNHUB_API_KEY` | Your Finnhub key (optional) |
 | `ALPHAVANTAGE_API_KEY` | Your Alpha Vantage key (optional) |
 
-### 4c. Prevent Sleep (Critical)
+### 4c. Prevent Sleep + Keep Data Warm (Critical)
 
-Render free services sleep after 15 minutes of inactivity. To keep Celery running:
+Render free services sleep after 15 minutes of inactivity. To keep Celery running **and** keep every dashboard card pre-computed:
 
 1. Go to https://cron-job.org (free, no credit card)
 2. Create a cron job:
-   - **URL:** `https://stockintel-api.onrender.com/health`
+   - **URL:** `https://stockintel-api.onrender.com/health/warm`  ← note `/warm`
    - **Schedule:** Every 5 minutes
    - **Method:** GET
-3. This keeps the service awake so Celery beat continues scheduling tasks and WebSocket connections stay alive.
+3. This keeps the service awake (so Celery beat keeps scheduling and WebSockets stay alive) **and** touches every dashboard snapshot. `/health/warm` serves each snapshot instantly and only kicks a background recompute when it is stale, so your data stays fresh without ever blocking a request or hammering provider rate limits.
+
+> **Why `/health/warm` and not `/health`?** `/health` only prevents sleep. `/health/warm` also refreshes the durable snapshots that back Discovery / Top Analyst Picks / Retail Sentiment / Sector Rotation / Heatmap, so the first real visitor after an idle stretch gets warm data instead of empty cards. If you already have a cron pointed at `/health`, just change the path to `/health/warm`.
 
 **Alternative pingers:** UptimeRobot (free, 5-min intervals), Kuma (self-hosted).
 

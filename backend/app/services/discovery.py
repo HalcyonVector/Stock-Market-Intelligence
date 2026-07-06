@@ -11,6 +11,7 @@ from app.adapters.registry import providers
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redis import get_redis
+from app.core import snapshot
 from app.scoring.engine import all_scores
 from app.scoring.indicators import build_inputs
 
@@ -21,17 +22,16 @@ log = get_logger("services.discovery")
 _SCAN_CONCURRENCY = 8
 
 
-async def scan(market: str | None = None) -> list[dict]:
+def _key(market: str) -> str:
+    return f"discovery:{market}"
+
+
+async def compute_scan(market: str | None = None) -> list[dict]:
+    """Heavy universe scan. Runs in the background (startup warm, keep-alive
+    cron, Celery beat) -- never on the request path."""
     market = market or settings.DEFAULT_MARKET
     r = get_redis()
-    key = f"discovery:{market}"
-    try:
-        hit = await r.get(key)
-        if hit:
-            return json.loads(hit)
-    except Exception:  # noqa: BLE001
-        pass
-
+    key = _key(market)
     syms = await providers.market.universe(market)
     sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
 
@@ -63,7 +63,22 @@ async def scan(market: str | None = None) -> list[dict]:
         await r.set(key, json.dumps(rows, default=str), ex=settings.REFRESH_SCORES)
     except Exception:  # noqa: BLE001
         pass
+    await snapshot.write(key, rows)
     return rows
+
+
+async def scan(market: str | None = None) -> list[dict]:
+    """API-facing. Serves the last durable snapshot instantly and refreshes in
+    the background when stale -- so a cold cache never blocks the request on a
+    full universe scan."""
+    market = market or settings.DEFAULT_MARKET
+    key = _key(market)
+    return await snapshot.serve(
+        key,
+        lambda: compute_scan(market),
+        max_age=settings.REFRESH_SCORES,
+        empty=[],
+    )
 
 
 async def buckets(market: str | None = None) -> dict:
