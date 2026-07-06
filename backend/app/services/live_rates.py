@@ -54,12 +54,17 @@ _SNAPSHOT_KEY = "live_rates:v1"
 # scheme code via mfapi.in's search endpoint at fetch time (not hardcoded).
 MF_CATEGORY_FUNDS: dict[str, str] = {
     "liquid_fund": "HDFC Liquid Fund - Growth Option - Direct Plan",
-    "debt_fund": "ICICI Prudential Short Term Fund - Growth - Direct Plan",
-    "elss": "Parag Parikh Tax Saver Fund - Direct Growth",
-    "index_fund": "UTI Nifty 50 Index Fund - Direct Growth Plan",
-    "arbitrage_fund": "Kotak Equity Arbitrage Fund - Direct Plan - Growth",
-    "gilt_fund": "SBI Magnum Gilt Fund - Direct Plan - Growth",
-    "banking_psu_fund": "Aditya Birla Sun Life Banking & PSU Debt Fund - Direct Plan - Growth",
+    "debt_fund": "ICICI Prudential Short Term Fund - Direct Plan - Growth Option",
+    "elss": "Parag Parikh ELSS Tax Saver Fund- Direct Growth",
+    "index_fund": "UTI Nifty 50 Index Fund - Growth Option- Direct",
+    "arbitrage_fund": "Nippon India Arbitrage Fund - Direct Plan Growth Plan - Growth Option",
+    "gilt_fund": "Kotak Gilt-Savings-Growth - Direct",
+    "banking_psu_fund": "Aditya Birla Sun Life Banking & PSU Debt Fund - Growth - Direct Plan",
+    "overnight_fund": "HDFC Overnight Fund - Growth Option - Direct Plan",
+    "ultra_short_fund": "ICICI Prudential Ultra Short Term Fund - Direct Plan -  Growth",
+    "corporate_bond_fund": "HDFC Corporate Bond Fund - Growth Option - Direct Plan",
+    "hybrid_conservative": "Navi Conservative Hybrid Fund-Direct Plan-Growth Option",
+    "multi_asset_fund": "ICICI Prudential Multi-Asset Fund - Direct Plan - Growth",
 }
 
 US_TREASURY_SECURITY_DESC = "Treasury Bills"
@@ -117,17 +122,34 @@ def _safe_parse(row: dict) -> bool:
         return False
 
 
+def _norm(s: str) -> str:
+    return " ".join(s.strip().lower().split())
+
+
 async def _resolve_scheme_code(client: httpx.AsyncClient, fund_name: str) -> int | None:
     r = await client.get(MFAPI_SEARCH_URL, params={"q": fund_name}, timeout=_TIMEOUT)
     r.raise_for_status()
     results = r.json() or []
     if not results:
         return None
+
+    target = _norm(fund_name)
     for row in results:
-        if row.get("schemeName", "").strip().lower() == fund_name.strip().lower():
+        if _norm(row.get("schemeName", "")) == target:
             return row["schemeCode"]
-    # No exact match -- take the top hit rather than guessing further.
-    return results[0]["schemeCode"]
+
+    # No exact match -- AMFI scheme names have inconsistent spacing/hyphens
+    # across AMCs, so an exact-string miss is common even for the right fund.
+    # Only fall back to a Direct Plan *Growth* option (never a dividend/IDCW
+    # variant, which has a structurally different NAV trend, and never a
+    # "Regular Plan", which carries a different expense ratio) -- if none of
+    # the search hits are unambiguously that, skip the category rather than
+    # attach a plausible-looking but wrong fund's NAV to it.
+    for row in results:
+        name = row.get("schemeName", "").lower()
+        if "direct" in name and "growth" in name and "idcw" not in name and "dividend" not in name:
+            return row["schemeCode"]
+    return None
 
 
 async def _fetch_mf_rate(client: httpx.AsyncClient, category: str, fund_name: str) -> dict[str, Any] | None:
