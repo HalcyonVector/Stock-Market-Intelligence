@@ -9,6 +9,7 @@ import json
 
 from app.core.logging import get_logger
 from app.core.redis import get_redis
+from app.core import snapshot
 from app.adapters.registry import providers
 
 log = get_logger("services.heatmap")
@@ -162,16 +163,20 @@ async def compute_heatmap() -> dict:
     except Exception:
         pass
 
+    await snapshot.write(CACHE_KEY, result)
     return result
 
 
+# Serve stale heatmap instantly if older than an hour, refresh in background.
+HEATMAP_MAX_AGE = 3600  # 1 h
+
+
 async def get_heatmap_data() -> dict:
-    """API-facing — reads cache first, computes if missing."""
-    r = get_redis()
-    try:
-        hit = await r.get(CACHE_KEY)
-        if hit:
-            return json.loads(hit)
-    except Exception:
-        pass
-    return await compute_heatmap()
+    """API-facing — serves the durable snapshot instantly and refreshes in the
+    background when stale. Never blocks the request on the heavy inline scan."""
+    return await snapshot.serve(
+        CACHE_KEY,
+        compute_heatmap,
+        max_age=HEATMAP_MAX_AGE,
+        empty={"sectors": {}, "total_stocks": 0},
+    )

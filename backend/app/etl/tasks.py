@@ -129,8 +129,8 @@ def recompute_scores() -> dict:
 
 
 async def _recompute_scores() -> dict:
-    from app.services.discovery import scan
-    rows = await scan()
+    from app.services.discovery import compute_scan
+    rows = await compute_scan()
     if rows:
         await publish_event(CH_MARKET_EVENTS, {
             "type": "scores_updated",

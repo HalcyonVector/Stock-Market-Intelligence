@@ -10,6 +10,7 @@ import json
 from app.adapters.registry import providers
 from app.core.logging import get_logger
 from app.core.redis import get_redis
+from app.core import snapshot
 
 log = get_logger("services.sentiment")
 
@@ -64,18 +65,22 @@ async def compute_trending(market: str = "GLOBAL", limit: int = 10) -> list[dict
     except Exception:
         pass
 
+    await snapshot.write(TRENDING_CACHE_KEY.format(market=market), result)
     return result
 
 
-async def trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
-    """API-facing — reads from cache. Falls back to live compute if empty."""
-    key = TRENDING_CACHE_KEY.format(market=market)
-    try:
-        hit = await get_redis().get(key)
-        if hit:
-            return json.loads(hit)
-    except Exception:
-        pass
+# Serve stale sentiment instantly if older than an hour, refresh in background.
+TRENDING_MAX_AGE = 3600  # 1 h
 
-    # Cache miss — compute inline (first load only)
-    return await compute_trending(market, limit)
+
+async def trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
+    """API-facing — serves the durable snapshot instantly and refreshes in the
+    background. Never blocks on the (rate-limit-prone) live sentiment scan, so
+    the Retail Sentiment card renders immediately instead of spinning."""
+    key = TRENDING_CACHE_KEY.format(market=market)
+    return await snapshot.serve(
+        key,
+        lambda: compute_trending(market, limit),
+        max_age=TRENDING_MAX_AGE,
+        empty=[],
+    )
