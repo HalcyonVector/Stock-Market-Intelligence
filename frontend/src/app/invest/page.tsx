@@ -249,7 +249,17 @@ function InstrumentCard({ inst, cur }: { inst: any; cur: string }) {
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-emerald-400">{inst.current_rate}%</p>
-          <p className="text-[10px] text-ink-500">current rate</p>
+          <p
+            className={cn(
+              "text-[10px]",
+              inst.rate_source && inst.rate_source !== "static" ? "text-blue-400" : "text-ink-500"
+            )}
+            title={inst.rate_source && inst.rate_source !== "static" ? inst.rate_source : undefined}
+          >
+            {inst.rate_source && inst.rate_source !== "static"
+              ? `● live${inst.rate_as_of ? ` · ${inst.rate_as_of}` : ""}`
+              : "static estimate"}
+          </p>
         </div>
       </div>
 
@@ -284,6 +294,9 @@ function InstrumentCard({ inst, cur }: { inst: any; cur: string }) {
               <Detail label="Tax Benefits" value={inst.tax_benefit} />
               <Detail label="Guarantee" value={inst.guarantee} />
               <Detail label="Compounding" value={inst.compounding} />
+              {inst.rate_source && inst.rate_source !== "static" && (
+                <Detail label="Rate Source" value={`${inst.rate_source}${inst.reference_fund ? ` — ${inst.reference_fund}` : ""}`} />
+              )}
               <div className="mt-2 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
                 <ExternalLink size={12} className="text-emerald-400" />
                 <p className="text-xs text-emerald-300">{inst.where_to_invest}</p>

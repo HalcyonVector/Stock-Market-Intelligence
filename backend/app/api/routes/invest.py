@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.services.safe_invest import (
-    INSTRUMENTS, RATES_AS_OF, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
+    RATES_AS_OF, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
+    get_instruments,
 )
 
 router = APIRouter(prefix="/invest", tags=["invest"])
@@ -11,8 +12,11 @@ router = APIRouter(prefix="/invest", tags=["invest"])
 
 @router.get("/instruments")
 async def instruments(country: str = Query("IN")):
-    """List safe investment instruments for a country."""
-    data = INSTRUMENTS.get(country.upper(), INSTRUMENTS["IN"])
+    """List safe investment instruments for a country, with live rates
+    overlaid wherever a free public feed exists (mutual fund NAV trailing
+    returns, Treasury yields). Falls back to the curated static table -
+    labeled as such - for anything without a reliable free feed."""
+    data = await get_instruments(country)
     return {"data": data, "rates_as_of": RATES_AS_OF}
 
 
