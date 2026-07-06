@@ -52,9 +52,9 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ### Safe Investment Guide (India + US)
 
-- **31 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings, SCSS, SSY, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
+- **33 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings/RD, SCSS, SSY, MSSC, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
 - **12 US Instruments** — HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
-- **Live Rate Overlay** — Mutual fund category returns (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU funds) computed from real trailing-1-year NAV history via mfapi.in, and US Treasury Bill rates from Treasury.gov's FiscalData API, both with a stale-while-revalidate cache so a slow upstream never blocks the page. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
+- **Live Rate Overlay** — 12 mutual fund categories (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU/corporate-bond/overnight/ultra-short/conservative-hybrid/multi-asset funds) get their current rate computed from real trailing-1-year NAV history via mfapi.in, and US Treasury Bill rates come from Treasury.gov's FiscalData API — both with a stale-while-revalidate cache so a slow upstream never blocks the page. The remaining instruments (bank/corporate FDs, govt small-savings schemes like PPF/NSC/SCSS) have no reliable free feed and stay on the curated static table. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
 - **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.)
 - **Goal Planner** — Reverse SIP: how much monthly for a target (Emergency Fund, Bike, House, Education)
 - **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
@@ -236,7 +236,7 @@ stock-discovery-intelligence/
 │   │   │   └── health.py               # /health
 │   │   ├── services/                   # 19 service modules
 │   │   │   ├── portfolio.py            # Mean-variance optimization, Monte Carlo, stress testing
-│   │   │   ├── safe_invest.py          # 43 instruments, SIP calc, goal planner, allocation engine
+│   │   │   ├── safe_invest.py          # 45 instruments, SIP calc, goal planner, allocation engine
 │   │   │   ├── live_rates.py           # Live mutual-fund NAV returns (mfapi.in) + US Treasury yields, stale-while-revalidate cache
 │   │   │   ├── backtester.py           # RSI/MACD/SMA/Bollinger strategy engine
 │   │   │   ├── forecast.py             # SARIMA time-series model (linear + Holt ensemble fallback)
@@ -698,7 +698,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 | **Stock detail components** | 7 |
 | **Pages** | 11 |
 | **API endpoints** | 40+ |
-| **Safe investment instruments** | 43 (31 IN + 12 US) |
+| **Safe investment instruments** | 45 (33 IN + 12 US) |
 | **Documentation files** | 17 |
 | **Test modules** | 10 |
 
