@@ -244,6 +244,12 @@ function InstrumentCard({ inst, cur }: { inst: any; cur: string }) {
             <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-ink-500 uppercase">
               {inst.category}
             </span>
+            <span
+              className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-ink-400"
+              title={cur === "₹" ? "India" : "United States"}
+            >
+              {cur === "₹" ? "🇮🇳 IN" : "🇺🇸 US"}
+            </span>
           </div>
           <h3 className="mt-1 text-sm font-semibold text-ink-100">{inst.name}</h3>
         </div>
