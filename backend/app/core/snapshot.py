@@ -46,14 +46,16 @@ async def read(key: str) -> tuple[Any, float] | None:
     """Return ``(value, ts)`` for a snapshot, or ``None`` if absent/unreadable."""
     try:
         raw = await get_redis().get(_PREFIX + key)
-    except Exception:  # noqa: BLE001 -- Redis down must not break the request
+    except Exception as e:  # noqa: BLE001 -- Redis down must not break the request
+        log.warning("snapshot.read_failed", key=key, error=str(e))
         return None
     if not raw:
         return None
     try:
         obj = json.loads(raw)
         return obj["v"], float(obj.get("ts", 0.0))
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        log.warning("snapshot.read_parse_failed", key=key, error=str(e))
         return None
 
 
@@ -62,8 +64,12 @@ async def write(key: str, value: Any) -> None:
     try:
         payload = json.dumps({"v": value, "ts": time.time()}, default=str)
         await get_redis().set(_PREFIX + key, payload)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001 -- a silent failure here means the
+        # computed result (which may have taken minutes to gather) is thrown
+        # away with zero trace: the caller sees a normal return, logs
+        # "warm.ok", and every future read keeps serving the last snapshot
+        # that DID get written (however old/empty that was) forever.
+        log.error("snapshot.write_failed", key=key, error=str(e))
 
 
 async def _refresh(key: str, computor: Callable[[], Awaitable[Any]]) -> Any:
