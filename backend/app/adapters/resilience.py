@@ -134,6 +134,27 @@ def get_yf_session(pool_size: int = 20):
             import requests
             from requests.adapters import HTTPAdapter
 
+            class _TimeoutHTTPAdapter(HTTPAdapter):
+                """requests has no session-wide timeout -- it must be passed
+                per-call, and yfinance's internal calls through this session
+                don't pass one. A stalled connection (common hitting Yahoo
+                from a shared cloud IP) then hangs the underlying socket
+                forever. Since this runs inside asyncio.to_thread, an
+                asyncio-level timeout on the caller doesn't help either: it
+                only stops *waiting* on the thread, the thread itself (and
+                its blocked socket) is never released back to the pool. This
+                enforces a real timeout at the transport layer so the call
+                actually raises and the thread actually returns."""
+
+                def __init__(self, *args, timeout=8, **kwargs):
+                    self._default_timeout = timeout
+                    super().__init__(*args, **kwargs)
+
+                def send(self, request, **kwargs):
+                    if kwargs.get("timeout") is None:
+                        kwargs["timeout"] = self._default_timeout
+                    return super().send(request, **kwargs)
+
             s = requests.Session()
             s.headers.update({
                 "User-Agent": (
@@ -142,7 +163,7 @@ def get_yf_session(pool_size: int = 20):
                     "Chrome/124.0 Safari/537.36"
                 )
             })
-            adapter = HTTPAdapter(
+            adapter = _TimeoutHTTPAdapter(
                 pool_connections=pool_size,
                 pool_maxsize=pool_size,
                 max_retries=0,           # we do our own backoff
