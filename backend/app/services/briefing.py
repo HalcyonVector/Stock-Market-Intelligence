@@ -44,6 +44,11 @@ def _placeholder(market_code: str) -> dict:
 async def _compute_and_clear(market_code: str) -> None:
     try:
         await compute_daily(market_code)
+    except Exception as e:  # noqa: BLE001 -- this is a fire-and-forget task;
+        # an uncaught exception here vanishes into asyncio's default handler
+        # and never appears in our logs, so the placeholder persists forever
+        # with no diagnostic trail. Log it explicitly instead.
+        log.error("briefing.compute_failed", market=market_code, error=str(e), exc_info=True)
     finally:
         _inflight.discard(market_code)
 
