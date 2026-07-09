@@ -16,8 +16,12 @@ log = get_logger("services.market")
 # discovery.py/sector.py -- providers.market.quotes() has no timeout of its
 # own anywhere in the provider chain, so a single stalled connection (common
 # on shared cloud IPs hitting Yahoo) can hang the whole bulk fetch forever.
+# Must clear _run_yf's own worst case (3 attempts x up to 8s socket timeout
+# each + backoff between => ~29s) before it falls through to its internal
+# mock -- anything shorter turns every rate-limited-but-fine symbol into a
+# false failure and empties the whole scan.
 _MOVERS_CONCURRENCY = 8
-_MOVERS_TIMEOUT = 10
+_MOVERS_TIMEOUT = 35
 
 
 def _movers_key(market: str) -> str:
