@@ -15,6 +15,7 @@ from typing import Any
 
 from fastapi import WebSocket
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redis import CH_MARKET_EVENTS, CH_PRICE_TICKS, get_redis
 
@@ -98,6 +99,10 @@ async def publish_event(channel: str, payload: dict[str, Any]) -> None:
     try:
         await r.lpush("recent:events", msg)
         await r.ltrim("recent:events", 0, 19)
-        await r.expire("recent:events", 600)
+        # Must outlast the gap between publish cycles (main.py's periodic
+        # refresh fires every REFRESH_MARKET seconds), or a new connection
+        # landing near the end of a cycle gets an empty backfill and sits on
+        # "Listening for activity..." until the next cycle actually publishes.
+        await r.expire("recent:events", settings.REFRESH_MARKET * 2)
     except Exception:
         pass

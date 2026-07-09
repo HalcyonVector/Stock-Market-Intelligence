@@ -91,6 +91,45 @@ SECTOR_MAP: dict[str, str] = {
     "CAT": "Industrials", "BA": "Industrials", "GE": "Industrials",
     "HON": "Industrials", "UPS": "Industrials", "DE": "Industrials",
     "RTX": "Industrials", "LMT": "Industrials",
+
+    # --- India (GLOBAL universe) ---
+    # Banking / Finance
+    "HDFCBANK": "Financial Services", "ICICIBANK": "Financial Services",
+    "SBIN": "Financial Services", "KOTAKBANK": "Financial Services",
+    "AXISBANK": "Financial Services", "BAJFINANCE": "Financial Services",
+    "BAJAJFINSV": "Financial Services", "HDFCLIFE": "Financial Services",
+    "SBILIFE": "Financial Services", "PNBHOUSING": "Financial Services",
+    # IT
+    "TCS": "Technology", "INFY": "Technology", "WIPRO": "Technology",
+    "TECHM": "Technology", "LTIM": "Technology", "HCLTECH": "Technology",
+    "PERSISTENT": "Technology", "COFORGE": "Technology",
+    # Auto
+    "TATAMOTORS": "Consumer Cyclical", "MARUTI": "Consumer Cyclical",
+    "M&M": "Consumer Cyclical", "BAJAJ-AUTO": "Consumer Cyclical",
+    "EICHERMOT": "Consumer Cyclical", "TVSMOTOR": "Consumer Cyclical",
+    "HEROMOTOCO": "Consumer Cyclical",
+    # Pharma / Healthcare
+    "SUNPHARMA": "Healthcare", "DRREDDY": "Healthcare", "CIPLA": "Healthcare",
+    "DIVISLAB": "Healthcare", "APOLLOHOSP": "Healthcare",
+    "MAXHEALTH": "Healthcare", "BIOCON": "Healthcare",
+    # Defence / Capital Goods
+    "HAL": "Industrials", "BEL": "Industrials", "LT": "Industrials",
+    "BHEL": "Industrials", "MAZAGON": "Industrials", "COCHINSHIP": "Industrials",
+    # Energy / Power (Reliance is primarily oil & gas / energy conglomerate)
+    "RELIANCE": "Energy", "NTPC": "Energy", "POWERGRID": "Energy",
+    "ADANIGREEN": "Energy", "ONGC": "Energy", "COALINDIA": "Energy",
+    "TATAPOWER": "Energy", "GAIL": "Energy",
+    # FMCG / Consumer
+    "ITC": "Consumer Defensive", "HINDUNILVR": "Consumer Defensive",
+    "NESTLEIND": "Consumer Defensive", "BRITANNIA": "Consumer Defensive",
+    "TATACONSUM": "Consumer Defensive", "DABUR": "Consumer Defensive",
+    "MARICO": "Consumer Defensive", "GODREJCP": "Consumer Defensive",
+    # Infrastructure / Metals
+    "ADANIENT": "Industrials", "TATASTEEL": "Materials",
+    "HINDALCO": "Materials", "JSWSTEEL": "Materials",
+    "ADANIPORTS": "Industrials", "DLF": "Real Estate",
+    # Telecom
+    "BHARTIARTL": "Communication Services", "IDEA": "Communication Services",
 }
 
 # Approximate market caps (USD) for sizing — exact values not critical
