@@ -78,9 +78,20 @@ class StockTwitsSentimentProvider(SentimentProvider):
             if not messages:
                 return []
 
-            # Count bullish / bearish sentiment tags
-            bullish = sum(1 for m in messages if m.get("entities", {}).get("sentiment", {}).get("basic") == "Bullish")
-            bearish = sum(1 for m in messages if m.get("entities", {}).get("sentiment", {}).get("basic") == "Bearish")
+            # Count bullish / bearish sentiment tags. `.get(key, {})` only
+            # supplies the default when the key is *absent* -- StockTwits
+            # commonly sends "entities": null (present, explicitly null) when
+            # a message has no cashtag metadata, so `.get("entities", {})`
+            # returns None rather than {}, and the chained .get() on that
+            # crashed with "'NoneType' object has no attribute 'get'" on
+            # essentially every message with untagged sentiment.
+            def _basic_sentiment(m: dict) -> str | None:
+                entities = m.get("entities") or {}
+                sentiment = entities.get("sentiment") or {}
+                return sentiment.get("basic")
+
+            bullish = sum(1 for m in messages if _basic_sentiment(m) == "Bullish")
+            bearish = sum(1 for m in messages if _basic_sentiment(m) == "Bearish")
             total_tagged = bullish + bearish
             total_msgs = len(messages)
 
@@ -89,10 +100,10 @@ class StockTwitsSentimentProvider(SentimentProvider):
                 polarity = (bullish - bearish) / total_tagged
             else:
                 # Fall back to lexicon scoring on message body text
-                texts = [m.get("body", "") for m in messages]
+                texts = [m.get("body") or "" for m in messages]
                 polarity = sum(score_text(t) for t in texts) / len(texts) if texts else 0.0
 
-            samples = [m.get("body", "")[:150] for m in messages[:3]]
+            samples = [(m.get("body") or "")[:150] for m in messages[:3]]
 
             log.info("stocktwits.ok", symbol=symbol, messages=total_msgs, bullish=bullish, bearish=bearish)
             return [SentimentSnapshot(
