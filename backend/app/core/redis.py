@@ -15,8 +15,17 @@ CH_MARKET_EVENTS = "sdi:events"
 def get_redis() -> aioredis.Redis:
     global _pool
     if _pool is None:
+        # socket_timeout/socket_connect_timeout are required -- redis-py has no
+        # default, so a stalled TLS connection to Upstash (or any transient
+        # network blip) hangs the awaiting coroutine forever. This is directly
+        # awaited (not offloaded to a thread), so unlike the yfinance-session
+        # bug this doesn't stall the whole event loop, but it does stall
+        # whichever single request or background task hit it -- exactly what
+        # a since-observed 114s response on an otherwise-instant snapshot
+        # read looked like.
         _pool = aioredis.from_url(
-            settings.REDIS_URL, encoding="utf-8", decode_responses=True
+            settings.REDIS_URL, encoding="utf-8", decode_responses=True,
+            socket_timeout=10, socket_connect_timeout=10,
         )
     return _pool
 
