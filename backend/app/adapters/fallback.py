@@ -156,7 +156,16 @@ class FallbackMarketProvider(MarketDataProvider):
 
         async def _get(s: str) -> Quote:
             async with sem:
-                return await self.quote(s)
+                try:
+                    # quote() already degrades through the provider chain to
+                    # mock on any *raised* error, but a stalled connection
+                    # (common on shared cloud IPs hitting Yahoo) doesn't raise
+                    # -- it just never returns, hanging this whole bulk call
+                    # forever with no per-symbol bound anywhere in the chain.
+                    return await asyncio.wait_for(self.quote(s), timeout=15)
+                except asyncio.TimeoutError:
+                    log.warning("quote.timeout", symbol=s)
+                    return await self._mock.quote(s)
 
         return list(await asyncio.gather(*(_get(s) for s in symbols)))
 
