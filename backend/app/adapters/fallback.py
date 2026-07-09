@@ -162,7 +162,13 @@ class FallbackMarketProvider(MarketDataProvider):
                     # (common on shared cloud IPs hitting Yahoo) doesn't raise
                     # -- it just never returns, hanging this whole bulk call
                     # forever with no per-symbol bound anywhere in the chain.
-                    return await asyncio.wait_for(self.quote(s), timeout=15)
+                    # Timeout must clear _run_yf's own worst case: 3 attempts
+                    # x up to 8s socket timeout each + backoff between = ~29s
+                    # before it falls through to its own internal mock. A
+                    # shorter timeout here just cuts that off early and turns
+                    # every rate-limited (but otherwise fine) symbol into a
+                    # false failure.
+                    return await asyncio.wait_for(self.quote(s), timeout=35)
                 except asyncio.TimeoutError:
                     log.warning("quote.timeout", symbol=s)
                     return await self._mock.quote(s)
