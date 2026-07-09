@@ -1,16 +1,36 @@
 """Market data service — quotes, candles, movers, heatmap. Cached via Redis."""
 from __future__ import annotations
 
+import asyncio
 import json
 
 from app.adapters.registry import providers
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.core.redis import get_redis
 from app.core import snapshot
+
+log = get_logger("services.market")
+
+# Cap concurrency and bound each symbol with a timeout, mirroring
+# discovery.py/sector.py -- providers.market.quotes() has no timeout of its
+# own anywhere in the provider chain, so a single stalled connection (common
+# on shared cloud IPs hitting Yahoo) can hang the whole bulk fetch forever.
+_MOVERS_CONCURRENCY = 8
+_MOVERS_TIMEOUT = 10
 
 
 def _movers_key(market: str) -> str:
     return f"movers:{market}"
+
+
+async def _quote_or_none(symbol: str, sem: asyncio.Semaphore):
+    async with sem:
+        try:
+            return await asyncio.wait_for(providers.market.quote(symbol), timeout=_MOVERS_TIMEOUT)
+        except Exception as e:  # noqa: BLE001 -- one bad symbol must not sink the scan
+            log.warning("movers.symbol_skip", symbol=symbol, error=str(e))
+            return None
 
 
 async def _cached(key: str, ttl: int, producer):
@@ -41,7 +61,9 @@ async def compute_movers(market: str | None = None) -> dict:
     keep-alive cron) -- never on the request path."""
     market = market or settings.DEFAULT_MARKET
     syms = await providers.market.universe(market)
-    quotes = await providers.market.quotes(syms)
+    sem = asyncio.Semaphore(_MOVERS_CONCURRENCY)
+    results = await asyncio.gather(*(_quote_or_none(s, sem) for s in syms))
+    quotes = [q for q in results if q is not None]
     ranked = sorted(quotes, key=lambda q: q.change_pct, reverse=True)
     result = {
         "gainers": [q.__dict__ for q in ranked],
