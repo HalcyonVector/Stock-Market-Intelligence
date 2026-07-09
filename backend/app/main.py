@@ -37,7 +37,7 @@ async def _warm_caches() -> None:
     from app.services.heatmap import compute_heatmap
 
     tasks = {
-        "movers": market_svc.get_movers(settings.DEFAULT_MARKET),
+        "movers": market_svc.compute_movers(settings.DEFAULT_MARKET),
         "sectors": sector.compute_rotation(settings.DEFAULT_MARKET),
         "sentiment": sentiment.compute_trending(settings.DEFAULT_MARKET),
         "discovery": discovery.compute_scan(settings.DEFAULT_MARKET),
@@ -156,7 +156,7 @@ async def _periodic_market_refresh() -> None:
             await _publish_market_events()
             # Also re-warm the movers cache since we already fetched quotes
             from app.services import market as market_svc
-            await market_svc.get_movers(settings.DEFAULT_MARKET)
+            await market_svc.compute_movers(settings.DEFAULT_MARKET)
         except Exception as e:
             log.warning("periodic.refresh.failed", error=str(e))
         await asyncio.sleep(interval)
