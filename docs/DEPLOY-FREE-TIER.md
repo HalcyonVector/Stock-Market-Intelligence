@@ -118,13 +118,15 @@ Render free services sleep after 15 minutes of inactivity. To keep Celery runnin
 1. Go to https://cron-job.org (free, no credit card)
 2. Create a cron job:
    - **URL:** `https://stockintel-api.onrender.com/health/warm`  ← note `/warm`
-   - **Schedule:** Every 5 minutes
+   - **Schedule:** Every 10 minutes
    - **Method:** GET
 3. This keeps the service awake (so Celery beat keeps scheduling and WebSockets stay alive) **and** touches every dashboard snapshot. `/health/warm` serves each snapshot instantly and only kicks a background recompute when it is stale, so your data stays fresh without ever blocking a request or hammering provider rate limits.
 
 > **Why `/health/warm` and not `/health`?** `/health` only prevents sleep. `/health/warm` also refreshes the durable snapshots that back Discovery / Top Analyst Picks / Retail Sentiment / Sector Rotation / Heatmap, so the first real visitor after an idle stretch gets warm data instead of empty cards. If you already have a cron pointed at `/health`, just change the path to `/health/warm`.
 
-**Alternative pingers:** UptimeRobot (free, 5-min intervals), Kuma (self-hosted).
+> **Why 10 minutes, not 5?** Render sleeps after 15 min idle, so 10-min pings still comfortably prevent that. Every ping is a handful of Redis commands per snapshot; halving the frequency roughly halves that load. Upstash's free tier caps at 500K commands/month -- combined with the frontend's own polling (each open dashboard tab re-queries independently), 5-min pings leave much less headroom. If you already have a 5-min job configured, just widen the interval.
+
+**Alternative pingers:** UptimeRobot (free, 5-min intervals — 10 if supported), Kuma (self-hosted).
 
 ---
 
