@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import datetime, timezone
 
 import httpx
@@ -10,7 +9,7 @@ import httpx
 from app.adapters.mock import _UNIVERSE, _seed
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.core.redis import get_redis
+from app.core import snapshot
 
 log = get_logger("services.insider")
 
@@ -89,19 +88,14 @@ def _mock_insider(symbol: str) -> list[dict]:
     }]
 
 
-async def get_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[dict]:
-    """Get recent insider activity across tracked universe."""
-    cache_key = f"insider:{market}"
-    redis = get_redis()
+def _insider_key(market: str) -> str:
+    return f"insider:{market}"
 
-    # Check cache
-    try:
-        hit = await redis.get(cache_key)
-        if hit:
-            return json.loads(hit)
-    except Exception:
-        pass
 
+async def compute_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[dict]:
+    """Heavy universe scan against Finnhub. Runs in the background (startup
+    warm, keep-alive refresh) -- never on the request path, since up to 20
+    sequential-ish Finnhub calls can take tens of seconds under rate limiting."""
     syms = _UNIVERSE.get(market, _UNIVERSE["GLOBAL"])
     # Pick a subset to avoid hammering the API
     sample = syms[:20]
@@ -131,12 +125,17 @@ async def get_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[
 
     # Sort by date descending, take limit
     all_txns.sort(key=lambda x: x.get("date", ""), reverse=True)
-    result = all_txns[:limit]
+    return all_txns[:limit]
 
-    # Cache
-    try:
-        await redis.set(cache_key, json.dumps(result), ex=INSIDER_TTL)
-    except Exception:
-        pass
 
-    return result
+async def get_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[dict]:
+    """API-facing. Serves the last durable snapshot instantly and refreshes in
+    the background when stale -- so a cold/expired cache never blocks the
+    request on a full Finnhub universe scan."""
+    data = await snapshot.serve(
+        _insider_key(market),
+        lambda: compute_insider_activity(market, limit),
+        max_age=INSIDER_TTL,
+        empty=[],
+    )
+    return data[:limit]

@@ -22,7 +22,7 @@ function formatFlow(value: number): string {
 
 export function SectorHeatmap() {
   const { data } = useQuery({ queryKey: ["sectors"], queryFn: () => api.sectors() });
-  const sectors = data ?? [];
+  const sectors = (data ?? []).slice(0, 9);
 
   return (
     <BentoCard

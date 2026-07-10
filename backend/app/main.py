@@ -32,7 +32,7 @@ async def _warm_caches() -> None:
     request instead of being pre-cached.
     """
     import asyncio
-    from app.services import market as market_svc, sector, sentiment, discovery
+    from app.services import market as market_svc, sector, sentiment, discovery, insider
     from app.services.briefing import compute_daily
     from app.services.heatmap import compute_heatmap
 
@@ -43,6 +43,7 @@ async def _warm_caches() -> None:
         "discovery": discovery.compute_scan(settings.DEFAULT_MARKET),
         "briefing": compute_daily(settings.DEFAULT_MARKET),
         "heatmap": compute_heatmap(),
+        "insider": insider.compute_insider_activity(settings.DEFAULT_MARKET),
     }
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     for name, result in zip(tasks.keys(), results):
