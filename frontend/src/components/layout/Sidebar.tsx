@@ -64,7 +64,7 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 border-b border-white/5 px-3 py-4">
+        <div className="flex items-center gap-2 border-b border-white/5 pl-5 pr-3 py-4">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-crimson-grad shadow-glow">
             <TrendingUp size={18} className="text-white" />
           </span>
