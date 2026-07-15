@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  TrendingUp,
   LayoutDashboard,
   Briefcase,
   Newspaper,
@@ -63,7 +64,10 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center border-b border-white/5 px-3 py-4">
+        <div className="flex items-center justify-center gap-2 border-b border-white/5 px-3 py-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-crimson-grad shadow-glow">
+            <TrendingUp size={18} className="text-white" />
+          </span>
           {expanded && (
             <span className="overflow-hidden whitespace-nowrap text-lg font-bold leading-none">
               <span className="text-white">Stock</span><span className="text-crimson-400" style={{ fontSize: "20px", position: "relative", top: "1px" }}>Intel</span>
