@@ -63,7 +63,17 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center border-b border-white/5 px-3 py-4">
+        <div className="flex items-center gap-2 border-b border-white/5 px-3 py-4">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-crimson-grad shadow-glow">
+            <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+              <line x1="9" y1="9" x2="9" y2="24" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity={0.85} />
+              <rect x="6.7" y="13" width="4.6" height="8" rx="1" fill="#ffffff" opacity={0.85} />
+              <line x1="16" y1="6.5" x2="16" y2="19" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity={0.55} />
+              <rect x="13.7" y="9.5" width="4.6" height="6.5" rx="1" fill="#ffffff" opacity={0.55} />
+              <line x1="23" y1="3.5" x2="23" y2="17" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+              <rect x="20.7" y="6.5" width="4.6" height="9" rx="1" fill="#ffffff" />
+            </svg>
+          </span>
           {expanded && (
             <span className="overflow-hidden whitespace-nowrap text-lg font-bold leading-none">
               <span className="text-white">Stock</span><span className="text-crimson-400" style={{ fontSize: "20px", position: "relative", top: "1px" }}>Intel</span>
