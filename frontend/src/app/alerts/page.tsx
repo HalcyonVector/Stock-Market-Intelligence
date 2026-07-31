@@ -33,7 +33,6 @@ export default function AlertsPage() {
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ["alerts"],
     queryFn: api.alerts,
-    refetchInterval: 30000,
   });
 
   const createMut = useMutation({
