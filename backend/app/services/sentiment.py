@@ -56,16 +56,26 @@ async def compute_trending(market: str = "GLOBAL", limit: int = 10) -> list[dict
     rows = [r for r in results if r is not None and r.get("attention_score", 0) > 0]
     rows.sort(key=lambda r: r.get("attention_score", 0), reverse=True)
     result = rows[:limit]
+    key = TRENDING_CACHE_KEY.format(market=market)
+
+    if not result:
+        # Every source likely rate-limited this cycle (attention_score <= 0
+        # across the board). Don't let a failed scan overwrite a real snapshot
+        # with emptiness -- that would poison the durable cache for a full
+        # TRENDING_MAX_AGE (1h) even though the old data is still good.
+        existing = await snapshot.read(key)
+        if existing is not None and existing[0]:
+            log.warning("sentiment.compute_empty_kept_stale", market=market)
+            return existing[0]
 
     # Cache
     try:
-        key = TRENDING_CACHE_KEY.format(market=market)
         await get_redis().set(key, json.dumps(result), ex=TRENDING_TTL)
         log.info("sentiment.cached", market=market, items=len(result))
     except Exception:
         pass
 
-    await snapshot.write(TRENDING_CACHE_KEY.format(market=market), result)
+    await snapshot.write(key, result)
     return result
 
 

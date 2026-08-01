@@ -81,6 +81,9 @@ export function SentimentTrends() {
             </motion.li>
           );
         })}
+        {sorted.length === 0 && (
+          <p className="px-2 py-4 text-xs text-ink-500">Gathering sentiment data...</p>
+        )}
       </ul>
     </BentoCard>
   );
