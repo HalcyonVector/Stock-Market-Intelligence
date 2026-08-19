@@ -94,7 +94,15 @@ async def publish_event(channel: str, payload: dict[str, Any]) -> None:
     r = get_redis()
     raw = json.dumps(payload, default=str)
     await r.publish(channel, raw)
-    # Keep last 20 events for new client hydration
+    # Keep last 20 events for new client hydration -- but skip this bookkeeping
+    # for routine price ticks (CH_PRICE_TICKS). Those fire once per symbol per
+    # refresh cycle (~110 symbols x 3-4x/hour), so persisting each one costs
+    # 3 extra Redis commands (LPUSH/LTRIM/EXPIRE) apiece for zero real benefit:
+    # a reconnecting client only needs the last *notable* events, not a replay
+    # of stale per-symbol prices. This was most of the free-tier command budget
+    # (see docs/STREAMING.md's Upstash 500K/mo note in config.py).
+    if channel == CH_PRICE_TICKS:
+        return
     msg = json.dumps({"channel": channel, "data": payload}, default=str)
     try:
         await r.lpush("recent:events", msg)

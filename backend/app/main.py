@@ -11,6 +11,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routes import (
     alerts, auth, backtest, discovery, health, insights, invest, market,
@@ -186,11 +188,19 @@ async def lifespan(app: FastAPI):
 
     # Periodic market refresh loop — keeps the LiveFeed WebSocket card alive
     # by publishing price ticks and unusual-activity events to Redis pub/sub,
-    # independent of Celery.
-    refresh_task = asyncio.create_task(_periodic_market_refresh())
+    # independent of Celery. Only start it if there's no separate Celery
+    # worker+beat doing the same job — otherwise this duplicates
+    # refresh_market's full-universe fetch+publish on its own schedule and
+    # roughly doubles Redis command usage for no benefit.
+    refresh_task = None
+    if settings.RUN_INPROCESS_MARKET_REFRESH:
+        refresh_task = asyncio.create_task(_periodic_market_refresh())
+    else:
+        log.info("periodic.refresh.disabled", reason="RUN_INPROCESS_MARKET_REFRESH=false")
 
     yield
-    refresh_task.cancel()
+    if refresh_task:
+        refresh_task.cancel()
     await manager.stop()
 
 
@@ -200,6 +210,48 @@ app = FastAPI(
     description="AI-powered market intelligence platform (educational use only).",
     lifespan=lifespan,
 )
+
+# Compress JSON responses — market-data payloads (movers/discovery/news/
+# sentiment) are the bulk of Render egress and gzip typically cuts JSON to
+# ~15-25% of its raw size. Safe, zero-behavior-change, and the single
+# highest-leverage lever we have against the Hobby-tier 5GB/mo bandwidth cap.
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Public, read-only market-data routes (no auth, no per-user state) are safe
+# to cache at Vercel's edge. Everything the frontend polls every 2 min
+# (staleTime) lives here; letting the edge serve repeat/cross-user requests
+# instead of hitting Render directly is what actually keeps us under the
+# free-tier bandwidth cap once more than one browser tab is open.
+_CACHEABLE_PREFIXES = (
+    f"{settings.API_V1_PREFIX}/market",
+    f"{settings.API_V1_PREFIX}/discovery",
+    f"{settings.API_V1_PREFIX}/insights",
+    f"{settings.API_V1_PREFIX}/sentiment",
+    f"{settings.API_V1_PREFIX}/sectors",
+    f"{settings.API_V1_PREFIX}/stocks",
+    f"{settings.API_V1_PREFIX}/screener",
+    f"{settings.API_V1_PREFIX}/invest",
+)
+
+
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if (
+            request.method == "GET"
+            and response.status_code == 200
+            and request.url.path.startswith(_CACHEABLE_PREFIXES)
+        ):
+            # Matches the frontend's 2 min refetch interval; stale-while-
+            # revalidate lets the edge keep serving instantly while it
+            # refreshes in the background instead of blocking on Render.
+            response.headers["Cache-Control"] = (
+                "public, max-age=120, stale-while-revalidate=600"
+            )
+        return response
+
+
+app.add_middleware(CacheControlMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
