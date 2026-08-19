@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     OFFHOURS_BACKOFF: float = 4.0    # weekday, outside 09:30–16:00 ET
     WEEKEND_BACKOFF: float = 12.0    # Saturday / Sunday
 
+    # --- In-process refresh loop (main.py) ---
+    # `_periodic_market_refresh` duplicates Celery's `refresh_market` task so a
+    # solo/dev deploy without a Celery worker+beat process still gets a live
+    # LiveFeed. If you DO run a separate Celery worker+beat (e.g. Render
+    # background worker), set this to false — otherwise both schedulers fetch
+    # quotes and publish price ticks for the whole universe on their own
+    # cadence, ~doubling Redis command usage for zero benefit.
+    RUN_INPROCESS_MARKET_REFRESH: bool = True
+
     # --- Optional free-tier API keys ---
     FINNHUB_API_KEY: str = ""
     ALPHAVANTAGE_API_KEY: str = ""

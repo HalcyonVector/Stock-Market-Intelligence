@@ -38,6 +38,10 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+asyncpg://sdi:sdi@postgres:5432/sdi
+      # worker + beat below already run refresh_market on schedule -- don't
+      # also run it in-process here, or every symbol's price tick + cache
+      # refresh gets fetched and published twice per cycle.
+      RUN_INPROCESS_MARKET_REFRESH: "false"
     ports: ["8000:8000"]
     depends_on:
       postgres: { condition: service_healthy }
