@@ -7,6 +7,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
+@router.head("/health")
 async def health():
     redis_ok = False
     try:
@@ -23,6 +24,7 @@ async def health():
 
 
 @router.get("/health/warm")
+@router.head("/health/warm")
 async def warm():
     """Keep-alive + keep-fresh endpoint for an external cron (cron-job.org,
     UptimeRobot, etc.).
@@ -38,6 +40,13 @@ async def warm():
 
     Point your existing keep-alive cron at ``/health/warm`` instead of
     ``/health`` (every 5-10 min) to get warm data for free.
+
+    HEAD is also registered: cron-job.org and UptimeRobot both default to
+    HEAD, not GET, for their monitors -- a GET-only route 405s that (or, on a
+    sleeping instance, surfaces as a wake-proxy 503 instead), so a HEAD-only
+    monitor never reliably keeps this warm without it. FastAPI dispatches
+    HEAD to this same handler and discards the body per HTTP semantics, so
+    the gather() below -- the actual point of this endpoint -- still runs.
     """
     import asyncio
 
