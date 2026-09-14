@@ -46,7 +46,22 @@ async def warm():
     sleeping instance, surfaces as a wake-proxy 503 instead), so a HEAD-only
     monitor never reliably keeps this warm without it. FastAPI dispatches
     HEAD to this same handler and discards the body per HTTP semantics, so
-    the gather() below -- the actual point of this endpoint -- still runs.
+    the staggered pass below -- the actual point of this endpoint -- still
+    runs.
+
+    STAGGERED, not gathered: each of the six calls below is cheap on its own
+    (an instant snapshot read that only *kicks* a background recompute when
+    stale), but if every snapshot is stale at once -- exactly the case right
+    after this service has been asleep for a while, which is precisely when
+    a keep-alive ping arrives -- gathering them concurrently used to fire all
+    six heavy background recomputes (a full universe scan, an LLM call for
+    the briefing, etc.) in the same instant, right as the container was
+    still settling from a cold boot. That OOM'd the free-tier instance: the
+    request itself returned a fast 200, then the pile-up crashed the process
+    moments later, so the *next* scheduled ping hit another cold boot and
+    repeated the cycle -- the same class of bug as the AI Research Radar
+    6-job-chain OOM. A short delay between each kick keeps at most one or
+    two heavy recomputes running at a time instead of all six.
     """
     import asyncio
 
@@ -60,14 +75,22 @@ async def warm():
     from app.services import briefing
 
     m = settings.DEFAULT_MARKET
-    results = await asyncio.gather(
+    calls = [
         discovery.scan(m),
         sentiment.trending(m),
         sector.rotation(m),
         heatmap.get_heatmap_data(),
         briefing.daily(m),
         market_svc.get_movers(m),
-        return_exceptions=True,
-    )
+    ]
+    stagger_seconds = 3
+    results = []
+    for i, call in enumerate(calls):
+        if i:
+            await asyncio.sleep(stagger_seconds)
+        try:
+            results.append(await call)
+        except Exception as e:  # noqa: BLE001
+            results.append(e)
     ok = sum(1 for r in results if not isinstance(r, Exception))
     return {"status": "ok", "warmed": ok, "of": len(results)}
