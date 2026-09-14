@@ -23,45 +23,33 @@ async def health():
     }
 
 
-@router.get("/health/warm")
-@router.head("/health/warm")
-async def warm():
-    """Keep-alive + keep-fresh endpoint for an external cron (cron-job.org,
-    UptimeRobot, etc.).
+_STAGGER_SECONDS = 3
 
-    Hitting this on a schedule does two jobs at once:
 
-      1. Responds quickly, which keeps a free-tier host (Render) awake so it
-         never sleeps and cold-starts on a real visitor.
-      2. Touches every dashboard snapshot. Each call serves the durable
-         snapshot instantly and only kicks a background recompute when that
-         snapshot is stale, so it refreshes the data without ever blocking on
-         the heavy universe scan (and without hammering provider rate limits).
+async def _staggered_refresh() -> None:
+    """Detached background pass over all six dashboard snapshots, spaced
+    ``_STAGGER_SECONDS`` apart.
 
-    Point your existing keep-alive cron at ``/health/warm`` instead of
-    ``/health`` (every 5-10 min) to get warm data for free.
+    Each of the six calls is cheap on its own (an instant snapshot read that
+    only *kicks* a background recompute when stale) -- but if every snapshot
+    is stale at once -- exactly the case right after this service has been
+    asleep for a while, which is precisely when a keep-alive ping arrives --
+    reading them all back-to-back with no gap fires all six heavy background
+    recomputes (a full universe scan, an LLM call for the briefing, etc.) in
+    the same instant, right as the container is still settling from a cold
+    boot. That's suspected to have OOM'd the free-tier instance before: a
+    fast 200 would go out, then the pile-up crashed the process moments
+    later, so the *next* scheduled ping hit another cold boot and repeated
+    the cycle -- the same class of bug as the AI Research Radar 6-job-chain
+    OOM. Spacing out when each kick fires keeps at most one or two heavy
+    recomputes running at a time instead of all six.
 
-    HEAD is also registered: cron-job.org and UptimeRobot both default to
-    HEAD, not GET, for their monitors -- a GET-only route 405s that (or, on a
-    sleeping instance, surfaces as a wake-proxy 503 instead), so a HEAD-only
-    monitor never reliably keeps this warm without it. FastAPI dispatches
-    HEAD to this same handler and discards the body per HTTP semantics, so
-    the staggered pass below -- the actual point of this endpoint -- still
-    runs.
-
-    STAGGERED, not gathered: each of the six calls below is cheap on its own
-    (an instant snapshot read that only *kicks* a background recompute when
-    stale), but if every snapshot is stale at once -- exactly the case right
-    after this service has been asleep for a while, which is precisely when
-    a keep-alive ping arrives -- gathering them concurrently used to fire all
-    six heavy background recomputes (a full universe scan, an LLM call for
-    the briefing, etc.) in the same instant, right as the container was
-    still settling from a cold boot. That OOM'd the free-tier instance: the
-    request itself returned a fast 200, then the pile-up crashed the process
-    moments later, so the *next* scheduled ping hit another cold boot and
-    repeated the cycle -- the same class of bug as the AI Research Radar
-    6-job-chain OOM. A short delay between each kick keeps at most one or
-    two heavy recomputes running at a time instead of all six.
+    Runs detached (fire-and-forget from the route handler) specifically so
+    none of this ever adds latency to the HTTP response -- an earlier version
+    awaited this stagger inline in the request, which pushed /health/warm
+    past cron-job.org's configured timeout and turned every ping into a
+    guaranteed failure. The whole point of this endpoint is to respond fast;
+    the data-freshness work must never be on that critical path.
     """
     import asyncio
 
@@ -83,14 +71,33 @@ async def warm():
         briefing.daily(m),
         market_svc.get_movers(m),
     ]
-    stagger_seconds = 3
-    results = []
     for i, call in enumerate(calls):
         if i:
-            await asyncio.sleep(stagger_seconds)
+            await asyncio.sleep(_STAGGER_SECONDS)
         try:
-            results.append(await call)
-        except Exception as e:  # noqa: BLE001
-            results.append(e)
-    ok = sum(1 for r in results if not isinstance(r, Exception))
-    return {"status": "ok", "warmed": ok, "of": len(results)}
+            await call
+        except Exception:
+            pass
+
+
+@router.get("/health/warm")
+@router.head("/health/warm")
+async def warm():
+    """Keep-alive + keep-fresh endpoint for an external cron (cron-job.org,
+    UptimeRobot, etc.).
+
+    Hitting this responds immediately (matching /health's speed) and kicks
+    off ``_staggered_refresh()`` as a detached background task -- it does
+    NOT wait for it. That keeps this endpoint's own job (waking/keeping the
+    free-tier host warm) fast and reliable regardless of how long the
+    dashboard-refresh pass underneath takes.
+
+    HEAD is also registered: cron-job.org and UptimeRobot both default to
+    HEAD, not GET, for their monitors -- a GET-only route 405s that (or, on a
+    sleeping instance, surfaces as a wake-proxy 503 instead), so a HEAD-only
+    monitor never reliably keeps this warm without it.
+    """
+    import asyncio
+
+    asyncio.create_task(_staggered_refresh())
+    return {"status": "ok", "warming": True}
