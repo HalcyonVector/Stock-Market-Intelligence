@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     # Tuned for free-tier hosting (Upstash 500K cmds/mo).
     # yfinance data is 15min delayed anyway; RSS updates 2-3x/hr;
     # sentiment doesn't shift meaningfully in under an hour.
-    REFRESH_MARKET: int = 900       # 15 min (matches yfinance delay)
+    REFRESH_MARKET: int = 1800      # 30 min in-session; backs off off-hours/weekends
     REFRESH_NEWS: int = 1800        # 30 min
     REFRESH_SENTIMENT: int = 3600   # 60 min
     REFRESH_SCORES: int = 3600      # 60 min (derived from quotes + sentiment)

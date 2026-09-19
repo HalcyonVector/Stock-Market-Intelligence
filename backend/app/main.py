@@ -124,11 +124,15 @@ async def _publish_market_events() -> None:
     syms = await providers.market.universe(settings.DEFAULT_MARKET)
     quotes = await providers.market.quotes(syms)
     events = 0
+    # Price ticks are one PUBLISH each and are only useful to a connected
+    # client; with nobody listening they just burn the Upstash command quota.
+    has_listeners = bool(manager._sockets)
     for q in quotes:
-        await publish_event(CH_PRICE_TICKS, {
-            "symbol": q.symbol, "price": q.price, "change_pct": q.change_pct,
-            "ts": datetime.now(timezone.utc).isoformat(),
-        })
+        if has_listeners:
+            await publish_event(CH_PRICE_TICKS, {
+                "symbol": q.symbol, "price": q.price, "change_pct": q.change_pct,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            })
         vol_ratio = q.volume / q.avg_volume if q.avg_volume else 1.0
         if abs(q.change_pct) >= 5 or vol_ratio >= 3:
             events += 1
@@ -151,9 +155,19 @@ async def _periodic_market_refresh() -> None:
     previous one is still running. Failures are swallowed so the loop never dies.
     """
     import asyncio
-    interval = settings.REFRESH_MARKET
+    from app.etl.market_calendar import interval_seconds
+
+    def _next_interval() -> int:
+        if not settings.SCHEDULE_MARKET_AWARE:
+            return settings.REFRESH_MARKET
+        return interval_seconds(
+            settings.REFRESH_MARKET,
+            offhours_mult=settings.OFFHOURS_BACKOFF,
+            weekend_mult=settings.WEEKEND_BACKOFF,
+        )
+
     # Wait for the initial warm to finish before starting the loop
-    await asyncio.sleep(interval)
+    await asyncio.sleep(_next_interval())
     while True:
         try:
             await _publish_market_events()
@@ -162,7 +176,7 @@ async def _periodic_market_refresh() -> None:
             await market_svc.compute_movers(settings.DEFAULT_MARKET)
         except Exception as e:
             log.warning("periodic.refresh.failed", error=str(e))
-        await asyncio.sleep(interval)
+        await asyncio.sleep(_next_interval())
 
 
 @asynccontextmanager
