@@ -59,10 +59,9 @@ async def compute_scan(market: str | None = None) -> list[dict]:
     scored = await asyncio.gather(*(_score_symbol(s) for s in syms))
     rows: list[dict] = [r for r in scored if r is not None]
     rows.sort(key=lambda x: x["opportunity"], reverse=True)
-    try:
-        await r.set(key, json.dumps(rows, default=str), ex=settings.REFRESH_SCORES)
-    except Exception:  # noqa: BLE001
-        pass
+    # Only the durable snapshot (snapshot.write, below) is ever read back --
+    # this used to also write a separate TTL'd `key` cache entry that nothing
+    # reads, doubling the Redis SET cost of every scan for no purpose.
     await snapshot.write(key, rows)
     return rows
 

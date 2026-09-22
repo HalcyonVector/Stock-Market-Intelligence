@@ -60,6 +60,16 @@ async def get_quote(symbol: str) -> dict:
     return await _cached(f"quote:{symbol}", settings.REFRESH_MARKET, _p)
 
 
+def _rank_movers(quotes: list) -> dict:
+    ranked = sorted(quotes, key=lambda q: q.change_pct, reverse=True)
+    return {
+        "gainers": [q.__dict__ for q in ranked],
+        "losers": [q.__dict__ for q in ranked[::-1]],
+        "most_active": [q.__dict__ for q in sorted(
+            quotes, key=lambda q: q.volume, reverse=True)],
+    }
+
+
 async def compute_movers(market: str | None = None) -> dict:
     """Heavy universe quote fetch. Runs in the background (startup warm,
     keep-alive cron) -- never on the request path."""
@@ -68,13 +78,21 @@ async def compute_movers(market: str | None = None) -> dict:
     sem = asyncio.Semaphore(_MOVERS_CONCURRENCY)
     results = await asyncio.gather(*(_quote_or_none(s, sem) for s in syms))
     quotes = [q for q in results if q is not None]
-    ranked = sorted(quotes, key=lambda q: q.change_pct, reverse=True)
-    result = {
-        "gainers": [q.__dict__ for q in ranked],
-        "losers": [q.__dict__ for q in ranked[::-1]],
-        "most_active": [q.__dict__ for q in sorted(
-            quotes, key=lambda q: q.volume, reverse=True)],
-    }
+    result = _rank_movers(quotes)
+    await snapshot.write(_movers_key(market), result)
+    return result
+
+
+async def write_movers_from_quotes(quotes: list, market: str | None = None) -> dict:
+    """Build+persist the movers snapshot from an already-fetched quote list.
+
+    Used by the periodic in-process refresh loop, which fetches quotes once
+    for the LiveFeed publish step -- calling compute_movers() right after used
+    to fetch the whole ~115-symbol universe a second time, doubling that
+    cycle's Redis command cost for no new data.
+    """
+    market = market or settings.DEFAULT_MARKET
+    result = _rank_movers(quotes)
     await snapshot.write(_movers_key(market), result)
     return result
 

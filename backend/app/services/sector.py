@@ -6,12 +6,10 @@ for instant response; the heavy computation runs in the background.
 from __future__ import annotations
 
 import asyncio
-import json
 from collections import defaultdict
 
 from app.adapters.registry import providers
 from app.core.logging import get_logger
-from app.core.redis import get_redis
 from app.core import snapshot
 from app.scoring.indicators import build_inputs
 from app.scoring.engine import momentum_score
@@ -20,11 +18,6 @@ from app.services.heatmap import SECTOR_MAP
 log = get_logger("services.sector")
 
 SECTOR_CACHE_KEY = "sector:rotation:{market}"
-# 24 h — Celery beat overwrites this on its own schedule (every ~48 min during
-# market hours, up to ~9.6 h on weekends with the 12x backoff). The TTL just
-# needs to outlast the worst-case gap so the cache never expires between runs
-# and triggers slow inline computation on the API request path.
-SECTOR_TTL = 86_400  # 24 h
 
 # Tracks markets currently being recomputed in the background so a burst of
 # cache-miss requests doesn't spawn duplicate heavy computations.
@@ -84,14 +77,10 @@ async def compute_rotation(market: str = "GLOBAL") -> list[dict]:
         })
     out.sort(key=lambda x: x["momentum"], reverse=True)
 
-    # Cache the result
-    try:
-        key = SECTOR_CACHE_KEY.format(market=market)
-        await get_redis().set(key, json.dumps(out), ex=SECTOR_TTL)
-        log.info("sector.cached", market=market, sectors=len(out))
-    except Exception:
-        pass
-
+    # Only the durable snapshot below is ever read back (via snapshot.serve /
+    # snapshot.read) -- this used to also write a separate TTL'd cache entry
+    # under the same key that nothing reads, doubling the Redis SET cost of
+    # every rotation compute for no purpose.
     await snapshot.write(SECTOR_CACHE_KEY.format(market=market), out)
     return out
 
@@ -104,7 +93,7 @@ async def _compute_and_clear(market: str) -> None:
 
 
 # Serve stale rotation instantly if older than the score cadence, refresh in bg.
-SECTOR_MAX_AGE = 3600  # 1 h
+SECTOR_MAX_AGE = 10800  # 3 h -- see REFRESH_SCORES in config.py for why
 
 
 async def rotation(market: str = "GLOBAL") -> list[dict]:

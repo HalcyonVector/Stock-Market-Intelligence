@@ -110,11 +110,13 @@ async def _seed_livefeed_from_movers(movers: dict | None) -> None:
     log.info("livefeed.seed", ticks=len(seen), events=events)
 
 
-async def _publish_market_events() -> None:
+async def _publish_market_events() -> list:
     """Fetch quotes and publish unusual-activity events to the Redis bus.
 
     Replicates the detect-and-publish logic from the Celery refresh_market task
-    so the LiveFeed WebSocket card works without Celery running.
+    so the LiveFeed WebSocket card works without Celery running. Returns the
+    fetched quotes so the caller can reuse them (see _periodic_market_refresh)
+    instead of paying for a second full-universe fetch.
     """
     from datetime import datetime, timezone
     from app.adapters.registry import providers
@@ -145,6 +147,7 @@ async def _publish_market_events() -> None:
                 "ts": datetime.now(timezone.utc).isoformat(),
             })
     log.info("livefeed.publish", symbols=len(syms), events=events)
+    return quotes
 
 
 async def _periodic_market_refresh() -> None:
@@ -170,10 +173,11 @@ async def _periodic_market_refresh() -> None:
     await asyncio.sleep(_next_interval())
     while True:
         try:
-            await _publish_market_events()
-            # Also re-warm the movers cache since we already fetched quotes
+            quotes = await _publish_market_events()
+            # Re-warm the movers cache from the quotes just fetched above,
+            # instead of compute_movers() re-fetching the whole universe again.
             from app.services import market as market_svc
-            await market_svc.compute_movers(settings.DEFAULT_MARKET)
+            await market_svc.write_movers_from_quotes(quotes, settings.DEFAULT_MARKET)
         except Exception as e:
             log.warning("periodic.refresh.failed", error=str(e))
         await asyncio.sleep(_next_interval())

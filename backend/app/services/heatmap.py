@@ -5,10 +5,8 @@ Concurrent fetching + Redis cache. Pre-computed by Celery beat.
 from __future__ import annotations
 
 import asyncio
-import json
 
 from app.core.logging import get_logger
-from app.core.redis import get_redis
 from app.core import snapshot
 from app.adapters.registry import providers
 
@@ -157,7 +155,6 @@ MCAP_APPROX: dict[str, float] = {
 }
 
 CACHE_KEY = "heatmap:data"
-CACHE_TTL = 300
 
 
 async def _fetch_one(sym: str, sem: asyncio.Semaphore) -> dict | None:
@@ -196,18 +193,15 @@ async def compute_heatmap() -> dict:
 
     result = {"sectors": sectors, "total_stocks": sum(len(v) for v in sectors.values())}
 
-    r = get_redis()
-    try:
-        await r.set(CACHE_KEY, json.dumps(result, default=str), ex=CACHE_TTL)
-    except Exception:
-        pass
-
+    # Only the durable snapshot below is ever read back (via snapshot.serve) --
+    # this used to also write a separate TTL'd cache entry under the same key
+    # that nothing reads, doubling the Redis SET cost of every heatmap compute.
     await snapshot.write(CACHE_KEY, result)
     return result
 
 
 # Serve stale heatmap instantly if older than an hour, refresh in background.
-HEATMAP_MAX_AGE = 3600  # 1 h
+HEATMAP_MAX_AGE = 10800  # 3 h -- see REFRESH_SCORES in config.py for why
 
 
 async def get_heatmap_data() -> dict:

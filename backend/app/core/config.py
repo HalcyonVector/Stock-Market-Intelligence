@@ -54,7 +54,10 @@ class Settings(BaseSettings):
     REFRESH_MARKET: int = 1800      # 30 min in-session; backs off off-hours/weekends
     REFRESH_NEWS: int = 1800        # 30 min
     REFRESH_SENTIMENT: int = 3600   # 60 min
-    REFRESH_SCORES: int = 3600      # 60 min (derived from quotes + sentiment)
+    REFRESH_SCORES: int = 10800     # 3 h (derived from quotes + sentiment) -- was
+    # 60 min; discovery.scan is a full ~115-symbol quote+candle sweep, one of
+    # three (with sector/heatmap) hitting Redis per symbol every cycle, and
+    # hourly was most of the Upstash command budget.
 
     # --- Market-aware back-off ---
     # The base cadences above apply during US market hours. When the market is
