@@ -93,7 +93,15 @@ async def publish_event(channel: str, payload: dict[str, Any]) -> None:
     """Producers call this (from API or workers) to emit a live event."""
     r = get_redis()
     raw = json.dumps(payload, default=str)
-    await r.publish(channel, raw)
+    try:
+        await r.publish(channel, raw)
+    except Exception as e:  # noqa: BLE001 -- was unguarded: a Redis outage (e.g.
+        # Upstash's monthly command quota exhausted) turned every publish into
+        # an unhandled exception instead of "the live feed just doesn't update
+        # this event", which is what every other Redis touch in this module
+        # already degrades to.
+        log.warning("publish.failed", channel=channel, error=str(e))
+        return
     # Keep last 20 events for new client hydration -- but skip this bookkeeping
     # for routine price ticks (CH_PRICE_TICKS). Those fire once per symbol per
     # refresh cycle (~110 symbols x 3-4x/hour), so persisting each one costs

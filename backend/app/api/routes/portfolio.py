@@ -53,7 +53,15 @@ async def save_portfolio(body: SavedPortfolio, user_id: str = "demo"):
     portfolios = [p for p in portfolios if p["name"] != entry["name"]]
     portfolios.append(entry)
 
-    await r.set(key, json.dumps(portfolios), ex=86400 * 30)  # 30 days
+    try:
+        await r.set(key, json.dumps(portfolios), ex=86400 * 30)  # 30 days
+    except Exception:
+        # Unlike the reads above, this write was never guarded -- a Redis
+        # outage (e.g. Upstash's monthly command quota exhausted) turned this
+        # into an unhandled 500 instead of "saved for this session but not
+        # persisted", which is what every other Redis touch on this route
+        # already degrades to.
+        pass
     return {"data": entry}
 
 

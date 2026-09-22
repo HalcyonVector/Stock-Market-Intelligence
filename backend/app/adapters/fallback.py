@@ -17,6 +17,7 @@ from app.adapters.base import (
     Candle, CompanyProfile, MarketDataProvider, NewsItem, NewsProvider, Quote,
 )
 from app.adapters.mock import MockMarketProvider, MockNewsProvider, _UNIVERSE
+from app.adapters.resilience import get_breaker
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redis import get_redis
@@ -27,6 +28,13 @@ log = get_logger("adapters.fallback")
 QUOTE_TTL = 300       # 5 minutes
 CANDLE_TTL = 900      # 15 minutes
 PROFILE_TTL = 3600    # 1 hour
+
+# Same breaker instance as app.core.snapshot's -- once Upstash's monthly
+# command quota is exhausted, every GET/SET here would otherwise still be
+# attempted (and fail) for every symbol on every scan. Long cooldown: a
+# quota-exhausted plan stays exhausted until the monthly reset, not until the
+# next network blip clears.
+_redis_breaker = get_breaker("redis.snapshot", fail_threshold=2, cooldown=600.0)
 
 # In-process cache in front of the Redis cache. discovery.scan, sector.rotation,
 # heatmap.get_heatmap_data, market.compute_movers and the periodic refresh loop
@@ -139,16 +147,25 @@ class FallbackMarketProvider(MarketDataProvider):
         log.info("market.fallback.chain", providers=providers_str)
 
     async def _cache_get(self, key: str) -> str | None:
-        try:
-            return await get_redis().get(key)
-        except Exception:
+        if not _redis_breaker.allow():
             return None
+        try:
+            result = await get_redis().get(key)
+        except Exception:
+            _redis_breaker.record_failure()
+            return None
+        _redis_breaker.record_success()
+        return result
 
     async def _cache_set(self, key: str, value: str, ttl: int) -> None:
+        if not _redis_breaker.allow():
+            return
         try:
             await get_redis().set(key, value, ex=ttl)
         except Exception:
-            pass
+            _redis_breaker.record_failure()
+            return
+        _redis_breaker.record_success()
 
     async def quote(self, symbol: str) -> Quote:
         # Process-local cache first -- collapses near-simultaneous scans
