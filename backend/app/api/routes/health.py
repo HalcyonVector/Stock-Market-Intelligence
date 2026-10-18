@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter
 
 from app.core.config import settings
@@ -5,15 +7,23 @@ from app.core.redis import get_redis
 
 router = APIRouter(tags=["health"])
 
+_redis_ok_cache: tuple[float, bool] = (-1e9, False)
+
 
 @router.get("/health")
 @router.head("/health")
 async def health():
-    redis_ok = False
-    try:
-        redis_ok = await get_redis().ping()
-    except Exception:  # noqa: BLE001
-        redis_ok = False
+    # Render's health check and the keep-alive crons hit this constantly; a real
+    # Redis PING each time costs Upstash commands. Refresh it at most every 5 min.
+    global _redis_ok_cache
+    now = time.monotonic()
+    if now - _redis_ok_cache[0] >= 300:
+        try:
+            ok = bool(await get_redis().ping())
+        except Exception:  # noqa: BLE001
+            ok = False
+        _redis_ok_cache = (now, ok)
+    redis_ok = _redis_ok_cache[1]
     return {
         "status": "ok",
         "env": settings.ENV,
