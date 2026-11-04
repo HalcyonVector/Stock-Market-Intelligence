@@ -17,13 +17,16 @@ export function MarketBriefing() {
       query.state.data?.pending ? 5_000 : 30_000,
   });
 
-  const generatedAt = data?.briefing
-    ? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : null;
+  // Use the server's timestamp: the old code printed the browser's current
+  // time, which looked fresh even when the briefing was hours old.
+  const generatedAt =
+    data?.briefing && data?.generated_at
+      ? new Date(data.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : null;
 
   return (
     <BentoCard updatedAt={dataUpdatedAt}
-      span="col-span-12 lg:col-span-8"
+      span="col-span-12 lg:col-span-7"
       title="AI Market Briefing"
       subtitle="Synthesised from movers, sectors and discovery scores"
       action={
@@ -42,11 +45,11 @@ export function MarketBriefing() {
         </motion.div>
       }
     >
-      <div className="relative">
+      <div className="relative flex flex-1 flex-col">
         {/* Left gradient border accent */}
         <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-gradient-to-b from-crimson-400 via-crimson-500/60 to-transparent" />
 
-        <div className="pl-5">
+        <div className="flex flex-1 flex-col pl-5">
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -66,7 +69,7 @@ export function MarketBriefing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <p className="text-[15px] leading-[1.75] text-ink-300 font-light">
+              <p className="max-w-[72ch] text-[15px] font-light leading-[1.7] text-ink-300">
                 {data.briefing}
               </p>
             </motion.div>
@@ -94,7 +97,7 @@ export function MarketBriefing() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="mt-4 text-[11px] text-ink-500/60 font-mono tracking-wide"
+              className="mt-auto pt-4 font-mono text-[11px] tracking-wide text-ink-500"
             >
               Generated at {generatedAt}
             </motion.p>
