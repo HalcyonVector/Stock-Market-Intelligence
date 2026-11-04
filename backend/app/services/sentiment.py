@@ -5,20 +5,14 @@ Pre-computed by Celery beat and cached in Redis for instant API response.
 from __future__ import annotations
 
 import asyncio
-import json
 
 from app.adapters.registry import providers
 from app.core.logging import get_logger
-from app.core.redis import get_redis
 from app.core import snapshot
 
 log = get_logger("services.sentiment")
 
 TRENDING_CACHE_KEY = "sentiment:trending:{market}"
-# 24 h — same reasoning as sector.py: Celery beat refreshes this, the TTL just
-# needs to outlast the worst-case weekend backoff (~9.6 h) so requests always
-# hit cache instead of triggering an expensive inline scan.
-TRENDING_TTL = 86_400  # 24 h
 
 
 async def for_symbol(symbol: str) -> dict:
@@ -68,13 +62,9 @@ async def compute_trending(market: str = "GLOBAL", limit: int = 10) -> list[dict
             log.warning("sentiment.compute_empty_kept_stale", market=market)
             return existing[0]
 
-    # Cache
-    try:
-        await get_redis().set(key, json.dumps(result), ex=TRENDING_TTL)
-        log.info("sentiment.cached", market=market, items=len(result))
-    except Exception:
-        pass
-
+    # Only the durable snapshot below is ever read back (via snapshot.serve) --
+    # this used to also write a separate TTL'd cache entry under the same key
+    # that nothing reads, doubling the Redis SET cost of every trending compute.
     await snapshot.write(key, result)
     return result
 

@@ -47,7 +47,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Retail Sentiment** — Reddit/Google Trends sentiment aggregation with trending tickers
 - **Earnings Calendar** — Upcoming earnings dates with estimate vs. actual tracking
 - **Economic Calendar** — Key economic events (CPI, Fed, GDP, jobs) with impact ratings
-- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every refresh cycle (~15 min) with one batched quote fetch; triggered alerts show as in-app toasts and optional browser notifications
+- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts show as in-app toasts and optional browser notifications
 - **Watchlists** — Per-browser watchlists with live quote enrichment (no sign-up: each browser gets an anonymous, server-issued identity)
 - **Paper Trading** — Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L and order history
 

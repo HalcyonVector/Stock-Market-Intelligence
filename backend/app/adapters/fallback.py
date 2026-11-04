@@ -10,12 +10,14 @@ data type: quotes 5 min, candles 15 min, profiles 60 min.
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 
 from app.adapters.base import (
     Candle, CompanyProfile, MarketDataProvider, NewsItem, NewsProvider, Quote,
 )
 from app.adapters.mock import MockMarketProvider, MockNewsProvider, _UNIVERSE
+from app.adapters.resilience import get_breaker
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redis import get_redis
@@ -26,6 +28,51 @@ log = get_logger("adapters.fallback")
 QUOTE_TTL = 300       # 5 minutes
 CANDLE_TTL = 900      # 15 minutes
 PROFILE_TTL = 3600    # 1 hour
+
+# Same breaker instance as app.core.snapshot's -- once Upstash's monthly
+# command quota is exhausted, every GET/SET here would otherwise still be
+# attempted (and fail) for every symbol on every scan. Long cooldown: a
+# quota-exhausted plan stays exhausted until the monthly reset, not until the
+# next network blip clears.
+_redis_breaker = get_breaker("redis.snapshot", fail_threshold=2, cooldown=600.0)
+
+# In-process cache in front of the Redis cache. discovery.scan, sector.rotation,
+# heatmap.get_heatmap_data, market.compute_movers and the periodic refresh loop
+# each independently walk the whole ~115-symbol universe calling quote()/candles()
+# per symbol -- five separate full sweeps that used to each pay a Redis GET (+ a
+# SET on miss) per symbol, even when two of those sweeps ran seconds apart (e.g.
+# /health/warm staggers its six kicks by only 3s). This was most of the Upstash
+# command budget: ~115 symbols x ~4 Redis ops x up to 5 independent scans per
+# warm cycle. A short-lived process-local cache means only the *first* scan to
+# touch a symbol in a given window pays Redis at all; every sibling scan within
+# _LOCAL_TTL reuses that result for free. Deliberately shorter than the Redis
+# TTLs above -- this is just for collapsing near-simultaneous sweeps, not a
+# replacement for the durable cache.
+_LOCAL_TTL = 120
+_local_cache: dict[str, tuple[float, object]] = {}
+
+
+def _local_get(key: str):
+    hit = _local_cache.get(key)
+    if hit is None:
+        return None
+    ts, value = hit
+    if time.monotonic() - ts > _LOCAL_TTL:
+        _local_cache.pop(key, None)
+        return None
+    return value
+
+
+def _local_set(key: str, value) -> None:
+    _local_cache[key] = (time.monotonic(), value)
+    # Cheap unbounded-growth guard -- the universe is ~100-200 symbols across a
+    # handful of cache kinds, so this should rarely trip, but a stuck process
+    # over days shouldn't grow this forever.
+    if len(_local_cache) > 5000:
+        cutoff = time.monotonic() - _LOCAL_TTL
+        for k, (ts, _) in list(_local_cache.items()):
+            if ts < cutoff:
+                _local_cache.pop(k, None)
 
 
 def _build_market_chain() -> list[MarketDataProvider]:
@@ -100,30 +147,48 @@ class FallbackMarketProvider(MarketDataProvider):
         log.info("market.fallback.chain", providers=providers_str)
 
     async def _cache_get(self, key: str) -> str | None:
-        try:
-            return await get_redis().get(key)
-        except Exception:
+        if not _redis_breaker.allow():
             return None
+        try:
+            result = await get_redis().get(key)
+        except Exception:
+            _redis_breaker.record_failure()
+            return None
+        _redis_breaker.record_success()
+        return result
 
     async def _cache_set(self, key: str, value: str, ttl: int) -> None:
+        if not _redis_breaker.allow():
+            return
         try:
             await get_redis().set(key, value, ex=ttl)
         except Exception:
-            pass
+            _redis_breaker.record_failure()
+            return
+        _redis_breaker.record_success()
 
     async def quote(self, symbol: str) -> Quote:
-        # Check cache first
+        # Process-local cache first -- collapses near-simultaneous scans
+        # (discovery/sector/heatmap/movers) onto a single Redis round trip.
+        local_key = f"quote:{symbol}"
+        local_hit = _local_get(local_key)
+        if local_hit is not None:
+            return local_hit
+
+        # Redis cache next
         cache_key = f"quote:{symbol}"
         hit = await self._cache_get(cache_key)
         if hit:
             d = json.loads(hit)
-            return Quote(
+            result = Quote(
                 symbol=d["symbol"], price=d["price"], change=d["change"],
                 change_pct=d["change_pct"], volume=d["volume"],
                 avg_volume=d["avg_volume"], market_cap=d.get("market_cap"),
                 currency=d["currency"], market=d["market"],
                 ts=datetime.fromisoformat(d["ts"]),
             )
+            _local_set(local_key, result)
+            return result
 
         # Try each provider
         last_error = None
@@ -139,6 +204,7 @@ class FallbackMarketProvider(MarketDataProvider):
                         "market_cap": result.market_cap, "currency": result.currency,
                         "market": result.market, "ts": result.ts.isoformat(),
                     }), QUOTE_TTL)
+                    _local_set(local_key, result)
                     log.info("quote.success", symbol=symbol, provider=provider.name)
                     return result
             except Exception as e:
@@ -176,11 +242,16 @@ class FallbackMarketProvider(MarketDataProvider):
         return list(await asyncio.gather(*(_get(s) for s in symbols)))
 
     async def candles(self, symbol: str, interval: str, lookback: int) -> list[Candle]:
+        local_key = f"candles:{symbol}:{interval}:{lookback}"
+        local_hit = _local_get(local_key)
+        if local_hit is not None:
+            return local_hit
+
         cache_key = f"candles:{symbol}:{interval}:{lookback}"
         hit = await self._cache_get(cache_key)
         if hit:
             data = json.loads(hit)
-            return [
+            result = [
                 Candle(
                     ts=datetime.fromisoformat(c["ts"]),
                     open=c["open"], high=c["high"], low=c["low"],
@@ -188,6 +259,8 @@ class FallbackMarketProvider(MarketDataProvider):
                 )
                 for c in data
             ]
+            _local_set(local_key, result)
+            return result
 
         for provider in self._chain:
             try:
@@ -198,6 +271,7 @@ class FallbackMarketProvider(MarketDataProvider):
                          "low": c.low, "close": c.close, "volume": c.volume}
                         for c in result
                     ]), CANDLE_TTL)
+                    _local_set(local_key, result)
                     log.info("candles.success", symbol=symbol, provider=provider.name)
                     return result
             except Exception as e:

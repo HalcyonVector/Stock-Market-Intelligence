@@ -84,7 +84,7 @@ export default function AlertsPage() {
             Price Alerts
           </h1>
           <p className="mt-1 text-sm text-ink-400">
-            Checked automatically every ~15 min while the server is awake. You&apos;ll get an in-app
+            Checked automatically every ~30 min during US market hours (less often off-hours) while the server is awake. You&apos;ll get an in-app
             notice (and a system notification if enabled) the next time this site is open.
           </p>
         </div>
