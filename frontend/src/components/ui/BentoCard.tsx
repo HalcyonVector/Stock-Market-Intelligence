@@ -42,7 +42,7 @@ export function BentoCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={cn("glass glass-hover min-w-0 p-4 sm:p-5", span, className)}
+      className={cn("glass glass-hover flex min-w-0 flex-col p-4 sm:p-5", span, className)}
     >
       {(title || action || showFresh) && (
         <div className="mb-4 flex items-start justify-between gap-2">
@@ -59,7 +59,8 @@ export function BentoCard({
           ) : null}
         </div>
       )}
-      {children}
+      {/* flex-1 lets card content fill the row height instead of leaving a gap or overflowing */}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </motion.section>
   );
 }

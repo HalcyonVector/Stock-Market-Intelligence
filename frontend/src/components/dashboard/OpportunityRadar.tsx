@@ -30,8 +30,8 @@ function OpportunityRow({ r, rank }: { r: any; rank: number }) {
         </span>
 
         {/* Symbol + change */}
-        <div className="flex flex-col min-w-[52px]">
-          <span className="font-mono text-[13px] font-semibold text-ink-100 tracking-tight">
+        <div className="flex w-[92px] flex-shrink-0 flex-col">
+          <span className="truncate font-mono text-[13px] font-semibold tracking-tight text-ink-100" title={r.symbol}>
             {r.symbol}
           </span>
           <span className={cn("text-[10px] tabular-nums", changeColor(r.change_pct))}>
@@ -50,8 +50,8 @@ function OpportunityRow({ r, rank }: { r: any; rank: number }) {
               style={{ width: `${Math.min(r.opportunity, 100)}%` }}
             />
           </div>
-          <span className="min-w-[22px] text-right font-mono text-[11px] font-semibold tabular-nums text-ink-300">
-            {r.opportunity}
+          <span className="w-9 text-right font-mono text-[11px] font-semibold tabular-nums text-ink-300">
+            {Number(r.opportunity).toFixed(1)}
           </span>
         </div>
       </Link>
@@ -70,7 +70,9 @@ export function OpportunityRadar() {
       title="Opportunity Radar"
       subtitle="Ranked by composite score"
     >
-      <ul className="space-y-0.5">
+      {/* justify-between spreads the rows over the card height so a taller
+          neighbour in the same row doesn't leave a block of empty space. */}
+      <ul className="flex flex-1 flex-col justify-between gap-0.5">
         {rows.map((r: any, i: number) => (
           <OpportunityRow key={r.symbol} r={r} rank={i + 1} />
         ))}
@@ -78,6 +80,11 @@ export function OpportunityRadar() {
           <p className="px-2 py-4 text-xs text-ink-500">Loading discovery scan...</p>
         )}
       </ul>
+      <div className="mt-3 flex items-center gap-3 border-t border-white/5 pt-3 text-[10px] text-ink-500">
+        <span className="flex items-center gap-1"><span className="h-1.5 w-3 rounded-full bg-emerald-400" />70+ strong</span>
+        <span className="flex items-center gap-1"><span className="h-1.5 w-3 rounded-full bg-amber-400" />45–70 mixed</span>
+        <span className="flex items-center gap-1"><span className="h-1.5 w-3 rounded-full bg-crimson-400" />&lt;45 weak</span>
+      </div>
     </BentoCard>
   );
 }
