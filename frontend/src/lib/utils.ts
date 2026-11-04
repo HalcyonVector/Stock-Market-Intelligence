@@ -18,3 +18,14 @@ export function scoreColor(v: number) {
 export function changeColor(n: number) {
   return n >= 0 ? "text-emerald-400" : "text-crimson-400";
 }
+
+/** Currency symbol for a ticker: NSE/BSE listings trade in rupees. */
+export function currencySymbol(symbol?: string) {
+  return symbol && /\.(NS|BO)$/i.test(symbol) ? "₹" : "$";
+}
+
+/** Price with the right currency symbol, e.g. money(2950.4, "RELIANCE.NS") -> "₹2950.40". */
+export function money(price: number | null | undefined, symbol?: string, digits = 2) {
+  if (price == null || Number.isNaN(price)) return "—";
+  return `${currencySymbol(symbol)}${price.toFixed(digits)}`;
+}

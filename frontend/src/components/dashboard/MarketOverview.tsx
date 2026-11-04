@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import {
   TrendingUp,
   TrendingDown,
@@ -23,8 +24,9 @@ function formatLargeNumber(n: number): string {
 }
 
 export function MarketOverview() {
-  const { data: movers } = useQuery({ queryKey: ["movers"], queryFn: () => api.movers() });
-  const { data: discovery } = useQuery({ queryKey: ["discovery"], queryFn: () => api.discovery() });
+  const market = useMarket();
+  const { data: movers } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
+  const { data: discovery } = useQuery({ queryKey: ["discovery", market], queryFn: () => api.discovery(market) });
 
   const allQuotes = [
     ...(movers?.gainers ?? []),

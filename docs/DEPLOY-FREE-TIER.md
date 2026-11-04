@@ -7,12 +7,14 @@ Deploy the full StockIntel stack for $0/month using Vercel + Render + Neon + Ups
 ```
 Browser → Vercel (Next.js frontend)
               ↓ /api/* rewrite
-         Render (FastAPI + Celery worker + beat — single process)
+         Render (FastAPI only — one uvicorn process)
               ↓                    ↓
      Neon (Postgres)        Upstash (Redis)
               ↓
          Groq (LLM)
 ```
+
+> **No Celery in production.** Render's free tier gives one web service (750 instance-hours/month, and a 24/7 pinger already uses ~744 of them), so there is no room for separate worker/beat services. Instead the API process does the periodic work itself: an in-process loop (`RUN_INPROCESS_MARKET_REFRESH`, on by default) refreshes quotes, publishes LiveFeed events and checks price alerts every `REFRESH_MARKET` seconds, and the `/health/warm` pinger refreshes the dashboard snapshots. Celery worker + beat only run in the local Docker Compose stack, so the `CELERY_*` variables are not needed on Render.
 
 ## Prerequisites
 
@@ -63,16 +65,14 @@ Browser → Vercel (Next.js frontend)
    rediss://default:xxxx@us1-xxx-xxx.upstash.io:6379
    ```
    The `rediss://` (double s) means TLS — this is required.
-5. You need three Redis URLs (different logical databases). Append `/0`, `/1`, `/2`:
+5. Append `/0` to pick the logical database:
    ```
    REDIS_URL=rediss://default:xxxx@us1-xxx.upstash.io:6379/0
-   CELERY_BROKER_URL=rediss://default:xxxx@us1-xxx.upstash.io:6379/1
-   CELERY_RESULT_BACKEND=rediss://default:xxxx@us1-xxx.upstash.io:6379/2
    ```
 
 **Free tier:** 256 MB, 500K commands/month. With the reduced refresh intervals (already committed), expect ~90K–120K commands/month during active use.
 
-**Important:** Upstash requires TLS. The `rediss://` scheme handles this automatically with the `openai` and `redis` Python libraries. If Celery complains about SSL, add `?ssl_cert_reqs=required` to the broker/result URLs.
+**Important:** Upstash requires TLS. The `rediss://` scheme handles this automatically with the `redis` Python library.
 
 ---
 
@@ -103,8 +103,6 @@ In the Render dashboard under **Environment**, add these:
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` |
 | `DATABASE_URL` | `postgresql+asyncpg://...` (from Step 2) |
 | `REDIS_URL` | `rediss://...@.../0` (from Step 3) |
-| `CELERY_BROKER_URL` | `rediss://...@.../1` (from Step 3) |
-| `CELERY_RESULT_BACKEND` | `rediss://...@.../2` (from Step 3) |
 | `CORS_ORIGINS` | `https://your-app.vercel.app` (plain string, update after Vercel deploy) |
 | `AUTH_SECRET` | Generate one: `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `AUTO_CREATE_TABLES` | `true` |
@@ -113,14 +111,14 @@ In the Render dashboard under **Environment**, add these:
 
 ### 4c. Prevent Sleep + Keep Data Warm (Critical)
 
-Render free services sleep after 15 minutes of inactivity. To keep Celery running **and** keep every dashboard card pre-computed:
+Render free services sleep after 15 minutes of inactivity. To keep the in-process refresh loop running **and** keep every dashboard card pre-computed:
 
 1. Go to https://cron-job.org (free, no credit card)
 2. Create a cron job:
    - **URL:** `https://stockintel-api.onrender.com/health/warm`  ← note `/warm`
    - **Schedule:** Every 10 minutes
    - **Method:** GET
-3. This keeps the service awake (so Celery beat keeps scheduling and WebSockets stay alive) **and** touches every dashboard snapshot. `/health/warm` serves each snapshot instantly and only kicks a background recompute when it is stale, so your data stays fresh without ever blocking a request or hammering provider rate limits.
+3. This keeps the service awake (so the refresh loop and alert checks keep running and WebSockets stay alive) **and** touches every dashboard snapshot. `/health/warm` serves each snapshot instantly and only kicks a background recompute when it is stale, so your data stays fresh without ever blocking a request or hammering provider rate limits.
 
 > **Why `/health/warm` and not `/health`?** `/health` only prevents sleep. `/health/warm` also refreshes the durable snapshots that back Discovery / Top Analyst Picks / Retail Sentiment / Sector Rotation / Heatmap, so the first real visitor after an idle stretch gets warm data instead of empty cards. If you already have a cron pointed at `/health`, just change the path to `/health/warm`.
 
@@ -171,7 +169,7 @@ Save changes — Render will auto-redeploy.
    (First request takes 30-50s if the service was sleeping)
 2. Open your Vercel URL — dashboard should load
 3. Click any stock → check that AI explanation loads (confirms Groq is working)
-4. Check Upstash console → Commands tab → verify command count is ticking up (confirms Celery/Redis working)
+4. Check Upstash console → Commands tab → verify command count is ticking up (confirms Redis is working)
 5. Check Neon console → verify tables were created (confirms Postgres working)
 
 ---
@@ -215,15 +213,15 @@ Added Groq config block and commented-out cloud deployment section with Neon/Ups
 
 ## Troubleshooting
 
-**Dashboard empty / "No data" on first deploy:** This is expected. The Celery tasks need 15–20 minutes to warm up the Redis cache with market data. The AI briefing also depends on cached market data, so it won't generate until the cache is populated. Just wait and refresh.
+**Dashboard empty / "No data" on first deploy:** This is expected. The startup warm-up and first `/health/warm` pings need a few minutes to fill the Redis cache with market data. The AI briefing also depends on cached market data, so it won't generate until the cache is populated. Just wait and refresh.
 
 **yfinance 429 errors / "possibly delisted" in logs:** Yahoo Finance rate-limits requests from shared cloud IPs (Render, Railway, etc.). The fallback chain handles this — it retries, then falls through to Finnhub/Alpha Vantage. Once data is cached in Redis, subsequent requests don't hit Yahoo. This noise is heaviest during cold start and subsides within 20–30 minutes.
 
-**Celery tasks not running:** Check that the cron pinger is active. Render logs should show celery beat scheduling messages. If the service is sleeping, tasks won't fire.
+**Data or alerts not refreshing:** Check that the cron pinger is active. Render logs should show `livefeed.publish` and `alerts.background_check` lines every `REFRESH_MARKET` seconds. If the service is sleeping, nothing refreshes.
 
 **Redis URL parsing error (`must specify one of the following schemes`):** The env var value in Render has the key name baked in (e.g. `REDIS_URL=rediss://...` instead of just `rediss://...`). Render already uses the key field — the value should only contain the URL itself.
 
-**SSL errors with Upstash Redis:** Ensure URLs use `rediss://` (not `redis://`). If Celery still fails, append `?ssl_cert_reqs=required` to broker and result backend URLs.
+**SSL errors with Upstash Redis:** Ensure URLs use `rediss://` (not `redis://`). If it still fails, append `?ssl_cert_reqs=required` to `REDIS_URL`.
 
 **`sslmode` error on startup (`connect() got an unexpected keyword argument 'sslmode'`):** asyncpg doesn't support `sslmode`. Change `?sslmode=require` to `?ssl=require` in your `DATABASE_URL`.
 

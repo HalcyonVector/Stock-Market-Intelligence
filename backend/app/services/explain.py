@@ -9,9 +9,11 @@ so every claim is traceable to a signal — never an unsourced assertion.
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime, timezone
 
 from app.adapters.registry import providers
+from app.core.redis import get_redis
 from app.scoring.engine import all_scores
 from app.scoring.indicators import build_inputs
 
@@ -34,7 +36,31 @@ def _confidence(signals: dict) -> float:
     return round(min(1.0, 0.4 + present * 0.15), 2)
 
 
+# The LLM call is the expensive part (Groq free tier: ~1K requests/day), and a
+# stock's "why" barely changes within half an hour, so cache per symbol.
+CACHE_TTL = 1800  # 30 min
+
+
 async def why_moving(symbol: str) -> dict:
+    symbol = symbol.upper()
+    cache_key = f"why_moving:{symbol}"
+    r = get_redis()
+    try:
+        hit = await r.get(cache_key)
+        if hit:
+            return json.loads(hit)
+    except Exception:
+        pass
+
+    result = await _compute(symbol)
+    try:
+        await r.set(cache_key, json.dumps(result, default=str), ex=CACHE_TTL)
+    except Exception:
+        pass
+    return result
+
+
+async def _compute(symbol: str) -> dict:
     from app.services.sentiment import for_symbol
 
     # Fetch all data in parallel

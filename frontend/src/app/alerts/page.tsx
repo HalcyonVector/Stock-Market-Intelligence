@@ -1,14 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, BellRing, Plus, Trash2, TrendingUp, TrendingDown, ArrowUp,
-  ArrowDown, CheckCircle2, Clock, AlertTriangle, Loader2, RefreshCw,
+  ArrowDown, CheckCircle2, Clock, AlertTriangle, Loader2, RefreshCw, BellPlus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, money } from "@/lib/utils";
 
 const CONDITIONS = [
   { id: "above", label: "Price Above", icon: ArrowUp, desc: "Triggers when price rises above target" },
@@ -29,6 +29,20 @@ export default function AlertsPage() {
   const [condition, setCondition] = useState("above");
   const [threshold, setThreshold] = useState<number | "">("");
   const [note, setNote] = useState("");
+
+  const [notifPerm, setNotifPerm] = useState<string>("default");
+
+  useEffect(() => {
+    // Prefill from links like /alerts?symbol=AAPL (e.g. the stock page's "Alert" button).
+    const s = new URLSearchParams(window.location.search).get("symbol");
+    if (s) { setSymbol(s.toUpperCase()); setShowCreate(true); }
+    if ("Notification" in window) setNotifPerm(Notification.permission);
+    else setNotifPerm("unsupported");
+  }, []);
+
+  const enableNotifications = async () => {
+    try { setNotifPerm(await Notification.requestPermission()); } catch { /* ignore */ }
+  };
 
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ["alerts"],
@@ -70,10 +84,19 @@ export default function AlertsPage() {
             Price Alerts
           </h1>
           <p className="mt-1 text-sm text-ink-400">
-            Get notified when stocks hit your target prices
+            Checked automatically every ~15 min while the server is awake. You&apos;ll get an in-app
+            notice (and a system notification if enabled) the next time this site is open.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {notifPerm === "default" && (
+            <button
+              onClick={enableNotifications}
+              className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2.5 text-sm text-ink-300 transition hover:bg-white/10"
+            >
+              <BellPlus size={14} /> Enable notifications
+            </button>
+          )}
           <button
             onClick={() => checkMut.mutate()}
             disabled={checkMut.isPending}
@@ -185,6 +208,9 @@ export default function AlertsPage() {
                   {createMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
                   Create Alert
                 </button>
+                {createMut.isError && (
+                  <p className="text-xs text-crimson-300">{(createMut.error as Error).message}</p>
+                )}
               </div>
             </BentoCard>
           </motion.div>
@@ -259,7 +285,7 @@ function AlertRow({ alert, onDelete, triggered }: { alert: any; onDelete: () => 
         {alert.note && <p className="text-xs text-ink-500 truncate">{alert.note}</p>}
         {triggered && alert.trigger_price && (
           <p className="text-xs text-emerald-400">
-            Triggered at ${alert.trigger_price?.toFixed(2)} ({alert.trigger_change_pct?.toFixed(2)}%)
+            Triggered at {money(alert.trigger_price, alert.symbol)} ({alert.trigger_change_pct?.toFixed(2)}%)
           </p>
         )}
       </div>

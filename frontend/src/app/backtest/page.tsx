@@ -6,6 +6,7 @@ import { Area, AreaChart, Line, LineChart, ComposedChart, ResponsiveContainer, X
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
+import { Term } from "@/components/ui/Term";
 
 export default function BacktestPage() {
   const [symbol, setSymbol] = useState("AAPL");
@@ -92,10 +93,10 @@ export default function BacktestPage() {
               { label: "Alpha", value: `${result.alpha >= 0 ? "+" : ""}${result.alpha}%`, color: result.alpha >= 0 },
               { label: "Win Rate", value: `${result.win_rate}%`, color: result.win_rate > 50 },
               { label: "Sharpe", value: result.sharpe_ratio, color: result.sharpe_ratio > 1 },
-              { label: "Max DD", value: `-${result.max_drawdown_pct}%`, color: false },
+              { label: "Max Drawdown", value: `-${result.max_drawdown_pct}%`, color: false },
             ].map((m) => (
               <div key={m.label} className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-ink-500">{m.label}</p>
+                <p className="text-[9px] uppercase tracking-wider text-ink-500"><Term>{m.label}</Term></p>
                 <p className={cn("font-mono text-lg font-bold", m.color ? "text-emerald-400" : "text-crimson-400")}>
                   {m.value}
                 </p>

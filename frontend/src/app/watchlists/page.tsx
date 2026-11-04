@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, Plus, Trash2, X, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
-import { cn, pct, changeColor } from "@/lib/utils";
+import { cn, pct, changeColor, money } from "@/lib/utils";
 
 export default function WatchlistsPage() {
   const [newName, setNewName] = useState("");
@@ -193,7 +193,7 @@ export default function WatchlistsPage() {
                                   </Link>
                                 </td>
                                 <td className="py-2 text-right font-mono text-ink-100">
-                                  {q ? `$${q.price?.toFixed(2)}` : "—"}
+                                  {q ? money(q.price, q.symbol) : "—"}
                                 </td>
                                 <td className={cn("py-2 text-right font-mono", changeColor(q?.change ?? 0))}>
                                   {q ? `${q.change >= 0 ? "+" : ""}${q.change?.toFixed(2)}` : "—"}

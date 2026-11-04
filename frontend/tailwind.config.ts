@@ -9,7 +9,9 @@ const config: Config = {
         base: { 950: "#0a0506", 900: "#120709", 800: "#1a0b0e", 700: "#241015" },
         crimson: { 300: "#ff6b81", 400: "#ff3b5c", 500: "#e11d3a", 600: "#b01228", 700: "#7d0d1d" },
         ember: { 400: "#ff7849", 500: "#f5512e" },
-        ink: { 100: "#f5eef0", 300: "#c9b8bd", 500: "#8a7479", 700: "#4a3b3f" },
+        // 200/400/600 were referenced across the UI but never defined, so that
+        // text silently fell back to the inherited colour.
+        ink: { 100: "#f5eef0", 200: "#e0d3d7", 300: "#c9b8bd", 400: "#a9969b", 500: "#8a7479", 600: "#6a585c", 700: "#4a3b3f" },
       },
       fontFamily: {
         sans: ["var(--font-geist-sans, ui-sans-serif)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],

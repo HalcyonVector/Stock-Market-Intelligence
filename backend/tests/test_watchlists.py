@@ -1,6 +1,7 @@
 """Watchlist CRUD against an in-memory SQLite DB (no Postgres needed)."""
 import asyncio
 
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -9,6 +10,17 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import get_session
 from app.main import app
 from app.models.entities import Base
+
+
+def _run(coro):
+    # A fresh loop each time: earlier tests may have closed the default loop,
+    # which makes asyncio.get_event_loop() raise on Python 3.12+.
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
 
 # StaticPool keeps ONE connection so the in-memory DB persists across sessions.
 engine = create_async_engine(
@@ -24,7 +36,7 @@ async def _init():
         await conn.run_sync(Base.metadata.create_all)
 
 
-asyncio.get_event_loop().run_until_complete(_init())
+_run(_init())
 
 
 async def _override():
@@ -67,3 +79,11 @@ def test_other_user_cannot_see():
     wl = client.post("/api/v1/watchlists", json={"name": "Private"}, headers=H).json()["data"]
     r = client.get(f"/api/v1/watchlists/{wl['id']}", headers={"X-User-Id": "intruder"})
     assert r.status_code == 404
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _dispose_engine():
+    # aiosqlite runs each connection on a non-daemon thread; without disposing
+    # the engine the pytest process finishes the tests but never exits.
+    yield
+    _run(engine.dispose())

@@ -1,31 +1,34 @@
 """
 Auth endpoints.
 
-MVP: a passwordless dev token issuer so the SPA can obtain a JWT. Replace with
-Supabase Auth / magic links / OAuth in production (see docs/13-DEPLOYMENT.md).
+There are no accounts. Each browser gets an anonymous identity: the server
+mints a random user id and returns a signed JWT for it, which the SPA keeps in
+localStorage. Because the id is generated server-side, a caller cannot choose
+(and so cannot impersonate) someone else's id — they can only obtain a fresh one.
 """
-from fastapi import APIRouter
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.core.security import create_access_token
-from fastapi import Depends
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-class TokenRequest(BaseModel):
-    user_id: str
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user_id: str
 
 
-@router.post("/token", response_model=TokenResponse)
-async def issue_token(body: TokenRequest):
-    return TokenResponse(access_token=create_access_token(body.user_id))
+@router.post("/anon", response_model=TokenResponse)
+async def issue_anonymous_token():
+    user_id = f"anon-{uuid.uuid4().hex}"
+    return TokenResponse(access_token=create_access_token(user_id), user_id=user_id)
 
 
 @router.get("/me")

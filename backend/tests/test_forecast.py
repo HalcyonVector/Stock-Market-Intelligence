@@ -29,7 +29,8 @@ from app.services.forecast import (
 # --------------------------------------------------------------------------- #
 def _series(n=200, start=100.0, drift=0.0008, noise=0.0):
     rng = np.random.default_rng(7)
-    steps = drift + (noise * rng.standard_normal(n) if noise else 0.0)
+    # np.zeros(n), not 0.0: with noise=0 a scalar made cumsum return ONE price.
+    steps = drift + (noise * rng.standard_normal(n) if noise else np.zeros(n))
     return start * np.exp(np.cumsum(steps))
 
 

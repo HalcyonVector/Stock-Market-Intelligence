@@ -4,23 +4,30 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { LandingPage } from "@/components/landing/LandingPage";
 
-// Module-level flag: survives re-renders & route changes, resets on full page refresh
-let hasEnteredDashboard = false;
+const SEEN_KEY = "si_seen_landing";
 
 export default function Home() {
-  const [showLanding, setShowLanding] = useState(!hasEnteredDashboard);
+  // null = not decided yet (avoids flashing the landing page for returning visitors)
+  const [showLanding, setShowLanding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let seen = false;
+    try { seen = localStorage.getItem(SEEN_KEY) === "1"; } catch { /* private mode */ }
+    // ?welcome forces the landing page (linked from nowhere, handy for demos)
+    if (new URLSearchParams(window.location.search).has("welcome")) seen = false;
+    setShowLanding(!seen);
+  }, []);
 
   const handleEnter = () => {
-    hasEnteredDashboard = true;
+    try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* ignore */ }
     setShowLanding(false);
   };
 
   return (
     <>
-      {/* Dashboard renders underneath, always mounted */}
-      <Dashboard />
+      {/* Only mount the dashboard (and its ~15 queries) once the visitor is past the landing page */}
+      {showLanding === false && <Dashboard />}
 
-      {/* Landing overlay — covers sidebar + everything */}
       <AnimatePresence>
         {showLanding && (
           <motion.div

@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { useUrlSymbols } from "@/lib/urlState";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { useQueries } from "@tanstack/react-query";
 import { GitCompare, Plus, X, Loader2 } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
@@ -23,14 +25,13 @@ function fmt(v: any, type: "pct" | "usd" | "ratio" = "ratio"): string {
 }
 
 export default function ComparePage() {
-  const [symbols, setSymbols] = useState<string[]>(["AAPL", "MSFT", "GOOGL"]);
+  const [symbols, setSymbols] = useUrlSymbols(["AAPL", "MSFT", "GOOGL"], "s", 6);
   const [input, setInput] = useState("");
 
   const addSymbol = (s: string) => {
     const sym = s.trim().toUpperCase();
-    if (sym && !symbols.includes(sym) && symbols.length < 6) {
-      setSymbols([...symbols, sym]);
-    }
+    // Functional update: "AAPL, MSFT" adds both (the old closure only kept the last).
+    if (sym) setSymbols((prev) => (prev.includes(sym) || prev.length >= 6 ? prev : [...prev, sym]));
   };
 
   // Fetch fundamentals + candles for all symbols
@@ -109,11 +110,14 @@ export default function ComparePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <GitCompare size={24} className="text-crimson-400" /> Stock Comparison
-        </h1>
-        <p className="text-sm text-ink-500">Compare up to 6 stocks side-by-side</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <GitCompare size={24} className="text-crimson-400" /> Stock Comparison
+          </h1>
+          <p className="text-sm text-ink-500">Compare up to 6 stocks side-by-side</p>
+        </div>
+        {symbols.length >= 2 && <ShareButton />}
       </div>
 
       {/* Symbol selector */}

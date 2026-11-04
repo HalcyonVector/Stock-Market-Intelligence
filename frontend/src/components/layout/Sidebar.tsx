@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   TrendingUp,
   LayoutDashboard,
@@ -17,13 +18,18 @@ import {
   Command,
   ChevronLeft,
   ChevronRight,
+  Wallet,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { MarketSwitch } from "@/components/ui/MarketSwitch";
 
 const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/portfolio", icon: Briefcase, label: "Portfolio" },
+  { href: "/paper", icon: Wallet, label: "Paper Trading" },
   { href: "/research", icon: Newspaper, label: "Research" },
   { href: "/watchlists", icon: Star, label: "Watchlists" },
   { href: "/screener", icon: Filter, label: "Screener" },
@@ -34,98 +40,199 @@ const NAV = [
   { href: "/invest", icon: Shield, label: "Safe Invest" },
 ];
 
+const COLLAPSE_KEY = "si_sidebar_collapsed";
+
+function Logo({ showText }: { showText: boolean }) {
+  return (
+    <Link href="/" className="flex items-center gap-2" aria-label="StockIntel home">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-crimson-grad shadow-glow">
+        <TrendingUp size={18} className="text-white" />
+      </span>
+      {showText && (
+        <span className="overflow-hidden whitespace-nowrap text-lg font-bold leading-none">
+          <span className="text-white">Stock</span>
+          <span className="relative top-px text-[20px] text-crimson-400">Intel</span>
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
+  const pathname = usePathname();
+  // Stock detail pages highlight nothing in nav
+  const isStockPage = pathname.startsWith("/stock/");
+  return (
+    <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
+      {NAV.map(({ href, icon: Icon, label }) => {
+        const active = !isStockPage && (href === "/" ? pathname === "/" : pathname.startsWith(href));
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            aria-label={label}
+            aria-current={active ? "page" : undefined}
+            title={expanded ? undefined : label}
+            className={cn(
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson-500/60",
+              active
+                ? "bg-crimson-600/15 text-crimson-300 shadow-[0_0_12px_rgba(225,29,58,0.15)]"
+                : "text-ink-300 hover:bg-white/5 hover:text-ink-100"
+            )}
+          >
+            <Icon
+              size={20}
+              aria-hidden
+              className={cn(
+                "shrink-0 transition-colors",
+                active ? "text-crimson-400" : "text-ink-500 group-hover:text-ink-300"
+              )}
+            />
+            {expanded && <span className="whitespace-nowrap">{label}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
 
-  // Global ⌘K shortcut
+  // Remember the collapsed state between visits.
+  useEffect(() => {
+    try { if (localStorage.getItem(COLLAPSE_KEY) === "1") setExpanded(false); } catch { /* ignore */ }
+  }, []);
+  const toggleExpanded = () => {
+    setExpanded((v) => {
+      try { localStorage.setItem(COLLAPSE_KEY, v ? "1" : "0"); } catch { /* ignore */ }
+      return !v;
+    });
+  };
+
+  // Close the mobile drawer on navigation.
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  // Global ⌘K shortcut + Esc to close the drawer
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setCmdOpen((v) => !v);
       }
+      if (e.key === "Escape") setMobileOpen(false);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Stock detail pages highlight nothing in nav
-  const isStockPage = pathname.startsWith("/stock/");
+  const searchButton = (showLabel: boolean) => (
+    <button
+      onClick={() => { setMobileOpen(false); setCmdOpen(true); }}
+      aria-label="Search stocks and pages"
+      title={showLabel ? undefined : "Search (⌘K)"}
+      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink-500 transition hover:bg-white/5 hover:text-ink-300"
+    >
+      <Command size={18} className="shrink-0" aria-hidden />
+      {showLabel && (
+        <>
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="rounded bg-black/40 px-1.5 text-[10px] text-ink-500">⌘K</kbd>
+        </>
+      )}
+    </button>
+  );
 
   return (
     <>
+      {/* Mobile top bar (below md) */}
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/5 bg-base-950/90 px-4 backdrop-blur-xl md:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={mobileOpen}
+          className="grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
+        >
+          <Menu size={20} />
+        </button>
+        <Logo showText />
+        <button
+          onClick={() => setCmdOpen(true)}
+          aria-label="Search stocks and pages"
+          className="grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
+        >
+          <Command size={18} />
+        </button>
+      </header>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              key="scrim"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-[60] bg-black/60 md:hidden"
+            />
+            <motion.aside
+              key="drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "tween", duration: 0.22 }}
+              className="fixed inset-y-0 left-0 z-[70] flex w-64 flex-col border-r border-white/5 bg-base-950 md:hidden"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+                <Logo showText />
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Close navigation"
+                  className="grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="border-b border-white/5 px-3 py-3"><MarketSwitch /></div>
+              <NavLinks expanded />
+              <div className="border-t border-white/5 px-2 py-3">{searchButton(true)}</div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop sidebar (md and up) */}
       <aside
         className={cn(
-          "sticky top-0 z-50 flex h-screen flex-col border-r border-white/5",
+          "sticky top-0 z-50 hidden h-screen flex-col border-r border-white/5 md:flex",
           "bg-base-950/60 backdrop-blur-2xl transition-all duration-300",
           expanded ? "w-56" : "w-16"
         )}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2 border-b border-white/5 pl-5 pr-3 py-4">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-crimson-grad shadow-glow">
-            <TrendingUp size={18} className="text-white" />
-          </span>
-          {expanded && (
-            <span className="overflow-hidden whitespace-nowrap text-lg font-bold leading-none">
-              <span className="text-white">Stock</span><span className="text-crimson-400" style={{ fontSize: "20px", position: "relative", top: "1px" }}>Intel</span>
-            </span>
-          )}
+        <div className="flex items-center gap-2 border-b border-white/5 py-4 pl-[14px] pr-3">
+          <Logo showText={expanded} />
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-2 py-4">
-          {NAV.map(({ href, icon: Icon, label }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
-                  active && !isStockPage
-                    ? "bg-crimson-600/15 text-crimson-300 shadow-[0_0_12px_rgba(225,29,58,0.15)]"
-                    : "text-ink-300 hover:bg-white/5 hover:text-ink-100"
-                )}
-              >
-                <Icon
-                  size={20}
-                  className={cn(
-                    "shrink-0 transition-colors",
-                    active && !isStockPage ? "text-crimson-400" : "text-ink-500 group-hover:text-ink-300"
-                  )}
-                />
-                {expanded && <span className="whitespace-nowrap">{label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+        {expanded && <div className="border-b border-white/5 px-3 py-3"><MarketSwitch /></div>}
 
-        {/* Search shortcut */}
+        <NavLinks expanded={expanded} />
+
+        <div className="border-t border-white/5 px-2 py-3">{searchButton(expanded)}</div>
+
         <div className="border-t border-white/5 px-2 py-3">
           <button
-            onClick={() => setCmdOpen(true)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
-              "text-ink-500 transition hover:bg-white/5 hover:text-ink-300"
-            )}
-          >
-            <Command size={18} className="shrink-0" />
-            {expanded && (
-              <>
-                <span className="flex-1 text-left">Search</span>
-                <kbd className="rounded bg-black/40 px-1.5 text-[10px] text-ink-500">⌘K</kbd>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Collapse toggle */}
-        <div className="border-t border-white/5 px-2 py-3">
-          <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={toggleExpanded}
+            aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
             className="flex w-full items-center justify-center rounded-xl px-3 py-2 text-ink-500 transition hover:bg-white/5 hover:text-ink-300"
           >
             {expanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}

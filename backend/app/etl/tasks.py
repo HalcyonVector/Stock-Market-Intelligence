@@ -59,6 +59,11 @@ async def _refresh_market() -> dict:
                 "ts": datetime.now(timezone.utc).isoformat(),
             })
     log.info("etl.refresh_market", symbols=len(syms), events=events)
+    try:
+        from app.services.alerts import check_all_users
+        await check_all_users()
+    except Exception as e:  # noqa: BLE001 -- alerts must never break the market refresh
+        log.warning("etl.alerts.failed", error=str(e))
     return {"symbols": len(syms), "events": events}
 
 

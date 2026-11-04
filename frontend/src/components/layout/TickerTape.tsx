@@ -1,12 +1,14 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { cn, changeColor, pct } from "@/lib/utils";
+import { useMarket } from "@/lib/market";
+import { cn, changeColor, pct, money } from "@/lib/utils";
 
 export function TickerTape() {
+  const market = useMarket();
   const { data } = useQuery({
-    queryKey: ["movers"],
-    queryFn: () => api.movers(),
+    queryKey: ["movers", market],
+    queryFn: () => api.movers(market),
   });
 
   const tickers = [
@@ -37,7 +39,7 @@ export function TickerTape() {
             className="inline-flex items-center gap-2 px-4 text-xs"
           >
             <span className="font-mono font-medium text-ink-100">{t.symbol}</span>
-            <span className="text-ink-500">${t.price?.toFixed(2)}</span>
+            <span className="text-ink-500">{money(t.price, t.symbol)}</span>
             <span className={cn("font-mono", changeColor(t.change_pct))}>
               {pct(t.change_pct)}
             </span>

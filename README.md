@@ -47,8 +47,9 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Retail Sentiment** — Reddit/Google Trends sentiment aggregation with trending tickers
 - **Earnings Calendar** — Upcoming earnings dates with estimate vs. actual tracking
 - **Economic Calendar** — Key economic events (CPI, Fed, GDP, jobs) with impact ratings
-- **Real-time Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), auto-check every 30s
-- **Watchlists** — Per-user watchlists with live quote enrichment via WebSocket
+- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every refresh cycle (~15 min) with one batched quote fetch; triggered alerts show as in-app toasts and optional browser notifications
+- **Watchlists** — Per-browser watchlists with live quote enrichment (no sign-up: each browser gets an anonymous, server-issued identity)
+- **Paper Trading** — Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L and order history
 
 ### Safe Investment Guide (India + US)
 
@@ -69,7 +70,10 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Dark-first Terminal Aesthetic** — Red/black gradient identity (Perplexity x Linear x Bloomberg)
 - **Glass-morphism Cards** — Backdrop blur, subtle borders, glow-on-hover across all components
 - **Scrolling Ticker Tape** — Live stock ticker marquee across the top
-- **Collapsible Sidebar** — 10-page navigation with active state indicators and glow effects
+- **Responsive Navigation** — Collapsible sidebar on desktop, slide-out drawer on mobile, US / India / Global market switch
+- **Customizable Dashboard** — Hide or show any card (hidden cards stop polling); "fetched X ago" freshness on every card
+- **Plain-English Tooltips** — Hover or tap metrics like P/E, RSI, Sharpe and Max Drawdown for a definition
+- **Shareable Links** — Compare and Portfolio setups live in the URL, so a link reproduces the same view
 
 ---
 
@@ -96,7 +100,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 | **Forecasting** | statsmodels | SARIMA seasonal time-series model (linear + Holt ensemble fallback) |
 | **Data Processing** | Pandas + Polars | Market data wrangling and indicator computation |
 | **Containerization** | Docker Compose | 6-service stack: postgres, redis, api, worker, beat, web |
-| **Auth** | JWT (HS256) | Token-based auth with demo user fallback |
+| **Identity** | JWT (HS256) | Anonymous per-browser identity minted by `POST /auth/anon` (no accounts) |
 
 ---
 
@@ -165,7 +169,7 @@ Deploy the full stack using free tiers of Vercel + Render + Neon + Upstash + Gro
 | Service | Role | Free Tier |
 |---------|------|-----------|
 | **Vercel** | Next.js frontend | 100 GB BW |
-| **Render** | FastAPI + Celery (Docker) | 750 instance-hrs/mo |
+| **Render** | FastAPI (Docker, in-process refresh loop) | 750 instance-hrs/mo |
 | **Neon** | Managed Postgres | 0.5 GB, scale-to-zero |
 | **Upstash** | Managed Redis (TLS) | 256 MB, 500K cmds/mo |
 | **Groq** | LLM (llama-3.3-70b) | 30 RPM, 1K RPD |
@@ -445,7 +449,7 @@ stock-discovery-intelligence/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/auth/token` | Get JWT token |
+| POST | `/api/v1/auth/anon` | Get an anonymous per-browser JWT |
 | GET | `/api/v1/auth/me` | Current user info |
 | GET/POST/DELETE | `/api/v1/watchlists` | Watchlist CRUD |
 | POST/DELETE | `/api/v1/watchlists/{id}/items` | Add/remove symbols |

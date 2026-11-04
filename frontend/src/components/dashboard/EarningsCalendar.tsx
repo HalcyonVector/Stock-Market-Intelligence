@@ -8,7 +8,7 @@ import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
 export function EarningsCalendar() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ["earnings"],
     queryFn: () => api.earnings(),
     staleTime: 30 * 60 * 1000,
@@ -25,7 +25,7 @@ export function EarningsCalendar() {
   };
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Upcoming Earnings"
       subtitle="Next reporting dates"

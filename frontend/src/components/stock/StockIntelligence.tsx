@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, TrendingUp, TrendingDown } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { PriceChart } from "./PriceChart";
 import { WhyMovingCard } from "./WhyMovingCard";
@@ -10,16 +11,28 @@ import { TechnicalIndicators } from "./TechnicalIndicators";
 import { FundamentalsCard } from "./FundamentalsCard";
 import { DeepResearch } from "./DeepResearch";
 import { PriceForecast } from "./PriceForecast";
-import { pct, changeColor, cn } from "@/lib/utils";
+import { StockActions } from "./StockActions";
+import { Term } from "@/components/ui/Term";
+import { pct, changeColor, cn, money, currencySymbol } from "@/lib/utils";
 
 export function StockIntelligence({ symbol }: { symbol: string }) {
+  const market = useMarket();
   const { data } = useQuery({ queryKey: ["stock", symbol], queryFn: () => api.stock(symbol) });
-  const { data: movers } = useQuery({ queryKey: ["movers"], queryFn: () => api.movers() });
+  const { data: movers } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
   const q = data?.quote;
   const p = data?.profile;
 
-  const allStocks = [...(movers?.gainers ?? []), ...(movers?.losers ?? [])];
-  const peers = allStocks.filter((s: any) => s.symbol !== symbol).slice(0, 6);
+  // Related stocks: same sector from the (edge-cached) heatmap snapshot when we
+  // can find one; otherwise fall back to today's movers.
+  const { data: heatmap } = useQuery({ queryKey: ["heatmap"], queryFn: api.heatmap, staleTime: 30 * 60 * 1000 });
+  const sectors: Record<string, any[]> = heatmap?.sectors ?? {};
+  const sectorName =
+    Object.keys(sectors).find((k) => sectors[k].some((s: any) => s.symbol === symbol)) ??
+    Object.keys(sectors).find((k) => p?.sector && k.toLowerCase() === String(p.sector).toLowerCase());
+  const sectorPeers = sectorName ? sectors[sectorName].filter((s: any) => s.symbol !== symbol) : [];
+  const moverPeers = [...(movers?.gainers ?? []), ...(movers?.losers ?? [])].filter((s: any) => s.symbol !== symbol);
+  const peers = (sectorPeers.length ? sectorPeers : moverPeers).slice(0, 6);
+  const peersTitle = sectorPeers.length ? `Related · ${sectorName}` : "Today's Movers";
 
   const volRatio = q?.volume && q?.avg_volume ? (q.volume / q.avg_volume).toFixed(2) : null;
 
@@ -44,7 +57,8 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-ink-500">{p?.name} · {p?.sector} · {p?.industry}</p>
+          <p className="mt-1 text-sm text-ink-500">{[p?.name, p?.sector, p?.industry].filter(Boolean).join(" · ")}</p>
+          <div className="mt-3"><StockActions symbol={symbol} /></div>
         </div>
         {q && (
           <div className="text-right">
@@ -69,7 +83,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
             <Row k="Market" v={p?.market} />
             <Row k="Sector" v={p?.sector} />
             <Row k="Industry" v={p?.industry} />
-            <Row k="Market Cap" v={q?.market_cap ? `$${(Number(q.market_cap) / 1e9).toFixed(1)}B` : "—"} />
+            <Row k="Market Cap" v={q?.market_cap ? `${currencySymbol(symbol)}${(Number(q.market_cap) / 1e9).toFixed(1)}B` : "—"} />
             <Row k="Volume" v={q?.volume?.toLocaleString()} />
             <Row k="Avg Volume" v={q?.avg_volume?.toLocaleString()} />
           </dl>
@@ -107,7 +121,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
         <DeepResearch symbol={symbol} />
 
         {/* Peers */}
-        <BentoCard span="col-span-12" title="Market Peers">
+        <BentoCard span="col-span-12" title={peersTitle}>
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
             {peers.map((peer: any) => (
               <Link key={peer.symbol} href={`/stock/${peer.symbol}`}
@@ -116,7 +130,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
                   <span className="font-mono text-sm font-medium">{peer.symbol}</span>
                   <span className={cn("text-xs font-mono", changeColor(peer.change_pct))}>{pct(peer.change_pct)}</span>
                 </div>
-                <p className="mt-1 text-xs text-ink-500">${peer.price?.toFixed(2)}</p>
+                <p className="mt-1 text-xs text-ink-500">{money(peer.price, peer.symbol)}</p>
               </Link>
             ))}
           </div>
@@ -129,7 +143,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
 function Row({ k, v }: { k: string; v: any }) {
   return (
     <div className="flex justify-between border-b border-white/[0.03] pb-1">
-      <dt className="text-ink-500">{k}</dt>
+      <dt className="text-ink-500"><Term>{k}</Term></dt>
       <dd className="font-mono text-ink-100">{v ?? "—"}</dd>
     </div>
   );

@@ -15,7 +15,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routes import (
-    alerts, auth, backtest, discovery, health, insights, invest, market,
+    alerts, auth, backtest, discovery, health, insights, invest, market, paper,
     portfolio, realtime, screener, sectors, sentiment, stocks, watchlists,
 )
 from app.core.config import settings
@@ -162,6 +162,12 @@ async def _periodic_market_refresh() -> None:
             await market_svc.compute_movers(settings.DEFAULT_MARKET)
         except Exception as e:
             log.warning("periodic.refresh.failed", error=str(e))
+        try:
+            # Fire any price alerts that crossed their threshold.
+            from app.services.alerts import check_all_users
+            await check_all_users()
+        except Exception as e:
+            log.warning("periodic.alerts.failed", error=str(e))
         await asyncio.sleep(interval)
 
 
@@ -262,7 +268,7 @@ app.add_middleware(
 )
 
 api = settings.API_V1_PREFIX
-for r in (market, discovery, stocks, sentiment, sectors, insights, portfolio, auth, watchlists, screener, backtest, alerts, invest):
+for r in (market, discovery, stocks, sentiment, sectors, insights, portfolio, auth, watchlists, screener, backtest, alerts, invest, paper):
     app.include_router(r.router, prefix=api)
 app.include_router(realtime.router, prefix=api)
 app.include_router(health.router)

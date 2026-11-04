@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
+import { Term } from "@/components/ui/Term";
 
 function fmt(v: any, type: "pct" | "usd" | "num" | "ratio" = "num"): string {
   if (v === null || v === undefined) return "—";
@@ -21,7 +22,7 @@ function fmt(v: any, type: "pct" | "usd" | "num" | "ratio" = "num"): string {
 function Row({ k, v, highlight }: { k: string; v: string; highlight?: boolean }) {
   return (
     <div className="flex justify-between border-b border-white/[0.03] py-1">
-      <span className="text-ink-500">{k}</span>
+      <span className="text-ink-500"><Term>{k}</Term></span>
       <span className={cn("font-mono", highlight ? "text-emerald-400" : "text-ink-100")}>{v}</span>
     </div>
   );

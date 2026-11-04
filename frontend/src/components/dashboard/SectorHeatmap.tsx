@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Layers } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -21,11 +22,12 @@ function formatFlow(value: number): string {
 }
 
 export function SectorHeatmap() {
-  const { data } = useQuery({ queryKey: ["sectors"], queryFn: () => api.sectors() });
+  const market = useMarket();
+  const { data, dataUpdatedAt } = useQuery({ queryKey: ["sectors", market], queryFn: () => api.sectors(market) });
   const sectors = (data ?? []).slice(0, 9);
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Sector Rotation"
       subtitle="Momentum & net institutional flow"
