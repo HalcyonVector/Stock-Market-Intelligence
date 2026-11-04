@@ -143,6 +143,39 @@ CREATE TABLE IF NOT EXISTS watchlist_items (
     CONSTRAINT uq_wl_symbol UNIQUE (watchlist_id, symbol)
 );
 
+-- --- Paper trading (virtual money; one account per anonymous browser) -------
+-- Separate USD / INR cash so US and NSE stocks never need an FX conversion.
+-- Rows are written only when a user places an order, so Neon can still
+-- scale to zero between visits.
+CREATE TABLE IF NOT EXISTS paper_accounts (
+    id          SERIAL PRIMARY KEY,
+    user_id     VARCHAR(64) NOT NULL UNIQUE,
+    cash_usd    DOUBLE PRECISION NOT NULL,
+    cash_inr    DOUBLE PRECISION NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paper_positions (
+    id          SERIAL PRIMARY KEY,
+    account_id  INTEGER NOT NULL REFERENCES paper_accounts(id) ON DELETE CASCADE,
+    symbol      VARCHAR(32) NOT NULL,
+    quantity    DOUBLE PRECISION NOT NULL,
+    avg_cost    DOUBLE PRECISION NOT NULL,
+    CONSTRAINT uq_paper_pos UNIQUE (account_id, symbol)
+);
+
+CREATE TABLE IF NOT EXISTS paper_trades (
+    id            BIGSERIAL PRIMARY KEY,
+    account_id    INTEGER NOT NULL REFERENCES paper_accounts(id) ON DELETE CASCADE,
+    symbol        VARCHAR(32) NOT NULL,
+    side          VARCHAR(4) NOT NULL,
+    quantity      DOUBLE PRECISION NOT NULL,
+    price         DOUBLE PRECISION NOT NULL,
+    realized_pnl  DOUBLE PRECISION DEFAULT 0,
+    ts            TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_paper_trades_account ON paper_trades (account_id);
+
 -- ============================================================================
 -- Optional: convert time-series tables to TimescaleDB hypertables
 --   SELECT create_hypertable('price_snapshots','ts');

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +23,10 @@ function confidenceColor(score: number): string {
 }
 
 export function TopAnalystsPicks() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["discovery"],
-    queryFn: () => api.discovery(),
+  const market = useMarket();
+  const { data, isLoading, dataUpdatedAt } = useQuery({
+    queryKey: ["discovery", market],
+    queryFn: () => api.discovery(market),
   });
 
   // The discovery feed is sorted by opportunity score (desc). Taking the top 12
@@ -39,7 +41,7 @@ export function TopAnalystsPicks() {
       : all;
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Top Analyst Picks"
       subtitle="AI-scored recommendations"

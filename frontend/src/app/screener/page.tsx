@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Filter, Play, Loader2, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
-import { cn, pct, changeColor } from "@/lib/utils";
+import { cn, pct, changeColor, money } from "@/lib/utils";
 
 interface Filters {
   change_pct_min: string;
@@ -193,7 +193,7 @@ export default function ScreenerPage() {
                         </Link>
                       </td>
                       <td className="py-2 text-ink-300 max-w-[150px] truncate">{r.name ?? "—"}</td>
-                      <td className="py-2 text-right font-mono text-ink-100">${r.price?.toFixed(2)}</td>
+                      <td className="py-2 text-right font-mono text-ink-100">{money(r.price, r.symbol)}</td>
                       <td className={cn("py-2 text-right font-mono", changeColor(r.change_pct))}>
                         {pct(r.change_pct)}
                       </td>

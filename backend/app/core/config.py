@@ -87,7 +87,8 @@ class Settings(BaseSettings):
     # --- Auth ---
     AUTH_SECRET: str = ""
     AUTH_ALGORITHM: str = "HS256"
-    AUTH_TOKEN_TTL_MIN: int = 60 * 24 * 7
+    # Anonymous browser identities: long-lived so a watchlist survives months.
+    AUTH_TOKEN_TTL_MIN: int = 60 * 24 * 365
     AUTO_CREATE_TABLES: bool = True
 
     # --- AI providers ---

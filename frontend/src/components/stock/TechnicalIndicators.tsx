@@ -4,6 +4,7 @@ import { Area, AreaChart, Bar, BarChart, Line, LineChart, ComposedChart, Respons
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
+import { Term } from "@/components/ui/Term";
 
 function SignalBadge({ label, value, signal }: { label: string; value: string; signal: string }) {
   const color = signal === "bullish" || signal === "neutral" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
@@ -13,7 +14,7 @@ function SignalBadge({ label, value, signal }: { label: string; value: string; s
 
   return (
     <div className={cn("rounded-lg border px-3 py-2 text-center", color)}>
-      <p className="text-[9px] uppercase tracking-wider text-ink-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-ink-500"><Term>{label}</Term></p>
       <p className="font-mono text-lg font-bold">{value}</p>
       <p className="text-[10px] capitalize">{signal}</p>
     </div>

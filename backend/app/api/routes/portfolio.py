@@ -1,8 +1,9 @@
 import json
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
+from app.api.deps import get_current_user
 from app.core.redis import get_redis
 from app.services import portfolio as svc
 from app.services.rebalance import analyze_drift
@@ -26,7 +27,7 @@ async def analyze(
 
 
 @router.get("/saved")
-async def list_saved(user_id: str = "demo"):
+async def list_saved(user_id: str = Depends(get_current_user)):
     """List saved portfolios for a user."""
     r = get_redis()
     key = f"portfolios:{user_id}"
@@ -38,7 +39,7 @@ async def list_saved(user_id: str = "demo"):
 
 
 @router.post("/saved")
-async def save_portfolio(body: SavedPortfolio, user_id: str = "demo"):
+async def save_portfolio(body: SavedPortfolio, user_id: str = Depends(get_current_user)):
     """Save a named portfolio."""
     r = get_redis()
     key = f"portfolios:{user_id}"
@@ -66,7 +67,7 @@ async def save_portfolio(body: SavedPortfolio, user_id: str = "demo"):
 
 
 @router.delete("/saved/{name}")
-async def delete_saved(name: str, user_id: str = "demo"):
+async def delete_saved(name: str, user_id: str = Depends(get_current_user)):
     """Delete a saved portfolio."""
     r = get_redis()
     key = f"portfolios:{user_id}"

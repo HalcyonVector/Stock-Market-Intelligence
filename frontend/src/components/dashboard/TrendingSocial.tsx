@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Hash, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +21,10 @@ function sentimentEmoji(attention: number, sentiment: number): string {
 }
 
 export function TrendingSocial() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["trending"],
-    queryFn: () => api.trending(),
+  const market = useMarket();
+  const { data, isLoading, dataUpdatedAt } = useQuery({
+    queryKey: ["trending", market],
+    queryFn: () => api.trending(market),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -31,7 +33,7 @@ export function TrendingSocial() {
     .slice(0, 10);
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Trending on Social"
       subtitle="Reddit & social buzz"

@@ -144,3 +144,46 @@ class WatchlistItem(Base):
     symbol: Mapped[str] = mapped_column(String(32))
     watchlist: Mapped[Watchlist] = relationship(back_populates="items")
     __table_args__ = (UniqueConstraint("watchlist_id", "symbol", name="uq_wl_symbol"),)
+
+
+# --- Paper trading (virtual money, per anonymous browser identity) ---------
+# Two cash balances so US ($) and NSE (₹) stocks never need an FX conversion.
+class PaperAccount(Base):
+    __tablename__ = "paper_accounts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    cash_usd: Mapped[float] = mapped_column(Float)
+    cash_inr: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now())
+    positions: Mapped[list["PaperPosition"]] = relationship(
+        back_populates="account", cascade="all, delete-orphan")
+    trades: Mapped[list["PaperTrade"]] = relationship(
+        back_populates="account", cascade="all, delete-orphan",
+        order_by="PaperTrade.id.desc()")
+
+
+class PaperPosition(Base):
+    __tablename__ = "paper_positions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("paper_accounts.id", ondelete="CASCADE"))
+    symbol: Mapped[str] = mapped_column(String(32))
+    quantity: Mapped[float] = mapped_column(Float)
+    avg_cost: Mapped[float] = mapped_column(Float)
+    account: Mapped[PaperAccount] = relationship(back_populates="positions")
+    __table_args__ = (UniqueConstraint("account_id", "symbol", name="uq_paper_pos"),)
+
+
+class PaperTrade(Base):
+    __tablename__ = "paper_trades"
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("paper_accounts.id", ondelete="CASCADE"), index=True)
+    symbol: Mapped[str] = mapped_column(String(32))
+    side: Mapped[str] = mapped_column(String(4))                       # buy/sell
+    quantity: Mapped[float] = mapped_column(Float)
+    price: Mapped[float] = mapped_column(Float)
+    realized_pnl: Mapped[float] = mapped_column(Float, default=0.0)    # sells only
+    ts: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now())
+    account: Mapped[PaperAccount] = relationship(back_populates="trades")

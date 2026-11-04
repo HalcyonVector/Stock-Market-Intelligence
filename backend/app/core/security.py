@@ -1,7 +1,7 @@
 """
 Auth primitives — HS256 JWT issue/verify.
 
-MVP posture: in production set AUTH_SECRET and issue tokens via POST /auth/token.
+In production set AUTH_SECRET; browsers get anonymous tokens via POST /auth/anon.
 In dev (AUTH_SECRET blank) the dependency falls back to an X-User-Id header or a
 "demo" user so the frontend works with zero setup. Swap the token endpoint for
 Supabase Auth / magic links later — the get_current_user seam stays identical.

@@ -215,7 +215,9 @@ def test_rotation_cache_miss_is_non_blocking(monkeypatch):
             async def get(self, *a, **k):
                 return None
 
-        monkeypatch.setattr(sector, "get_redis", lambda: _R())
+        # Reads now go through the durable snapshot layer, not sector.get_redis.
+        from app.core import snapshot
+        monkeypatch.setattr(snapshot, "get_redis", lambda: _R())
         result = await sector.rotation("GLOBAL")
         # Give the scheduled background task a tick to run.
         await asyncio.sleep(0)

@@ -3,12 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 
 export function MarketBriefing() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["briefing"],
-    queryFn: () => api.briefing(),
+  const market = useMarket();
+  const { data, isLoading, dataUpdatedAt } = useQuery({
+    queryKey: ["briefing", market],
+    queryFn: () => api.briefing(market),
     // When the briefing is still pending (placeholder), poll faster (5s) so
     // the card updates as soon as the AI finishes generating.
     refetchInterval: (query) =>
@@ -20,8 +22,8 @@ export function MarketBriefing() {
     : null;
 
   return (
-    <BentoCard
-      span="col-span-12 lg:col-span-6"
+    <BentoCard updatedAt={dataUpdatedAt}
+      span="col-span-12 lg:col-span-8"
       title="AI Market Briefing"
       subtitle="Synthesised from movers, sectors and discovery scores"
       action={

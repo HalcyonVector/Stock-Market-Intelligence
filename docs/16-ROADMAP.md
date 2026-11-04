@@ -17,7 +17,7 @@
 
 ## Immediate next steps
 1. Persist snapshots/scores to Postgres in ETL tasks (currently cache+publish).
-2. Frontend watchlist UI + login (consume `/auth/token` + `/watchlists`).
+2. Frontend watchlist UI (anonymous per-browser identity via `/auth/anon` + `/watchlists`).
 3. Price alerts on the live event stream.
 4. Playwright E2E + CI gate.
 5. Hover intelligence cards (expand ScorePill → factor contributions).

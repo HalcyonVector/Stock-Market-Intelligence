@@ -53,7 +53,7 @@ Event envelope: `{ "channel": "events:market", "data": { "type": "unusual_activi
 ## Auth (Phase 3)
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/auth/token` | Issue a JWT for a `user_id` (dev/passwordless; swap for Supabase/OAuth in prod) |
+| POST | `/auth/anon` | Mint a random anonymous user id + JWT (one per browser; no accounts) |
 | GET | `/auth/me` | Return the authenticated user |
 
 **Auth model:** endpoints accept `Authorization: Bearer <JWT>`. If `AUTH_SECRET`

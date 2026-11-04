@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Newspaper, Rss, TrendingUp, MessageCircle, ExternalLink, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,8 @@ function NewsFeed() {
 }
 
 function SentimentRadar() {
-  const { data, isLoading } = useQuery({ queryKey: ["trending"], queryFn: () => api.trending() });
+  const market = useMarket();
+  const { data, isLoading } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
   const [page, setPage] = useState(0);
   const perPage = 5;
   const all = data ?? [];
@@ -148,7 +150,8 @@ function SentimentRadar() {
 }
 
 function DiscoveryBuckets() {
-  const { data, isLoading } = useQuery({ queryKey: ["buckets"], queryFn: () => api.buckets() });
+  const market = useMarket();
+  const { data, isLoading } = useQuery({ queryKey: ["buckets", market], queryFn: () => api.buckets(market) });
   return (
     <BentoCard span="col-span-12" title="Discovery Buckets" subtitle="Stocks grouped by opportunity type">
       {isLoading ? (

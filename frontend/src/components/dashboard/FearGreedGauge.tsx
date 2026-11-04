@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Brain } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { useEffect, useState } from "react";
 
@@ -33,8 +34,9 @@ function AnimatedScore({ value }: { value: number }) {
 }
 
 export function FearGreedGauge() {
-  const { data: movers } = useQuery({ queryKey: ["movers"], queryFn: () => api.movers() });
-  const { data: sentiment } = useQuery({ queryKey: ["trending"], queryFn: () => api.trending() });
+  const market = useMarket();
+  const { data: movers, dataUpdatedAt } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
+  const { data: sentiment } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
 
   let score = 50;
   let breadthScore = 50;
@@ -80,7 +82,7 @@ export function FearGreedGauge() {
   ];
 
   return (
-    <BentoCard span="col-span-6 lg:col-span-3" title="Fear & Greed">
+    <BentoCard updatedAt={dataUpdatedAt} span="col-span-12 lg:col-span-4" title="Fear & Greed">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

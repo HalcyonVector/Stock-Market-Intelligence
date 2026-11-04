@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { pct, changeColor, cn } from "@/lib/utils";
 
@@ -59,11 +60,12 @@ function OpportunityRow({ r, rank }: { r: any; rank: number }) {
 }
 
 export function OpportunityRadar() {
-  const { data } = useQuery({ queryKey: ["discovery"], queryFn: () => api.discovery() });
+  const market = useMarket();
+  const { data, dataUpdatedAt } = useQuery({ queryKey: ["discovery", market], queryFn: () => api.discovery(market) });
   const rows = (data ?? []).slice(0, 8);
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Opportunity Radar"
       subtitle="Ranked by composite score"

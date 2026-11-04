@@ -33,7 +33,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export function EconomicCalendar() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ["economicCalendar"],
     queryFn: () => api.economicCalendar(),
     staleTime: 60 * 60 * 1000,
@@ -43,7 +43,7 @@ export function EconomicCalendar() {
   const events = data?.events ?? [];
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Economic Calendar"
       subtitle="Key macro events ahead"

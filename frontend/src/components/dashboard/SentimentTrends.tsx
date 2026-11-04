@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -14,12 +15,13 @@ function sentimentBadge(score: number) {
 }
 
 export function SentimentTrends() {
-  const { data } = useQuery({ queryKey: ["trending"], queryFn: () => api.trending() });
+  const market = useMarket();
+  const { data, dataUpdatedAt } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
   const sorted = [...(data ?? [])].sort((a: any, b: any) => (b.mention_volume ?? 0) - (a.mention_volume ?? 0));
   const maxVolume = sorted.length > 0 ? Math.max(...sorted.map((r: any) => r.mention_volume ?? 0)) : 1;
 
   return (
-    <BentoCard
+    <BentoCard updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Retail Sentiment"
       subtitle="Attention & tone shifts"

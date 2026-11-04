@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Briefcase, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
@@ -13,6 +13,7 @@ import { BacktestChart } from "@/components/portfolio/BacktestChart";
 import { CorrelationHeatmap } from "@/components/portfolio/CorrelationHeatmap";
 import { AssetTable } from "@/components/portfolio/AssetTable";
 import { Rebalancer } from "@/components/portfolio/Rebalancer";
+import { ShareButton } from "@/components/ui/ShareButton";
 
 const DEFAULT_SYMBOLS = [
   "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "JPM",
@@ -22,6 +23,20 @@ const DEFAULT_SYMBOLS = [
 export default function PortfolioPage() {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>(DEFAULT_SYMBOLS);
   const [analyzeSymbols, setAnalyzeSymbols] = useState<string[] | null>(null);
+  const [builderKey, setBuilderKey] = useState(0);
+
+  // Shared links (?s=AAPL,MSFT,...) open straight into that analysis.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("s");
+    const syms = Array.from(new Set((raw ?? "").split(",").map((x) => x.trim().toUpperCase())))
+      .filter((x) => /^[A-Z0-9.^=&-]{1,20}$/.test(x))
+      .slice(0, 30);
+    if (syms.length >= 2) {
+      setSelectedSymbols(syms);
+      setAnalyzeSymbols(syms);
+      setBuilderKey((k) => k + 1); // re-seed the builder with the shared symbols
+    }
+  }, []);
 
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["portfolio", analyzeSymbols],
@@ -34,6 +49,9 @@ export default function PortfolioPage() {
   const handleAnalyze = (syms: string[]) => {
     setSelectedSymbols(syms);
     setAnalyzeSymbols(syms);
+    const url = new URL(window.location.href);
+    url.searchParams.set("s", syms.join(","));
+    window.history.replaceState(window.history.state, "", url.toString());
   };
 
   const strategyColors: Record<string, string> = {};
@@ -45,17 +63,21 @@ export default function PortfolioPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <Briefcase size={24} className="text-crimson-400" /> Portfolio Optimizer
-        </h1>
-        <p className="text-sm text-ink-500">
-          Mean-variance optimization · scipy SLSQP · fat-tail Monte Carlo · stress testing
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <Briefcase size={24} className="text-crimson-400" /> Portfolio Optimizer
+          </h1>
+          <p className="text-sm text-ink-500">
+            Mean-variance optimization · scipy SLSQP · fat-tail Monte Carlo · stress testing
+          </p>
+        </div>
+        {analyzeSymbols && <ShareButton />}
       </div>
 
       {/* Interactive builder */}
       <PortfolioBuilder
+        key={builderKey}
         onAnalyze={handleAnalyze}
         isAnalyzing={isLoading || isFetching}
         currentSymbols={selectedSymbols}

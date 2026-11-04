@@ -1,22 +1,79 @@
 // Thin API client. All requests go through Next.js rewrites -> FastAPI.
 const BASE = "/api/v1";
 
-// In-memory token (set via login()). No localStorage in MVP.
+// Anonymous per-browser identity. There are no accounts: the backend mints a
+// random user id + signed token on first use (POST /auth/anon) and we keep it
+// in localStorage so watchlists/alerts/paper trades survive reloads.
+const TOKEN_KEY = "si_anon_token";
 let TOKEN: string | null = null;
-export function setToken(t: string | null) { TOKEN = t; }
+let tokenPromise: Promise<string> | null = null;
 
-function authHeaders(): Record<string, string> {
-  return TOKEN ? { Authorization: `Bearer ${TOKEN}` } : { "X-User-Id": "demo" };
+function readStoredToken(): string | null {
+  if (TOKEN) return TOKEN;
+  try { TOKEN = window.localStorage.getItem(TOKEN_KEY); } catch { /* private mode */ }
+  return TOKEN;
 }
 
-async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    // "default" lets the browser use its HTTP cache when the server sends
-    // Cache-Control headers; avoids forcing a network round-trip every time.
-    headers: { "Content-Type": "application/json", ...authHeaders(), ...(init.headers || {}) },
-    ...init,
-  });
-  if (!res.ok) throw new Error(`API ${path} -> ${res.status}`);
+function storeToken(t: string | null) {
+  TOKEN = t;
+  try {
+    if (t) window.localStorage.setItem(TOKEN_KEY, t);
+    else window.localStorage.removeItem(TOKEN_KEY);
+  } catch { /* private mode: token lives for this tab only */ }
+}
+
+/** True once this browser has an identity (i.e. has used a personal feature). */
+export function hasIdentity(): boolean {
+  return typeof window !== "undefined" && !!readStoredToken();
+}
+
+async function ensureToken(): Promise<string> {
+  const existing = readStoredToken();
+  if (existing) return existing;
+  if (!tokenPromise) {
+    tokenPromise = fetch(`${BASE}/auth/anon`, { method: "POST" })
+      .then(async (res) => {
+        if (!res.ok) throw new ApiError("/auth/anon", res.status);
+        const { access_token } = await res.json();
+        storeToken(access_token);
+        return access_token as string;
+      })
+      .finally(() => { tokenPromise = null; });
+  }
+  return tokenPromise;
+}
+
+/** Thrown for non-2xx responses so callers can branch on status. */
+export class ApiError extends Error {
+  constructor(public path: string, public status: number, public detail?: string) {
+    super(detail || `API ${path} -> ${status}`);
+  }
+}
+
+async function req<T>(path: string, init: RequestInit = {}, authed = false): Promise<T> {
+  // Only user-scoped calls carry a token. Public market-data requests stay
+  // header-free so Vercel's edge cache can share them across visitors.
+  const doFetch = async () => {
+    const auth: Record<string, string> = authed ? { Authorization: `Bearer ${await ensureToken()}` } : {};
+    return fetch(`${BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...auth, ...(init.headers || {}) },
+    });
+  };
+  let res = await doFetch();
+  if (authed && res.status === 401) {
+    // Token expired or the server's secret rotated: get a fresh identity once.
+    storeToken(null);
+    res = await doFetch();
+  }
+  if (!res.ok) {
+    let detail: string | undefined;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch { /* non-JSON error body */ }
+    throw new ApiError(path, res.status, detail);
+  }
   if (res.status === 204) return undefined as T;
   const json = await res.json();
   return (json.data ?? json) as T;
@@ -25,6 +82,12 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 async function get<T>(path: string): Promise<T> {
   return req<T>(path);
 }
+
+const user = {
+  get: <T>(path: string) => req<T>(path, {}, true),
+  send: <T>(path: string, method: string, body?: unknown) =>
+    req<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) }, true),
+};
 
 export const api = {
   movers: (market = "GLOBAL") => get<any>(`/market/movers?market=${market}`),
@@ -62,11 +125,11 @@ export const api = {
   },
   portfolio: (symbols?: string[]) =>
     get<any>(`/portfolio/analyze${symbols?.length ? `?symbols=${symbols.join(",")}` : ""}`),
-  savedPortfolios: () => get<any[]>("/portfolio/saved"),
+  savedPortfolios: () => user.get<any[]>("/portfolio/saved"),
   savePortfolio: (name: string, symbols: string[], weights?: Record<string, number>) =>
-    req<any>("/portfolio/saved", { method: "POST", body: JSON.stringify({ name, symbols, weights }) }),
+    user.send<any>("/portfolio/saved", "POST", { name, symbols, weights }),
   deletePortfolio: (name: string) =>
-    req<void>(`/portfolio/saved/${encodeURIComponent(name)}`, { method: "DELETE" }),
+    user.send<void>(`/portfolio/saved/${encodeURIComponent(name)}`, "DELETE"),
   rebalance: (symbols: string[], targetWeights: Record<string, number>, portfolioValue: number = 100000) =>
     req<any>("/portfolio/rebalance", {
       method: "POST",
@@ -92,32 +155,30 @@ export const api = {
     }),
 
   // --- Alerts ---
-  alerts: () => get<any[]>("/alerts"),
+  alerts: () => user.get<any[]>("/alerts"),
   createAlert: (symbol: string, condition: string, threshold: number, note?: string) =>
-    req<any>("/alerts", { method: "POST", body: JSON.stringify({ symbol, condition, threshold, note }) }),
-  deleteAlert: (id: string) => req<void>(`/alerts/${id}`, { method: "DELETE" }),
-  checkAlerts: () => get<any[]>("/alerts/check"),
+    user.send<any>("/alerts", "POST", { symbol, condition, threshold, note }),
+  deleteAlert: (id: string) => user.send<void>(`/alerts/${id}`, "DELETE"),
+  checkAlerts: () => user.get<any[]>("/alerts/check"),
 
-  // --- Auth ---
-  login: async (userId: string) => {
-    const r = await req<{ access_token: string }>("/auth/token", {
-      method: "POST", body: JSON.stringify({ user_id: userId }),
-    });
-    setToken(r.access_token);
-    return r;
-  },
-  me: () => get<any>("/auth/me"),
+  // --- Identity ---
+  me: () => user.get<any>("/auth/me"),
 
   // --- Watchlists ---
-  watchlists: () => get<any[]>("/watchlists"),
-  createWatchlist: (name: string) =>
-    req<any>("/watchlists", { method: "POST", body: JSON.stringify({ name }) }),
-  deleteWatchlist: (id: number) => req<void>(`/watchlists/${id}`, { method: "DELETE" }),
-  getWatchlist: (id: number) => get<any>(`/watchlists/${id}`),
+  watchlists: () => user.get<any[]>("/watchlists"),
+  createWatchlist: (name: string) => user.send<any>("/watchlists", "POST", { name }),
+  deleteWatchlist: (id: number) => user.send<void>(`/watchlists/${id}`, "DELETE"),
+  getWatchlist: (id: number) => user.get<any>(`/watchlists/${id}`),
   addToWatchlist: (id: number, symbol: string) =>
-    req<any>(`/watchlists/${id}/items`, { method: "POST", body: JSON.stringify({ symbol }) }),
+    user.send<any>(`/watchlists/${id}/items`, "POST", { symbol }),
   removeFromWatchlist: (id: number, symbol: string) =>
-    req<any>(`/watchlists/${id}/items/${symbol}`, { method: "DELETE" }),
+    user.send<any>(`/watchlists/${id}/items/${symbol}`, "DELETE"),
+
+  // --- Paper trading ---
+  paperAccount: () => user.get<any>("/paper"),
+  paperTrade: (symbol: string, side: "buy" | "sell", quantity: number) =>
+    user.send<any>("/paper/orders", "POST", { symbol, side, quantity }),
+  paperReset: () => user.send<any>("/paper/reset", "POST"),
 };
 
 // Vercel rewrites only proxy HTTP, not WebSocket.
