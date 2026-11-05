@@ -108,6 +108,7 @@ In the Render dashboard under **Environment**, add these:
 | `AUTO_CREATE_TABLES` | `true` |
 | `FINNHUB_API_KEY` | Your Finnhub key (optional) |
 | `ALPHAVANTAGE_API_KEY` | Your Alpha Vantage key (optional) |
+| `TWELVEDATA_API_KEY` | Free key from https://twelvedata.com (US price history backup; 800 credits/day) |
 
 ### 4c. Prevent Sleep + Keep Data Warm (Critical)
 
@@ -125,6 +126,18 @@ Render free services sleep after 15 minutes of inactivity. To keep the in-proces
 > **Why 10 minutes, not 5?** Render sleeps after 15 min idle, so 10-min pings still comfortably prevent that. Every ping is a handful of Redis commands per snapshot; halving the frequency roughly halves that load. Upstash's free tier caps at 500K commands/month -- combined with the frontend's own polling (each open dashboard tab re-queries independently), 5-min pings leave much less headroom. If you already have a 5-min job configured, just widen the interval.
 
 **Alternative pingers:** UptimeRobot (free, 5-min intervals — 10 if supported), Kuma (self-hosted).
+
+---
+
+## Step 4d — Daily price history (GitHub Actions)
+
+Yahoo Finance blocks Render's IPs, so daily price history (charts, technicals, forecasts, scores) is fetched by a free scheduled workflow instead: `.github/workflows/sync-history.yml` runs `backend/scripts/sync_history.py` every weekday at 22:30 UTC. It fetches ~400 days of bars for all tracked US **and** NSE stocks and stores them in Upstash Redis (~160 commands/day, ~3 MB).
+
+1. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**
+2. Name `REDIS_URL`, value: the same `rediss://.../0` URL you set on Render.
+3. **Actions → Sync price history → Run workflow** once to fill it immediately.
+
+If a symbol is missing from the snapshot, US stocks fall back to Twelve Data (`TWELVEDATA_API_KEY`). GitHub pauses scheduled workflows in public repos after 60 days without commits; re-enable it from the Actions tab if history goes stale (`/health` → `market.last_live_source`).
 
 ---
 

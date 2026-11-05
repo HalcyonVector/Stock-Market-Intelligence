@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # --- Optional free-tier API keys ---
     FINNHUB_API_KEY: str = ""
     ALPHAVANTAGE_API_KEY: str = ""
+    # Free plan (800 credits/day): used only for US daily price history.
+    TWELVEDATA_API_KEY: str = ""
+    STOOQ_ENABLED: bool = False  # Stooq now blocks scripted downloads
     REDDIT_CLIENT_ID: str = ""
     REDDIT_CLIENT_SECRET: str = ""
     REDDIT_USER_AGENT: str = "sdi-research/0.1"
