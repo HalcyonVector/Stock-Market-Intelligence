@@ -5,6 +5,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
+from app.adapters.ai import ai_cache_ttl
 from app.adapters.registry import providers
 from app.core.logging import get_logger
 from app.core.redis import get_redis
@@ -113,7 +114,7 @@ async def compute_daily(market_code: str = "GLOBAL") -> dict:
     }
 
     try:
-        await r.set(cache_key, json.dumps(result), ex=BRIEFING_TTL)
+        await r.set(cache_key, json.dumps(result), ex=ai_cache_ttl(BRIEFING_TTL))
     except Exception:
         pass
 

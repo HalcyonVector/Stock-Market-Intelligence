@@ -12,6 +12,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
+from app.adapters.ai import ai_cache_ttl
 from app.adapters.registry import providers
 from app.core.redis import get_redis
 from app.scoring.engine import all_scores
@@ -54,7 +55,7 @@ async def why_moving(symbol: str) -> dict:
 
     result = await _compute(symbol)
     try:
-        await r.set(cache_key, json.dumps(result, default=str), ex=CACHE_TTL)
+        await r.set(cache_key, json.dumps(result, default=str), ex=ai_cache_ttl(CACHE_TTL))
     except Exception:
         pass
     return result

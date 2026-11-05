@@ -31,7 +31,7 @@ Browser → Vercel (Next.js frontend)
 
 **Free tier limits:** 30 RPM, 6,000 TPM, 1,000 RPD. More than enough for a portfolio project.
 
-**Model:** `llama-3.3-70b-versatile` (default in config). No changes needed.
+**Model:** `openai/gpt-oss-120b` (default in config). If Groq retires a model, the app switches to the next available one in `GROQ_PREFERRED_MODELS` (`backend/app/adapters/ai.py`) and logs `groq.model_retired`.
 
 ---
 
@@ -100,7 +100,7 @@ In the Render dashboard under **Environment**, add these:
 | `DATA_MODE` | `live` |
 | `AI_PROVIDER` | `groq` |
 | `GROQ_API_KEY` | `gsk_...` (from Step 1) |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` (optional; the app auto-switches if Groq retires a model) |
 | `DATABASE_URL` | `postgresql+asyncpg://...` (from Step 2) |
 | `REDIS_URL` | `rediss://...@.../0` (from Step 3) |
 | `CORS_ORIGINS` | `https://your-app.vercel.app` (plain string, update after Vercel deploy) |

@@ -46,17 +46,21 @@ async def _run_yf(
     label: str,
     symbol: str,
     fetch: Callable[[], T],
-    fallback: Callable[[], Awaitable[T]],
+    fallback: Callable[[], Awaitable[T]] | None,
 ) -> T:
     """Run a synchronous yfinance fetch with circuit-breaker + 429 backoff.
 
-    On an open breaker or exhausted retries, degrade to ``fallback`` (mock).
+    On an open breaker or exhausted retries, degrade to ``fallback`` -- or, when
+    ``fallback`` is None, raise so the caller (FallbackMarketProvider) can try
+    the next real provider instead of receiving mock data that looks real.
     Rate-limit errors (429) count toward the breaker and trigger exponential
     backoff with jitter; other errors degrade immediately.
     """
     breaker = get_breaker("yfinance", fail_threshold=4, cooldown=90)
     if not breaker.allow():
         log.warning("yfinance.skip_open", label=label, symbol=symbol)
+        if fallback is None:
+            raise RuntimeError("yfinance circuit breaker open")
         return await fallback()
 
     last_error: Exception | None = None
@@ -75,6 +79,8 @@ async def _run_yf(
             break
 
     log.warning("yfinance.fallback", label=label, symbol=symbol, error=str(last_error))
+    if fallback is None:
+        raise RuntimeError(f"yfinance {label} failed: {last_error}")
     return await fallback()
 
 
@@ -82,8 +88,14 @@ class YFinanceMarketProvider(MarketDataProvider):
     """Wraps the synchronous yfinance lib in a threadpool."""
     name = "yfinance"
 
-    def __init__(self) -> None:
-        self._fallback = MockMarketProvider()
+    def __init__(self, degrade_to_mock: bool = False) -> None:
+        # Inside the fallback chain this must stay False: returning mock data
+        # here made the chain log "quote.success provider=yfinance", cache the
+        # mock as if it were real, and never try Stooq/Finnhub/Alpha Vantage.
+        self._fallback = MockMarketProvider() if degrade_to_mock else None
+
+    def _fb(self, make):
+        return (lambda: make(self._fallback)) if self._fallback else None
 
     async def quote(self, symbol: str) -> Quote:
         def _fetch() -> Quote:
@@ -106,7 +118,7 @@ class YFinanceMarketProvider(MarketDataProvider):
                 market=market, ts=datetime.now(timezone.utc),
             )
 
-        return await _run_yf("quote", symbol, _fetch, lambda: self._fallback.quote(symbol))
+        return await _run_yf("quote", symbol, _fetch, self._fb(lambda m: m.quote(symbol)))
 
     async def quotes(self, symbols: list[str]) -> list[Quote]:
         return await asyncio.gather(*(self.quote(s) for s in symbols))
@@ -130,7 +142,7 @@ class YFinanceMarketProvider(MarketDataProvider):
 
         return await _run_yf(
             "candles", symbol, _fetch,
-            lambda: self._fallback.candles(symbol, interval, lookback),
+            self._fb(lambda m: m.candles(symbol, interval, lookback)),
         )
 
     async def profile(self, symbol: str) -> CompanyProfile:
@@ -146,7 +158,7 @@ class YFinanceMarketProvider(MarketDataProvider):
                 description=info.get("longBusinessSummary", "")[:1000],
             )
 
-        return await _run_yf("profile", symbol, _fetch, lambda: self._fallback.profile(symbol))
+        return await _run_yf("profile", symbol, _fetch, self._fb(lambda m: m.profile(symbol)))
 
     async def universe(self, market: str) -> list[str]:
         return _UNIVERSE.get(market, _UNIVERSE["GLOBAL"])

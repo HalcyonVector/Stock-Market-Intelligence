@@ -24,6 +24,20 @@ from app.core.redis import get_redis
 
 log = get_logger("adapters.fallback")
 
+# What actually served market data recently, surfaced on /health so a silent
+# degrade to mock data is visible without reading logs.
+market_status: dict = {"last_live_source": None, "last_live_at": None, "mock_served": 0, "last_mock_reason": None}
+
+
+def _note_live(source: str) -> None:
+    market_status["last_live_source"] = source
+    market_status["last_live_at"] = datetime.now(timezone.utc).isoformat()
+
+
+def _note_mock(kind: str, reason) -> None:
+    market_status["mock_served"] += 1
+    market_status["last_mock_reason"] = f"{kind}: {str(reason)[:200]}" if reason else kind
+
 # Cache TTLs in seconds
 QUOTE_TTL = 300       # 5 minutes
 CANDLE_TTL = 900      # 15 minutes
@@ -206,6 +220,7 @@ class FallbackMarketProvider(MarketDataProvider):
                     }), QUOTE_TTL)
                     _local_set(local_key, result)
                     log.info("quote.success", symbol=symbol, provider=provider.name)
+                    _note_live(provider.name)
                     return result
             except Exception as e:
                 last_error = e
@@ -213,6 +228,7 @@ class FallbackMarketProvider(MarketDataProvider):
 
         # All failed — mock as absolute last resort
         log.warning("quote.all_failed", symbol=symbol, error=str(last_error))
+        _note_mock("quote", last_error)
         return await self._mock.quote(symbol)
 
     async def quotes(self, symbols: list[str]) -> list[Quote]:
@@ -237,6 +253,7 @@ class FallbackMarketProvider(MarketDataProvider):
                     return await asyncio.wait_for(self.quote(s), timeout=35)
                 except asyncio.TimeoutError:
                     log.warning("quote.timeout", symbol=s)
+                    _note_mock("quote", "timeout")
                     return await self._mock.quote(s)
 
         return list(await asyncio.gather(*(_get(s) for s in symbols)))
@@ -273,10 +290,12 @@ class FallbackMarketProvider(MarketDataProvider):
                     ]), CANDLE_TTL)
                     _local_set(local_key, result)
                     log.info("candles.success", symbol=symbol, provider=provider.name)
+                    _note_live(provider.name)
                     return result
             except Exception as e:
                 log.warning("candles.fallthrough", symbol=symbol, provider=provider.name, error=str(e))
 
+        _note_mock("candles", None)
         return await self._mock.candles(symbol, interval, lookback)
 
     async def profile(self, symbol: str) -> CompanyProfile:
@@ -302,10 +321,12 @@ class FallbackMarketProvider(MarketDataProvider):
                         "market_cap": result.market_cap, "description": result.description,
                     }), PROFILE_TTL)
                     log.info("profile.success", symbol=symbol, provider=provider.name)
+                    _note_live(provider.name)
                     return result
             except Exception as e:
                 log.warning("profile.fallthrough", symbol=symbol, provider=provider.name, error=str(e))
 
+        _note_mock("profile", None)
         return await self._mock.profile(symbol)
 
     async def universe(self, market: str) -> list[str]:

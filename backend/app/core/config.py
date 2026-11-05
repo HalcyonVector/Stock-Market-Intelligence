@@ -104,7 +104,9 @@ class Settings(BaseSettings):
     # --- Groq (free cloud LLM) ---
     GROQ_API_KEY: str = ""
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # llama-3.3-70b-versatile was retired from the free tier on 2026-08-16.
+    # GroqAIProvider also auto-switches if this model is ever retired.
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
 
 
 @lru_cache

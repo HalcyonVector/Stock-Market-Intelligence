@@ -23,6 +23,7 @@ log = get_logger("services.deep_research")
 DATA_TIMEOUT = 25.0   # gathering quote/news/technicals/fundamentals/sentiment
 AI_TIMEOUT = 90.0     # local model synthesis
 
+from app.adapters.ai import ai_cache_ttl
 from app.adapters.registry import providers
 from app.core.redis import get_redis
 from app.services import technicals, fundamentals
@@ -159,7 +160,7 @@ async def analyze(symbol: str) -> dict:
     }
 
     try:
-        await r.set(cache_key, json.dumps(result, default=str), ex=CACHE_TTL)
+        await r.set(cache_key, json.dumps(result, default=str), ex=ai_cache_ttl(CACHE_TTL))
     except Exception:
         pass
 
