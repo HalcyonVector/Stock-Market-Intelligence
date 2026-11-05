@@ -128,7 +128,7 @@ class MockMarketProvider(MarketDataProvider):
             change_pct=round(change_pct, 2), volume=vol, avg_volume=avg,
             market_cap=round(price * r.uniform(5e7, 3e9), 0),
             currency="INR" if market == "IN" else "USD",
-            market=market, ts=_now(),
+            market=market, ts=_now(), source="mock",
         )
 
     async def quotes(self, symbols: list[str]) -> list[Quote]:

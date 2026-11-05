@@ -23,7 +23,7 @@ SYSTEM = (
     "No bullet points, no headers, no line breaks. One paragraph only."
 )
 
-# 24 h — Celery beat refreshes this every ~24 min during market hours, up to
+# 24 h — the keep-alive cron refreshes this every ~24 min during market hours, up to
 # ~4.8 h on weekends. TTL just needs to outlast that so the last generated
 # briefing is always available instead of returning a placeholder.
 BRIEFING_TTL = 86_400  # 24 h
@@ -84,7 +84,7 @@ async def daily(market_code: str = "GLOBAL") -> dict:
 
 
 async def compute_daily(market_code: str = "GLOBAL") -> dict:
-    """Heavy briefing pipeline — runs in the background or via Celery beat."""
+    """Heavy briefing pipeline — runs in the background."""
     cache_key = f"briefing:{market_code}"
     r = get_redis()
     movers = await market.get_movers(market_code, limit=5)

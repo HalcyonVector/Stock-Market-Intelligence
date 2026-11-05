@@ -22,7 +22,7 @@ function sentimentEmoji(attention: number, sentiment: number): string {
 
 export function TrendingSocial() {
   const market = useMarket();
-  const { data, isLoading, dataUpdatedAt } = useQuery({
+  const { data, isLoading, dataUpdatedAt, isError, refetch } = useQuery({
     queryKey: ["trending", market],
     queryFn: () => api.trending(market),
     staleTime: 5 * 60 * 1000,
@@ -33,7 +33,7 @@ export function TrendingSocial() {
     .slice(0, 10);
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Trending on Social"
       subtitle="Reddit & social buzz"

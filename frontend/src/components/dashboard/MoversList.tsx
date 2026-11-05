@@ -56,7 +56,7 @@ function Row({ q, index, tab, scaleMax }: { q: any; index: number; tab: Tab; sca
             {q.symbol}
           </p>
           <p className="truncate text-[10px] tabular-nums text-ink-500">
-            {money(q.price, q.symbol)}
+            {money(q.price, q.currency ?? q.symbol)}
             {ratio > 0 && <span className="ml-1.5">· {ratio.toFixed(1)}x vol</span>}
           </p>
         </div>
@@ -122,7 +122,7 @@ function Summary({ tab, rows }: { tab: Tab; rows: any[] }) {
 export function MoversList() {
   const market = useMarket();
   const [tab, setTab] = useState<Tab>("gainers");
-  const { data, dataUpdatedAt } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
+  const { data, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
 
   const source: any[] =
     tab === "gainers" ? data?.gainers ?? [] : tab === "losers" ? data?.losers ?? [] : data?.most_active ?? [];
@@ -130,7 +130,7 @@ export function MoversList() {
   const scaleMax = Math.max(0, ...rows.map((q) => (tab === "volume" ? volRatioOf(q) : Math.abs(q.change_pct ?? 0))));
 
   return (
-    <BentoCard
+    <BentoCard error={isError && !data} onRetry={() => refetch()}
       updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Market Movers"

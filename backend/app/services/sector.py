@@ -1,6 +1,6 @@
 """Sector rotation — aggregate symbol flows into sector momentum/in-out flows.
 
-Pre-computed by Celery beat and cached in Redis. The API reads from cache
+Pre-computed in the background and cached in Redis. The API reads from cache
 for instant response; the heavy computation runs in the background.
 """
 from __future__ import annotations
@@ -52,7 +52,7 @@ async def _fetch_symbol(s: str, sem: asyncio.Semaphore) -> dict | None:
 
 
 async def compute_rotation(market: str = "GLOBAL") -> list[dict]:
-    """Heavy computation — called by Celery beat, not by API directly."""
+    """Heavy computation — called in the background, not by the API directly."""
     syms = await providers.market.universe(market)
     sem = asyncio.Semaphore(5)
     results = await asyncio.gather(*(_fetch_symbol(s, sem) for s in syms))

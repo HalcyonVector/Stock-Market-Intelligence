@@ -1,6 +1,6 @@
 """Retail sentiment aggregation across sources (Reddit/X/Trends/StockTwits).
 
-Pre-computed by Celery beat and cached in Redis for instant API response.
+Pre-computed in the background and cached in Redis for instant API response.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ async def _fetch_one(s: str, sem: asyncio.Semaphore) -> dict | None:
 
 
 async def compute_trending(market: str = "GLOBAL", limit: int = 10) -> list[dict]:
-    """Heavy computation — called by Celery beat."""
+    """Heavy computation — called in the background."""
     syms = await providers.market.universe(market)
     sem = asyncio.Semaphore(5)
     results = await asyncio.gather(*(_fetch_one(s, sem) for s in syms))

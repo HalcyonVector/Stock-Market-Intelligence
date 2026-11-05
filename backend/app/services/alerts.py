@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.adapters.registry import providers
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redis import get_redis
 
@@ -77,6 +78,9 @@ async def create_alert(
 
     alerts.append(alert)
     await _save(r, user_id, alerts)
+
+    from app.services.symbols import register_extra
+    await register_extra(alert["symbol"])
     return alert
 
 
@@ -116,6 +120,8 @@ def _apply(alerts: list[dict], quotes: dict) -> list[dict]:
         q = quotes.get(alert["symbol"])
         if q is None or q.price is None:
             continue
+        if settings.DATA_MODE == "live" and getattr(q, "source", "live") == "mock":
+            continue  # never fire an alert on sample data
         change = q.change_pct or 0
         if _hit(alert, q.price, change):
             alert["triggered"] = True
@@ -148,7 +154,17 @@ async def check_alerts(user_id: str) -> list[dict]:
     triggered = _apply(alerts, quotes)
     if triggered:
         await _save(r, user_id, alerts)
+        await _push(user_id, triggered)
     return triggered
+
+
+async def _push(user_id: str, triggered: list[dict]) -> None:
+    try:
+        from app.services.push import notify_alerts
+
+        await notify_alerts(user_id, triggered)
+    except Exception as e:  # noqa: BLE001 -- a push failure must not lose the alert
+        log.warning("alerts.push_failed", error=str(e)[:160])
 
 
 async def check_all_users() -> int:
@@ -180,5 +196,6 @@ async def check_all_users() -> int:
         if triggered:
             fired += len(triggered)
             await _save(r, uid, alerts)
+            await _push(uid, triggered)
     log.info("alerts.background_check", users=len(per_user), symbols=len(symbols), fired=fired)
     return fired

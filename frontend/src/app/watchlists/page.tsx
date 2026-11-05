@@ -6,6 +6,9 @@ import { Eye, Plus, Trash2, X, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn, pct, changeColor, money } from "@/lib/utils";
+import { SourceBadge } from "@/components/ui/SourceBadge";
+import { WatchlistDigest, WatchlistEvents } from "@/components/watchlist/WatchlistInsights";
+import { toast } from "@/components/ui/Toaster";
 
 export default function WatchlistsPage() {
   const [newName, setNewName] = useState("");
@@ -41,6 +44,7 @@ export default function WatchlistsPage() {
       qc.invalidateQueries({ queryKey: ["watchlist", id] });
       setAddSymbol((s) => ({ ...s, [id]: "" }));
     },
+    onError: (e: any) => toast("Couldn't add that ticker", { body: e?.message, tone: "error" }),
   });
 
   const removeMut = useMutation({
@@ -156,7 +160,7 @@ export default function WatchlistsPage() {
                           addMut.mutate({ id: wl.id, sym: addSymbol[wl.id] });
                         }
                       }}
-                      placeholder="Add ticker (e.g. AAPL)"
+                      placeholder="Add ticker (AAPL, RELIANCE, or IRCTC.NS for other NSE stocks)"
                       className="flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-sm outline-none placeholder:text-ink-500 focus:border-crimson-500/40"
                     />
                     <button
@@ -167,6 +171,9 @@ export default function WatchlistsPage() {
                       <Plus size={14} />
                     </button>
                   </div>
+
+                  <WatchlistEvents symbols={wl.items.map((i: any) => i.symbol)} />
+                  <WatchlistDigest id={wl.id} count={wl.items.length} />
 
                   {/* Quote table */}
                   {wl.items.length > 0 && (
@@ -191,9 +198,10 @@ export default function WatchlistsPage() {
                                   <Link href={`/stock/${item.symbol}`} className="font-mono font-medium text-ink-100 hover:text-crimson-300 transition">
                                     {item.symbol}
                                   </Link>
+                                  {q && <SourceBadge source={q.source} ts={q.ts} className="ml-1.5" />}
                                 </td>
                                 <td className="py-2 text-right font-mono text-ink-100">
-                                  {q ? money(q.price, q.symbol) : "—"}
+                                  {q ? money(q.price, q.currency) : "—"}
                                 </td>
                                 <td className={cn("py-2 text-right font-mono", changeColor(q?.change ?? 0))}>
                                   {q ? `${q.change >= 0 ? "+" : ""}${q.change?.toFixed(2)}` : "—"}

@@ -24,7 +24,7 @@ function confidenceColor(score: number): string {
 
 export function TopAnalystsPicks() {
   const market = useMarket();
-  const { data, isLoading, dataUpdatedAt } = useQuery({
+  const { data, isLoading, dataUpdatedAt, isError, refetch } = useQuery({
     queryKey: ["discovery", market],
     queryFn: () => api.discovery(market),
   });
@@ -41,7 +41,7 @@ export function TopAnalystsPicks() {
       : all;
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Top Analyst Picks"
       subtitle="AI-scored recommendations"

@@ -23,11 +23,11 @@ function formatFlow(value: number): string {
 
 export function SectorHeatmap() {
   const market = useMarket();
-  const { data, dataUpdatedAt } = useQuery({ queryKey: ["sectors", market], queryFn: () => api.sectors(market) });
+  const { data, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["sectors", market], queryFn: () => api.sectors(market) });
   const sectors = (data ?? []).slice(0, 9);
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Sector Rotation"
       subtitle="Momentum & net institutional flow"

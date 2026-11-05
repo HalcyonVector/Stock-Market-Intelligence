@@ -28,7 +28,7 @@ def _key(market: str) -> str:
 
 async def compute_scan(market: str | None = None) -> list[dict]:
     """Heavy universe scan. Runs in the background (startup warm, keep-alive
-    cron, Celery beat) -- never on the request path."""
+    cron) -- never on the request path."""
     market = market or settings.DEFAULT_MARKET
     r = get_redis()
     key = _key(market)

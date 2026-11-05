@@ -21,7 +21,7 @@
                 └────▲────┘ └──────────┘            └────────────────────┘
                      │ publish events
                 ┌────┴───────────────────────────────┐
-                │ Celery worker + beat (ETL pipeline) │
+                │ In-process refresh loop (asyncio)   │
                 └─────────────────────────────────────┘
 ```
 
@@ -55,7 +55,7 @@
 | Frontend | Next.js + TS | RSC for fast first paint, file routing, Vercel deploy | Remix/SPA — less ecosystem for this stack |
 | Data fetch | TanStack Query | polling, cache, retries built-in | SWR (lighter, fewer features) |
 | API | FastAPI | async, pydantic validation, OpenAPI free | Django (heavier), Node/Nest (split language) |
-| Jobs | Celery + Redis | mature, beat scheduler | Arq/RQ (simpler, fewer features); Dramatiq |
+| Jobs | In-process asyncio loop + GitHub Actions cron | fits a single free web service; no worker to host | Celery + Redis (needs its own worker/beat services) |
 | Cache/bus | Redis | one dependency for cache+pubsub+broker | separate systems = more ops |
 | DB | Postgres | relational + JSONB + TimescaleDB path | Mongo (weak for analytics joins) |
 | AI | Claude / OpenAI behind adapter | swap models, mock fallback | single-vendor lock-in |

@@ -6,6 +6,11 @@ Order: yfinance (free, no key) → Finnhub (free, key) → Alpha Vantage (free, 
 
 Each call is Redis-cached so subsequent hits are instant. Cache TTL varies by
 data type: quotes 5 min, candles 15 min, profiles 60 min.
+
+Quotes for every symbol share ONE Redis key (``quotes:bulk:v1``), read at most
+once a minute and written back at most every 30 s, instead of a GET + SET per
+symbol per refresh. That is what keeps a larger stock universe inside Upstash's
+500K commands/month.
 """
 from __future__ import annotations
 
@@ -26,7 +31,10 @@ log = get_logger("adapters.fallback")
 
 # What actually served market data recently, surfaced on /health so a silent
 # degrade to mock data is visible without reading logs.
-market_status: dict = {"last_live_source": None, "last_live_at": None, "mock_served": 0, "last_mock_reason": None}
+market_status: dict = {
+    "last_live_source": None, "last_live_at": None,
+    "mock_served": 0, "last_mock_reason": None, "last_mock_at": None,
+}
 
 
 def _note_live(source: str) -> None:
@@ -36,6 +44,7 @@ def _note_live(source: str) -> None:
 
 def _note_mock(kind: str, reason) -> None:
     market_status["mock_served"] += 1
+    market_status["last_mock_at"] = datetime.now(timezone.utc).isoformat()
     market_status["last_mock_reason"] = f"{kind}: {str(reason)[:200]}" if reason else kind
 
 # Cache TTLs in seconds
@@ -45,6 +54,20 @@ CANDLE_TTL = 900      # 15 minutes (intraday intervals)
 # Twelve Data's free 800 credits/day sufficient.
 DAILY_CANDLE_TTL = 12 * 3600
 PROFILE_TTL = 3600    # 1 hour
+
+# Shared quote blob (see module docstring).
+BULK_KEY = "quotes:bulk:v1"
+BULK_READ_EVERY = 60      # s between Redis reads of the blob
+BULK_WRITE_EVERY = 30     # s between Redis writes of the blob
+BULK_KEEP = 24 * 3600     # drop entries older than this when writing
+_bulk: dict = {"read_at": -1e9, "written_at": -1e9, "dirty": False, "data": {}}
+
+# End-of-day quotes built from the daily history snapshot only change when the
+# GitHub Actions sync runs (twice a day), so keep them in memory for a while
+# instead of re-reading a ~20 KB history entry from Redis on every scan.
+EOD_TTL = 3 * 3600
+EOD_MISS_TTL = 1800
+_eod_cache: dict[str, tuple[float, object]] = {}
 
 # Same breaker instance as app.core.snapshot's -- once Upstash's monthly
 # command quota is exhausted, every GET/SET here would otherwise still be
@@ -201,18 +224,10 @@ class FallbackMarketProvider(MarketDataProvider):
         if local_hit is not None:
             return local_hit
 
-        # Redis cache next
-        cache_key = f"quote:{symbol}"
-        hit = await self._cache_get(cache_key)
-        if hit:
-            d = json.loads(hit)
-            result = Quote(
-                symbol=d["symbol"], price=d["price"], change=d["change"],
-                change_pct=d["change_pct"], volume=d["volume"],
-                avg_volume=d["avg_volume"], market_cap=d.get("market_cap"),
-                currency=d["currency"], market=d["market"],
-                ts=datetime.fromisoformat(d["ts"]),
-            )
+        # Shared Redis quote blob next
+        await self._bulk_load()
+        result = self._bulk_get(symbol)
+        if result is not None:
             _local_set(local_key, result)
             return result
 
@@ -236,13 +251,10 @@ class FallbackMarketProvider(MarketDataProvider):
                 result = await provider.quote(symbol)
                 # Only cache if it's real data (not mock fallback)
                 if result.price > 0:
-                    await self._cache_set(cache_key, json.dumps({
-                        "symbol": result.symbol, "price": result.price,
-                        "change": result.change, "change_pct": result.change_pct,
-                        "volume": result.volume, "avg_volume": result.avg_volume,
-                        "market_cap": result.market_cap, "currency": result.currency,
-                        "market": result.market, "ts": result.ts.isoformat(),
-                    }), QUOTE_TTL)
+                    if not result.volume or not result.avg_volume:
+                        await self._fill_volume(result)
+                    self._bulk_put(result)
+                    await self._bulk_flush()
                     _local_set(local_key, result)
                     log.info("quote.success", symbol=symbol, provider=provider.name)
                     _note_live(provider.name)
@@ -263,14 +275,81 @@ class FallbackMarketProvider(MarketDataProvider):
         _note_mock("quote", last_error)
         return await self._mock.quote(symbol)
 
-    async def _snapshot_quote(self, symbol: str) -> Quote | None:
+    async def _eod(self, symbol: str) -> Quote | None:
+        """Last daily close from the history snapshot (memory-cached)."""
         from app.adapters import history_store
 
-        raw = await self._cache_get(history_store.KEY.format(symbol=symbol.upper()))
+        sym = symbol.upper()
+        hit = _eod_cache.get(sym)
+        if hit is not None and time.monotonic() < hit[0]:
+            return hit[1]
+        raw = await self._cache_get(history_store.KEY.format(symbol=sym))
         q = history_store.latest_quote(raw, symbol) if raw else None
-        if q is not None:
-            _note_live("history_snapshot_eod")
+        _eod_cache[sym] = (time.monotonic() + (EOD_TTL if q else EOD_MISS_TTL), q)
         return q
+
+    async def _snapshot_quote(self, symbol: str) -> Quote | None:
+        q = await self._eod(symbol)
+        if q is None:
+            return None
+        _note_live("history_snapshot_eod")
+        return Quote(**q.__dict__)  # a copy: callers may mutate it
+
+    async def _fill_volume(self, q: Quote) -> None:
+        """Finnhub's free quote has no volume. Use the last session's volume and
+        the 20-day average from the daily history, so volume ratios and
+        unusual-activity events work for US stocks."""
+        eod = await self._eod(q.symbol)
+        if eod is None:
+            return
+        q.volume = q.volume or eod.volume
+        q.avg_volume = q.avg_volume or eod.avg_volume
+
+    # ---------------------------------------------------- shared quote blob
+    async def _bulk_load(self) -> None:
+        now = time.monotonic()
+        if now - _bulk["read_at"] < BULK_READ_EVERY:
+            return
+        _bulk["read_at"] = now
+        raw = await self._cache_get(BULK_KEY)
+        if not raw:
+            return
+        try:
+            remote = json.loads(raw)
+        except Exception:  # noqa: BLE001 -- corrupt blob: ignore, it gets rewritten
+            return
+        data = _bulk["data"]
+        for sym, entry in remote.items():
+            mine = data.get(sym)
+            if mine is None or entry.get("at", 0) > mine.get("at", 0):
+                data[sym] = entry
+
+    def _bulk_get(self, symbol: str) -> Quote | None:
+        entry = _bulk["data"].get(symbol)
+        if not entry or time.time() - entry.get("at", 0) > QUOTE_TTL:
+            return None
+        try:
+            d = dict(entry["q"])
+            d["ts"] = datetime.fromisoformat(d["ts"])
+            return Quote(**d)
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _bulk_put(self, q: Quote) -> None:
+        d = dict(q.__dict__)
+        d["ts"] = q.ts.isoformat()
+        _bulk["data"][q.symbol] = {"at": time.time(), "q": d}
+        _bulk["dirty"] = True
+
+    async def _bulk_flush(self, force: bool = False) -> None:
+        now = time.monotonic()
+        if not _bulk["dirty"] or (not force and now - _bulk["written_at"] < BULK_WRITE_EVERY):
+            return
+        cutoff = time.time() - BULK_KEEP
+        _bulk["data"] = {s: e for s, e in _bulk["data"].items() if e.get("at", 0) >= cutoff}
+        _bulk["written_at"] = now
+        _bulk["dirty"] = False
+        await self._cache_set(BULK_KEY, json.dumps(_bulk["data"], separators=(",", ":")), BULK_KEEP)
 
     async def quotes(self, symbols: list[str]) -> list[Quote]:
         import asyncio
@@ -297,7 +376,9 @@ class FallbackMarketProvider(MarketDataProvider):
                     _note_mock("quote", "timeout")
                     return await self._mock.quote(s)
 
-        return list(await asyncio.gather(*(_get(s) for s in symbols)))
+        out = list(await asyncio.gather(*(_get(s) for s in symbols)))
+        await self._bulk_flush(force=True)  # one write for the whole batch
+        return out
 
     async def candles(self, symbol: str, interval: str, lookback: int) -> list[Candle]:
         local_key = f"candles:{symbol}:{interval}:{lookback}"

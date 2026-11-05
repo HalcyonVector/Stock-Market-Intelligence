@@ -9,11 +9,14 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Shield, Calculator, Target, Bot, TrendingUp, Landmark, Wallet, Sliders,
+  Shield, Calculator, Target, Bot, TrendingUp, Landmark, Wallet, Sliders, Percent, Layers,
   ChevronRight, Send, Loader2, Info, ExternalLink, IndianRupee, DollarSign,
   ArrowRight, CheckCircle2, AlertTriangle, Lock, Zap, Plus, X, PieChart as PieIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  RealReturnsTab, LadderTab, SipVsLumpSum, SavedGoals, RatesNotice,
+} from "@/components/invest/SafeInvestTools";
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 const fmt = (n: number, cur: string) =>
@@ -59,9 +62,11 @@ const LIQUIDITY_COLORS: Record<string, string> = {
 
 const TABS = [
   { id: "instruments", label: "Where to Invest", icon: Landmark },
+  { id: "real", label: "After Tax & Inflation", icon: Percent },
   { id: "allocate", label: "Allocation Builder", icon: Sliders },
   { id: "sip", label: "SIP Calculator", icon: Calculator },
-  { id: "goal", label: "Goal Planner", icon: Target },
+  { id: "ladder", label: "Deposit Ladder", icon: Layers },
+  { id: "goal", label: "Goals", icon: Target },
   { id: "advisor", label: "AI Advisor", icon: Bot },
 ] as const;
 
@@ -145,9 +150,11 @@ export default function SafeInvestPage() {
           transition={{ duration: 0.2 }}
         >
           {tab === "instruments" && <InstrumentsTab country={country} cur={cur} />}
+          {tab === "real" && <RealReturnsTab country={country} cur={cur} />}
           {tab === "allocate" && <AllocationTab country={country} cur={cur} />}
-          {tab === "sip" && <SIPTab cur={cur} />}
-          {tab === "goal" && <GoalTab cur={cur} />}
+          {tab === "sip" && <div className="space-y-4"><SIPTab cur={cur} /><SipVsLumpSum key={cur} cur={cur} /></div>}
+          {tab === "ladder" && <LadderTab country={country} cur={cur} />}
+          {tab === "goal" && <div className="space-y-4"><SavedGoals key={cur} cur={cur} /><GoalTab cur={cur} /></div>}
           {tab === "advisor" && <AdvisorTab country={country} cur={cur} />}
         </motion.div>
       </AnimatePresence>
@@ -172,6 +179,7 @@ function InstrumentsTab({ country, cur }: { country: string; cur: string }) {
 
   return (
     <div className="space-y-4">
+      {country === "IN" && <RatesNotice asOf={data?.rates_as_of} validUntil={data?.rates_valid_until} />}
       {/* Risk filter pills */}
       <div className="flex flex-wrap gap-2">
         <button

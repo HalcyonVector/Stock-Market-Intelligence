@@ -19,7 +19,7 @@ alongside a freshness timestamp:
     immediately and a warm is kicked off in the background.
 
 The request path therefore never blocks on a universe scan. The scan only ever
-runs in the background (startup warm, the keep-alive cron, or Celery beat).
+runs in the background (startup warm, the keep-alive cron or the refresh loop).
 """
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ def kick(key: str, computor: Callable[[], Awaitable[Any]]) -> None:
 
     Safe to call from a request handler: it schedules the compute and returns
     immediately. If there is no running event loop (e.g. called from a sync
-    Celery task), the caller should await ``_refresh`` directly instead.
+    background job), the caller should await ``_refresh`` directly instead.
     """
     if key in _inflight:
         return

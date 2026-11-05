@@ -61,11 +61,11 @@ function OpportunityRow({ r, rank }: { r: any; rank: number }) {
 
 export function OpportunityRadar() {
   const market = useMarket();
-  const { data, dataUpdatedAt } = useQuery({ queryKey: ["discovery", market], queryFn: () => api.discovery(market) });
+  const { data, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["discovery", market], queryFn: () => api.discovery(market) });
   const rows = (data ?? []).slice(0, 8);
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Opportunity Radar"
       subtitle="Ranked by composite score"

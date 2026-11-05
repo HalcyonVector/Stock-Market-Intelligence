@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "@/styles/globals.css";
@@ -8,7 +8,11 @@ import { ShellLayout } from "@/components/layout/ShellLayout";
 export const metadata: Metadata = {
   title: "Stock Discovery & Intelligence",
   description: "AI-powered market intelligence. Educational use only.",
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "StockIntel", statusBarStyle: "black-translucent" },
 };
+
+export const viewport: Viewport = { themeColor: "#0b0709" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

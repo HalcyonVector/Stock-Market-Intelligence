@@ -1,4 +1,5 @@
-# Full local stack: db + cache + api + worker + beat + web.
+# Full local stack: db + cache + api + web. Background refreshes run inside
+# the api process (same as production on Render).
 # Bring up with:  docker compose -f infra/docker-compose.yml up --build
 name: sdi
 
@@ -38,35 +39,9 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql+asyncpg://sdi:sdi@postgres:5432/sdi
-      # worker + beat below already run refresh_market on schedule -- don't
-      # also run it in-process here, or every symbol's price tick + cache
-      # refresh gets fetched and published twice per cycle.
-      RUN_INPROCESS_MARKET_REFRESH: "false"
     ports: ["8000:8000"]
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
-
-  worker:
-    build: ../backend
-    command: celery -A app.etl.celery_app.celery_app worker --loglevel=info
-    env_file: ../backend/.env
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      redis: { condition: service_healthy }
-
-  beat:
-    build: ../backend
-    command: celery -A app.etl.celery_app.celery_app beat --loglevel=info
-    env_file: ../backend/.env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/1
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
       redis: { condition: service_healthy }
 
   web:

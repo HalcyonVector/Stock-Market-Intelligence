@@ -21,7 +21,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
 - **"Why Is This Stock Moving?"** — Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
 - **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (gpt-oss-120b) or Ollama (qwen2.5:7b)
-- **Command Palette** — Global `Cmd-K` / `Ctrl-K` search across all tickers and pages
+- **Search Any Stock** — `Cmd-K` / `Ctrl-K` finds any US or NSE/BSE listing (tracked list first, then Finnhub's free symbol search); stocks outside the tracked list get daily prices once someone adds them to a watchlist
 
 ### Portfolio & Optimization
 
@@ -38,7 +38,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Fundamental Analysis** — P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
 - **ML Price Forecast** — SARIMA (Seasonal ARIMA) time-series model fitted on log prices with model-derived 80%/95% confidence intervals. Gracefully falls back to a linear-regression + Holt exponential-smoothing ensemble if the fit fails to converge
 - **Smart Screener** — Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
-- **Market Heatmap** — Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and Celery pre-computation
+- **Market Heatmap** — Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and background pre-computation
 - **Stock Comparison** — Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
 
 ### Market Data
@@ -47,22 +47,24 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 - **Retail Sentiment** — Reddit/Google Trends sentiment aggregation with trending tickers
 - **Earnings Calendar** — Upcoming earnings dates with estimate vs. actual tracking
 - **Economic Calendar** — Key economic events (CPI, Fed, GDP, jobs) with impact ratings
-- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts show as in-app toasts and optional browser notifications
-- **Watchlists** — Per-browser watchlists with live quote enrichment (no sign-up: each browser gets an anonymous, server-issued identity)
-- **Paper Trading** — Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L and order history
+- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts are pushed to your phone/desktop via Web Push (free, works with the site closed; installable as an app) and shown as in-app toasts
+- **Watchlists** — Per-browser watchlists with live quotes, upcoming earnings/dividend dates and a weekly AI recap (no sign-up: each browser gets an anonymous, server-issued identity)
+- **Paper Trading** — Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L, order history and a performance chart against the S&P 500 / Nifty 50
 
 ### Safe Investment Guide (India + US)
 
 - **33 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings/RD, SCSS, SSY, MSSC, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
 - **12 US Instruments** — HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
 - **Live Rate Overlay** — **[IN]** 12 mutual fund categories (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU/corporate-bond/overnight/ultra-short/conservative-hybrid/multi-asset funds) get their current rate computed from real trailing-1-year NAV history via mfapi.in. **[US]** Treasury Bill rates come from Treasury.gov's FiscalData API. Both use a stale-while-revalidate cache so a slow upstream never blocks the page. The remaining instruments (bank/corporate FDs; **[IN]** govt small-savings schemes like PPF/NSC/SCSS) have no reliable free feed and stay on the curated static table. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
-- **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.)
-- **Goal Planner** — Reverse SIP: how much monthly for a target (Emergency Fund, Bike, House, Education)
+- **After Tax & Inflation** — What each instrument really returns after your tax slab (India new regime / US bracket) and inflation, in today's money
+- **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.), plus a lump-sum-vs-spreading-out comparison
+- **Deposit Ladder** — Split an FD/CD across staggered maturities and see each rung's value
+- **Goal Planner** — Reverse SIP for a target, plus saved goals with progress tracking (kept in your browser) and a one-click emergency-fund goal
 - **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
 - **Withdrawal & Lock-in View** — Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
 - **AI Advisor** — LLM-powered Q&A for personalized (educational) investment guidance
 - **4 Risk Profiles** — Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
-- **Dated Rates** — Government small-savings rates are official (current as of Q1 FY2026-27); bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
+- **Dated Rates** — Government small-savings rates are official (current for Q3 FY2026-27) with a warning once the quarter they apply to has ended; bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
 
 ### UI/UX
 
@@ -89,7 +91,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 | **Styling** | Tailwind CSS 3 | Custom dark theme with crimson/ink/ember palettes |
 | **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
-| **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines; market-aware cadences that back off when the US market is closed |
+| **Background jobs** | In-process asyncio loop + GitHub Actions | Quote refresh, LiveFeed and alert checks run inside the API process (market-aware cadence); daily price history and earnings/dividend dates are synced by a scheduled GitHub Actions workflow |
 | **AI Provider** | Groq (gpt-oss-120b) / Ollama (qwen2.5:7b) | Groq free cloud LLM (30 RPM) or local Ollama, both via OpenAI-compatible API |
 | **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
@@ -274,9 +276,7 @@ stock-discovery-intelligence/
 │   │   │   ├── engine.py               # Composite scoring pipeline
 │   │   │   └── indicators.py           # Technical indicator calculations
 │   │   ├── etl/                        # Background jobs
-│   │   │   ├── celery_app.py           # Celery + Beat configuration
-│   │   │   ├── market_calendar.py      # Market-aware schedule (back off when market closed)
-│   │   │   └── tasks.py               # 7 tasks: market, news, sentiment, sectors, heatmap, briefing, scores
+│   │   │   └── market_calendar.py      # Market-aware refresh interval (back off when market closed)
 │   │   ├── models/entities.py          # SQLAlchemy ORM models
 │   │   ├── schemas/                    # Pydantic request/response models
 │   │   ├── db/session.py               # Async engine + session factory
@@ -481,7 +481,7 @@ All config is in `backend/.env` (copy from `.env.example`):
 | `OFFHOURS_BACKOFF` | `4.0` | Interval multiplier on weekday off-hours (outside 09:30–16:00 ET) |
 | `WEEKEND_BACKOFF` | `12.0` | Interval multiplier on weekends |
 
-**Refresh cadences** (`REFRESH_MARKET` 5m, `REFRESH_NEWS` 10m, `REFRESH_SENTIMENT`/`REFRESH_SCORES` 30m) apply during US market hours. When `SCHEDULE_MARKET_AWARE=true`, Celery Beat multiplies these intervals by `OFFHOURS_BACKOFF` off-hours and `WEEKEND_BACKOFF` on weekends to conserve free-tier provider rate limits (see `app/etl/market_calendar.py`).
+**Refresh cadences** (`REFRESH_MARKET` 5m, `REFRESH_NEWS` 10m, `REFRESH_SENTIMENT`/`REFRESH_SCORES` 30m) apply during US market hours. When `SCHEDULE_MARKET_AWARE=true`, the in-process refresh loop multiplies these intervals by `OFFHOURS_BACKOFF` off-hours and `WEEKEND_BACKOFF` on weekends to conserve free-tier provider rate limits (see `app/etl/market_calendar.py`).
 
 In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub → Alpha Vantage → mock**. Each provider is wrapped in a circuit breaker (opens on repeated 429/403/quota errors, half-opens after a cooldown) so a rate-limited or down source is skipped instead of retried per-symbol; yfinance additionally retries 429s with exponential backoff over a shared connection-pooled session. Results are Redis-cached, and `/sectors/rotation` and `/insights/briefing` serve from cache and recompute in the background (never blocking the request). Zero-config mock mode works out of the box.
 
@@ -512,11 +512,11 @@ In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub �
               └───────────┘ └───┬────┘ └──────────────┘
                                 │
                     ┌───────────▼──────────────────┐
-                    │   Celery Worker + Beat       │
-                    │   ETL: 5m / 10m / 30m        │
-                    │   market, news, sentiment,   │
-                    │   sectors, heatmap, briefing,│
-                    │   scoring pipelines           │
+                    │ In-process refresh loop +    │
+                    │ /health/warm pinger; daily   │
+                    │ history + events synced by   │
+                    │ GitHub Actions (yfinance)    │
+                    │ → shared Redis snapshots     │
                     └──────────────────────────────┘
 ```
 
@@ -581,8 +581,8 @@ Tests are network-free (providers and Redis are faked), so no live keys are requ
 |--------|---------|-------------|
 | **Dev Server** | `uvicorn app.main:app --reload` | Start with hot reload at localhost:8000 |
 | **Tests** | `pytest -q` | Run all tests |
-| **Worker** | `celery -A app.etl.celery_app.celery_app worker` | Start Celery worker |
-| **Beat** | `celery -A app.etl.celery_app.celery_app beat` | Start Celery scheduler |
+| **History sync** | `REDIS_URL=... python -m scripts.sync_history` | Fetch daily price history into Redis (normally run by GitHub Actions) |
+| **VAPID keys** | `python -m scripts.gen_vapid` | Generate the key pair that turns on push notifications |
 | **Validate** | `python scripts/validate_live.py` | Smoke test live adapters |
 
 ### Docker
@@ -674,7 +674,7 @@ docker compose -f infra/docker-compose.yml logs postgres
 | `03-DATABASE.md` | PostgreSQL schema and models |
 | `04-API.md` | Full API reference |
 | `05-STREAMING.md` | WebSocket and real-time events |
-| `06-ETL.md` | Celery ETL pipeline documentation |
+| `06-ETL.md` | Data pipeline design (scoring stages) |
 | `07-FOLDER-STRUCTURE.md` | Codebase organization guide |
 | `08-SCORING.md` | Discovery scoring algorithm |
 | `09-DESIGN-SYSTEM.md` | UI/UX design tokens and components |

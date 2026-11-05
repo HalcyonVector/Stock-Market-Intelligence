@@ -100,6 +100,9 @@ export const api = {
   sectors: (market = "GLOBAL") => get<any[]>(`/sectors/rotation?market=${market}`),
   trending: (market = "GLOBAL") => get<any[]>(`/sentiment/trending?market=${market}`),
   stock: (s: string) => get<any>(`/stocks/${s}`),
+  search: (q: string) => get<any[]>(`/stocks/search?q=${encodeURIComponent(q)}`),
+  events: (symbols: string[], days = 90) =>
+    get<any>(`/insights/events?symbols=${encodeURIComponent(symbols.join(","))}&days=${days}`),
   why: (s: string) => get<any>(`/stocks/${s}/why`),
   technicals: (s: string) => get<any>(`/stocks/${s}/technicals`),
   fundamentals: (s: string) => get<any>(`/stocks/${s}/fundamentals`),
@@ -169,6 +172,7 @@ export const api = {
   createWatchlist: (name: string) => user.send<any>("/watchlists", "POST", { name }),
   deleteWatchlist: (id: number) => user.send<void>(`/watchlists/${id}`, "DELETE"),
   getWatchlist: (id: number) => user.get<any>(`/watchlists/${id}`),
+  watchlistDigest: (id: number) => user.get<any>(`/watchlists/${id}/digest`),
   addToWatchlist: (id: number, symbol: string) =>
     user.send<any>(`/watchlists/${id}/items`, "POST", { symbol }),
   removeFromWatchlist: (id: number, symbol: string) =>
@@ -179,6 +183,13 @@ export const api = {
   paperTrade: (symbol: string, side: "buy" | "sell", quantity: number) =>
     user.send<any>("/paper/orders", "POST", { symbol, side, quantity }),
   paperReset: () => user.send<any>("/paper/reset", "POST"),
+  paperHistory: () => user.get<any>("/paper/history"),
+
+  // --- Web Push (alerts with the site closed) ---
+  pushStatus: () => user.get<{ enabled: boolean; public_key: string | null; devices: number }>("/alerts/push"),
+  pushSubscribe: (sub: PushSubscriptionJSON) => user.send<any>("/alerts/push", "POST", sub),
+  pushUnsubscribe: (endpoint: string) => user.send<any>("/alerts/push/unsubscribe", "POST", { endpoint }),
+  pushTest: () => user.send<{ sent: number }>("/alerts/push/test", "POST"),
 };
 
 // Vercel rewrites only proxy HTTP, not WebSocket.

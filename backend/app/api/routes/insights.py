@@ -30,6 +30,16 @@ async def earnings():
     return {"data": await get_earnings_calendar()}
 
 
+@router.get("/events")
+async def events(symbols: str = "", days: int = 90):
+    """Upcoming earnings / ex-dividend / dividend dates for the given symbols
+    (comma-separated), from the daily GitHub Actions sync."""
+    from app.services.events import for_symbols
+
+    syms = [s for s in symbols.split(",") if s.strip()]
+    return {"data": await for_symbols(syms, max(1, min(days, 365)))}
+
+
 @router.get("/economic-calendar")
 async def economic_calendar():
     """Upcoming economic events with impact ratings."""

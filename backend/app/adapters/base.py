@@ -25,6 +25,9 @@ class Quote:
     currency: str
     market: str
     ts: datetime
+    # "live" | "eod" (last daily close from the history snapshot) | "mock"
+    # (sample data). The UI badges anything that isn't live.
+    source: str = "live"
 
 
 @dataclass

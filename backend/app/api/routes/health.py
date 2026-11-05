@@ -40,8 +40,20 @@ async def health():
             "configured_model": settings.GROQ_MODEL if settings.AI_PROVIDER == "groq" else settings.AI_MODEL,
             **ai_status,
         },
-        "market": dict(market_status),
+        "market": {**market_status, "mock_recent": _mock_recent(market_status.get("last_mock_at"))},
     }
+
+
+def _mock_recent(last_mock_at: str | None, window_min: int = 15) -> bool:
+    """True if any sample (mock) data was served in the last few minutes; the
+    frontend shows a 'sample data' notice while it is."""
+    if settings.DATA_MODE == "mock":
+        return True
+    if not last_mock_at:
+        return False
+    from datetime import datetime, timedelta, timezone
+
+    return datetime.now(timezone.utc) - datetime.fromisoformat(last_mock_at) < timedelta(minutes=window_min)
 
 
 _STAGGER_SECONDS = 3

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { AlertCircle, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function ago(ts: number, now: number) {
@@ -28,13 +29,35 @@ function Freshness({ at }: { at: number }) {
   );
 }
 
+/** Shown instead of the card body when its data failed to load, so a card
+ *  never sits on loading placeholders forever. */
+function CardError({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
+      <AlertCircle size={20} className="text-ink-500" aria-hidden />
+      <p className="text-xs text-ink-400">Couldn&apos;t load this right now.</p>
+      <p className="max-w-[28ch] text-[11px] text-ink-500">The free server may be waking up or a data source is busy.</p>
+      {onRetry && (
+        <button onClick={onRetry}
+          className="mt-1 flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1 text-xs text-ink-300 hover:bg-white/5">
+          <RotateCw size={12} aria-hidden /> Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function BentoCard({
   title, subtitle, span = "col-span-12 md:col-span-6", children, action, className, icon, updatedAt,
+  error, onRetry,
 }: {
   title?: string; subtitle?: string; span?: string;
   children: React.ReactNode; action?: React.ReactNode; className?: string; icon?: React.ReactNode;
   /** Epoch ms of the last successful fetch (react-query's dataUpdatedAt). */
   updatedAt?: number;
+  /** True when the card's data failed to load and there's nothing to show. */
+  error?: boolean;
+  onRetry?: () => void;
 }) {
   const showFresh = !!updatedAt;
   return (
@@ -60,7 +83,7 @@ export function BentoCard({
         </div>
       )}
       {/* flex-1 lets card content fill the row height instead of leaving a gap or overflowing */}
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{error ? <CardError onRetry={onRetry} /> : children}</div>
     </motion.section>
   );
 }

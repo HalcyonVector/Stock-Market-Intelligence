@@ -10,14 +10,14 @@ import { cn } from "@/lib/utils";
 const PER_PAGE = 6;
 
 export function NewsCarousel() {
-  const { data, dataUpdatedAt } = useQuery({ queryKey: ["news"], queryFn: () => api.news(30) });
+  const { data, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["news"], queryFn: () => api.news(30) });
   const items = data ?? [];
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
   const visible = items.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Market News"
       icon={<Newspaper size={14} className="text-crimson-400" />}

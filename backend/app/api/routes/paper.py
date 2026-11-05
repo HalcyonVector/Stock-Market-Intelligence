@@ -35,3 +35,9 @@ async def order(body: OrderIn, user: str = Depends(get_current_user),
 async def reset(user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)):
     await svc.reset(db, user)
     return {"data": await svc.summary(db, user)}
+
+
+@router.get("/history")
+async def history(user: str = Depends(get_current_user), db: AsyncSession = Depends(get_session)):
+    """Daily account value per currency vs. a benchmark index."""
+    return {"data": await svc.history(db, user)}

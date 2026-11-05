@@ -23,7 +23,11 @@ from app.services import live_rates
 # current as of the quarter below. Bank-FD, mutual-fund, NPS/ELSS/index and the
 # US instruments are market-linked *estimates* that drift — treat them as
 # indicative, not guaranteed.
-RATES_AS_OF = "Q1 FY2026-27 (Apr–Jun 2026)"
+RATES_AS_OF = "Q3 FY2026-27 (Oct–Dec 2026)"
+# Last day the official rates above apply. The UI warns once this has passed:
+# the Finance Ministry announces the next quarter's rates around the 30th of
+# Mar/Jun/Sep/Dec, then update RATES_AS_OF and this date.
+RATES_VALID_UNTIL = "2026-12-31"
 
 INSTRUMENTS = {
     "IN": {
@@ -833,7 +837,8 @@ async def get_instruments(country: str = "IN") -> dict:
             inst.setdefault("rate_as_of", None)
         out.append(inst)
 
-    return {"currency": base["currency"], "instruments": out}
+    return {"currency": base["currency"], "instruments": out,
+            "rates_as_of": RATES_AS_OF, "rates_valid_until": RATES_VALID_UNTIL}
 
 
 RISK_PROFILES = [

@@ -42,10 +42,8 @@ class Settings(BaseSettings):
     # --- Database ---
     DATABASE_URL: str = "postgresql+asyncpg://sdi:sdi@localhost:5432/sdi"
 
-    # --- Redis (cache + pub/sub + celery broker) ---
+    # --- Redis (cache + pub/sub) ---
     REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
     # --- Refresh cadences (seconds) ---
     # Tuned for free-tier hosting (Upstash 500K cmds/mo).
@@ -69,12 +67,9 @@ class Settings(BaseSettings):
     WEEKEND_BACKOFF: float = 12.0    # Saturday / Sunday
 
     # --- In-process refresh loop (main.py) ---
-    # `_periodic_market_refresh` duplicates Celery's `refresh_market` task so a
-    # solo/dev deploy without a Celery worker+beat process still gets a live
-    # LiveFeed. If you DO run a separate Celery worker+beat (e.g. Render
-    # background worker), set this to false — otherwise both schedulers fetch
-    # quotes and publish price ticks for the whole universe on their own
-    # cadence, ~doubling Redis command usage for zero benefit.
+    # `_periodic_market_refresh` keeps the LiveFeed, movers cache and price
+    # alerts fresh. It is the only scheduler (there is no separate worker), so
+    # only turn it off to run the API with no background work at all.
     RUN_INPROCESS_MARKET_REFRESH: bool = True
 
     # --- Optional free-tier API keys ---
@@ -86,6 +81,15 @@ class Settings(BaseSettings):
     REDDIT_CLIENT_ID: str = ""
     REDDIT_CLIENT_SECRET: str = ""
     REDDIT_USER_AGENT: str = "sdi-research/0.1"
+
+    # --- Web Push (price alerts with the site closed) ---
+    # Generate once: `python -m scripts.gen_vapid`. Empty = feature off.
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_SUBJECT: str = "https://stock-market-intelligence-sable.vercel.app"
+
+    # --- Error tracking (optional, Sentry free tier: 5K errors/month) ---
+    SENTRY_DSN: str = ""
 
     # --- Auth ---
     AUTH_SECRET: str = ""

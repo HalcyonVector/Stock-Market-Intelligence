@@ -2,7 +2,8 @@
 # Redis for the API to serve. Runs here because Yahoo blocks Render's IPs.
 #
 # Free: public repos get unlimited Actions minutes (one run is ~1-2 min), and
-# it costs ~160 Upstash commands per run (two runs per weekday).
+# it costs ~1 Upstash command per stock per run (two runs per weekday), plus
+# one for the earnings/dividend dates.
 #
 # Setup: Settings -> Secrets and variables -> Actions -> New repository secret
 #   REDIS_URL = the same rediss://... URL the backend uses on Render.
@@ -43,3 +44,11 @@ jobs:
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
         run: python -m scripts.sync_history
+      # Earnings / dividend dates for the watchlist page. Once a day is plenty
+      # (they rarely change); a failure here never fails the price sync.
+      - name: Fetch earnings and dividend dates
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 22 * * 1-5'
+        continue-on-error: true
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: python -m scripts.sync_events

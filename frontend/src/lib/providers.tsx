@@ -1,7 +1,10 @@
 "use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { MarketProvider } from "@/lib/market";
+import { registerServiceWorker } from "@/lib/push";
+import { initErrorTracking } from "@/lib/sentry";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -28,9 +31,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+  useEffect(() => {
+    // The worker only shows push notifications (no caching), so registering it
+    // on every visit is cheap and keeps it updated after deploys.
+    registerServiceWorker();
+    initErrorTracking();
+  }, []);
   return (
-    <QueryClientProvider client={client}>
-      <MarketProvider>{children}</MarketProvider>
-    </QueryClientProvider>
+    // reducedMotion="user": framer-motion skips transform/layout animations
+    // for people who turned on "reduce motion" in their OS settings.
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={client}>
+        <MarketProvider>{children}</MarketProvider>
+      </QueryClientProvider>
+    </MotionConfig>
   );
 }

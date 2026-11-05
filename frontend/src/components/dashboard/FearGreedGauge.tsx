@@ -35,7 +35,7 @@ function AnimatedScore({ value }: { value: number }) {
 
 export function FearGreedGauge() {
   const market = useMarket();
-  const { data: movers, dataUpdatedAt } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
+  const { data: movers, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
   const { data: sentiment } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
 
   let score = 50;
@@ -82,7 +82,7 @@ export function FearGreedGauge() {
   ];
 
   return (
-    <BentoCard
+    <BentoCard error={isError && !movers} onRetry={() => refetch()}
       updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-5"
       title="Fear & Greed"

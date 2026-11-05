@@ -129,6 +129,50 @@ def test_accounts_are_isolated_and_reset_works():
     assert d["positions"] == [] and d["accounts"]["USD"]["cash"] == 100_000
 
 
+def test_history_rebuilds_equity_and_benchmark(monkeypatch):
+    from datetime import timedelta
+
+    from app.adapters.base import Candle
+
+    today = datetime.now(timezone.utc).date()
+    days = [today - timedelta(days=i) for i in range(5, -1, -1)]
+    series = {
+        "AAPL": [100, 100, 110, 120, 120, 130],
+        "SPY": [500, 500, 505, 510, 515, 520],
+    }
+
+    class WithCandles(FakeMarket):
+        async def candles(self, s, interval, lookback):
+            return [Candle(ts=datetime(d.year, d.month, d.day, tzinfo=timezone.utc),
+                           open=c, high=c, low=c, close=c, volume=1)
+                    for d, c in zip(days, series.get(s, []))]
+
+    monkeypatch.setattr(providers, "market", WithCandles())
+    client.post("/api/v1/paper/orders", json={"symbol": "AAPL", "side": "buy", "quantity": 10}, headers=H)
+
+    # Pretend the buy happened three days ago at 100.
+    from sqlalchemy import update
+    from app.models.entities import PaperTrade
+
+    async def backdate():
+        async with TestSession() as s:
+            await s.execute(update(PaperTrade).values(
+                ts=datetime.combine(days[2], datetime.min.time()).replace(hour=12)))
+            await s.commit()
+    _run(backdate())
+
+    d = client.get("/api/v1/paper/history", headers=H).json()["data"]["curves"]["USD"]
+    pts = {p["date"]: p for p in d["points"]}
+    # Before the trade: just the starting cash.
+    assert pts[days[1].isoformat()]["equity"] == 100_000
+    # After: 99,000 cash + 10 shares at each day's close.
+    assert pts[days[3].isoformat()]["equity"] == 99_000 + 10 * 120
+    assert pts[days[5].isoformat()]["equity"] == 99_000 + 10 * 130
+    assert d["benchmark"] == "S&P 500 (SPY)"
+    assert pts[days[5].isoformat()]["benchmark"] > d["points"][0]["benchmark"]
+    assert "INR" not in client.get("/api/v1/paper/history", headers=H).json()["data"]["curves"]
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _dispose_engine():
     # aiosqlite runs each connection on a non-daemon thread; without disposing
