@@ -24,12 +24,23 @@ async def health():
             ok = False
         _redis_ok_cache = (now, ok)
     redis_ok = _redis_ok_cache[1]
+    # In-process status only (no extra Redis/API calls). Shows whether the app
+    # is really serving live data/AI or has silently degraded to mock output.
+    from app.adapters.ai import ai_status
+    from app.adapters.fallback import market_status
+
     return {
         "status": "ok",
         "env": settings.ENV,
         "data_mode": settings.DATA_MODE,
         "ai_provider": settings.AI_PROVIDER,
         "redis": redis_ok,
+        "ai": {
+            "key_set": bool(settings.GROQ_API_KEY) if settings.AI_PROVIDER == "groq" else None,
+            "configured_model": settings.GROQ_MODEL if settings.AI_PROVIDER == "groq" else settings.AI_MODEL,
+            **ai_status,
+        },
+        "market": dict(market_status),
     }
 
 

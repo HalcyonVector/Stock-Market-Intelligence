@@ -20,7 +20,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 - **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
 - **"Why Is This Stock Moving?"** — Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
-- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (llama-3.3-70b) or Ollama (qwen2.5:7b)
+- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (gpt-oss-120b) or Ollama (qwen2.5:7b)
 - **Command Palette** — Global `Cmd-K` / `Ctrl-K` search across all tickers and pages
 
 ### Portfolio & Optimization
@@ -90,7 +90,7 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 | **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
 | **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
 | **Task Queue** | Celery 5 | Worker + Beat scheduler for ETL pipelines; market-aware cadences that back off when the US market is closed |
-| **AI Provider** | Groq (llama-3.3-70b) / Ollama (qwen2.5:7b) | Groq free cloud LLM (30 RPM) or local Ollama, both via OpenAI-compatible API |
+| **AI Provider** | Groq (gpt-oss-120b) / Ollama (qwen2.5:7b) | Groq free cloud LLM (30 RPM) or local Ollama, both via OpenAI-compatible API |
 | **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
 | **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
 | **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
@@ -172,7 +172,7 @@ Deploy the full stack using free tiers of Vercel + Render + Neon + Upstash + Gro
 | **Render** | FastAPI (Docker, in-process refresh loop) | 750 instance-hrs/mo |
 | **Neon** | Managed Postgres | 0.5 GB, scale-to-zero |
 | **Upstash** | Managed Redis (TLS) | 256 MB, 500K cmds/mo |
-| **Groq** | LLM (llama-3.3-70b) | 30 RPM, 1K RPD |
+| **Groq** | LLM (gpt-oss-120b) | 30 RPM, 1K RPD |
 
 See `docs/DEPLOY-FREE-TIER.md` for the step-by-step guide.
 
@@ -468,7 +468,7 @@ All config is in `backend/.env` (copy from `.env.example`):
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Model for AI features |
 | `GROQ_API_KEY` | *(empty)* | Free tier: https://console.groq.com/keys (30 RPM, 1K RPD) |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model for AI features |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model for AI features (auto-switches if Groq retires it) |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./sdi.db` | PostgreSQL in Docker, SQLite locally |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
 | `FINNHUB_API_KEY` | *(empty)* | Free tier: quotes, profiles, basic financials, news |
