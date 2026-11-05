@@ -134,3 +134,48 @@ def test_twelvedata_daily_budget(monkeypatch):
         assert "budget" in str(e)
     else:
         raise AssertionError("expected the daily budget to stop requests")
+
+
+# ------------------------------------------------------- end-of-day quotes
+def _snap(closes, vols=None):
+    end = datetime.now(timezone.utc)
+    vols = vols or [100] * len(closes)
+    bars = [Candle(ts=end - timedelta(days=len(closes) - i), open=c, high=c, low=c, close=c, volume=v)
+            for i, (c, v) in enumerate(zip(closes, vols))]
+    return history_store.encode(bars)
+
+
+def test_latest_quote_from_history():
+    q = history_store.latest_quote(_snap([100.0] * 20 + [100.0, 110.0], [100] * 21 + [300]), "RELIANCE")
+    assert q.price == 110.0 and q.change_pct == 10.0
+    assert q.volume == 300 and q.avg_volume == 100
+    assert q.currency == "INR" and q.market == "IN"
+    assert q.ts.hour == 0                              # bar date, not a live timestamp
+
+
+class _ChainMustNotRun:
+    name = "finnhub"
+
+    async def quote(self, s):
+        raise AssertionError("NSE quotes should not hit US-only providers")
+
+
+def test_indian_quote_uses_snapshot_and_skips_chain(monkeypatch):
+    store = {history_store.KEY.format(symbol="TMPV"): _snap([290.0, 292.4])}
+    p = _provider(monkeypatch, store, [_ChainMustNotRun()])
+    q = _run(p.quote("TMPV"))
+    assert q.price == 292.4 and q.currency == "INR"
+    assert fb.market_status["last_live_source"] == "history_snapshot_eod"
+
+
+def test_us_quote_falls_back_to_snapshot_before_mock(monkeypatch):
+    class Down:
+        name = "finnhub"
+
+        async def quote(self, s):
+            raise RuntimeError("503")
+
+    store = {history_store.KEY.format(symbol="XYZ"): _snap([80.0, 87.63])}
+    p = _provider(monkeypatch, store, [Down()])
+    q = _run(p.quote("XYZ"))
+    assert q.price == 87.63 and q.currency == "USD"

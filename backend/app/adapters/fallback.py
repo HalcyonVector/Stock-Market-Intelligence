@@ -216,6 +216,19 @@ class FallbackMarketProvider(MarketDataProvider):
             _local_set(local_key, result)
             return result
 
+        # NSE stocks: none of the free quote APIs (Finnhub / Twelve Data /
+        # Alpha Vantage) cover them and Yahoo blocks Render, so use the
+        # end-of-day quote from the daily history snapshot first -- and don't
+        # burn other providers' credits on calls that can't succeed.
+        from app.adapters import history_store
+
+        indian = history_store.is_indian(symbol)
+        if indian:
+            snap = await self._snapshot_quote(symbol)
+            if snap is not None:
+                _local_set(local_key, snap)
+                return snap
+
         # Try each provider
         last_error = None
         for provider in self._chain:
@@ -238,10 +251,26 @@ class FallbackMarketProvider(MarketDataProvider):
                 last_error = e
                 log.warning("quote.fallthrough", symbol=symbol, provider=provider.name, error=str(e))
 
+        # US stocks: last real-data option is yesterday's close from the snapshot.
+        if not indian:
+            snap = await self._snapshot_quote(symbol)
+            if snap is not None:
+                _local_set(local_key, snap)
+                return snap
+
         # All failed — mock as absolute last resort
         log.warning("quote.all_failed", symbol=symbol, error=str(last_error))
         _note_mock("quote", last_error)
         return await self._mock.quote(symbol)
+
+    async def _snapshot_quote(self, symbol: str) -> Quote | None:
+        from app.adapters import history_store
+
+        raw = await self._cache_get(history_store.KEY.format(symbol=symbol.upper()))
+        q = history_store.latest_quote(raw, symbol) if raw else None
+        if q is not None:
+            _note_live("history_snapshot_eod")
+        return q
 
     async def quotes(self, symbols: list[str]) -> list[Quote]:
         import asyncio

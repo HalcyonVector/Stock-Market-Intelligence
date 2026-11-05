@@ -2,7 +2,7 @@
 # Redis for the API to serve. Runs here because Yahoo blocks Render's IPs.
 #
 # Free: public repos get unlimited Actions minutes (one run is ~1-2 min), and
-# it costs ~160 Upstash commands/day.
+# it costs ~160 Upstash commands per run (two runs per weekday).
 #
 # Setup: Settings -> Secrets and variables -> Actions -> New repository secret
 #   REDIS_URL = the same rediss://... URL the backend uses on Render.
@@ -13,8 +13,10 @@ name: Sync price history
 
 on:
   schedule:
-    # 22:30 UTC Mon-Fri: after the US close (20:00/21:00 UTC) and long after
-    # NSE (10:00 UTC).
+    # 10:30 UTC Mon-Fri: just after the NSE close (10:00 UTC), so Indian
+    # prices are the same day's close (they have no live quote source).
+    - cron: "30 10 * * 1-5"
+    # 22:30 UTC Mon-Fri: after the US close (20:00/21:00 UTC).
     - cron: "30 22 * * 1-5"
   workflow_dispatch:
 
