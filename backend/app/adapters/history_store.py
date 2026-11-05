@@ -57,3 +57,45 @@ def decode(raw: str, lookback_days: int, now: datetime | None = None) -> list[Ca
         if d >= cutoff
     ]
     return out or None
+
+
+def is_indian(symbol: str) -> bool:
+    """NSE listing? (Universe IN symbols are stored without the .NS suffix.)"""
+    from app.adapters.mock import _UNIVERSE
+
+    s = symbol.upper()
+    if s.endswith((".NS", ".BO")):
+        return True
+    return s in _UNIVERSE.get("IN", []) and s not in _UNIVERSE.get("US", [])
+
+
+def latest_quote(raw: str, symbol: str, now: datetime | None = None):
+    """End-of-day quote built from the stored daily bars, or None if stale/short.
+
+    Used for NSE stocks (no free live quote source reaches them from Render)
+    and as the last real-data fallback for US stocks. ``ts`` is the bar's date,
+    so the UI and /health can tell it apart from a live quote.
+    """
+    from app.adapters.base import Quote
+
+    now = now or datetime.now(timezone.utc)
+    try:
+        obj = json.loads(raw)
+        updated = datetime.fromisoformat(obj["updated"])
+        bars = obj["bars"]
+    except Exception:  # noqa: BLE001
+        return None
+    if len(bars) < 2 or now - updated > timedelta(days=MAX_AGE_DAYS):
+        return None
+    d, _o, _h, _l, close, vol = bars[-1]
+    prev = bars[-2][4] or close
+    recent = [b[5] for b in bars[-21:-1] if b[5]]
+    avg_vol = int(sum(recent) / len(recent)) if recent else int(vol or 0)
+    indian = is_indian(symbol)
+    return Quote(
+        symbol=symbol, price=round(close, 2), change=round(close - prev, 2),
+        change_pct=round((close - prev) / prev * 100, 2) if prev else 0.0,
+        volume=int(vol or 0), avg_volume=avg_vol or 1, market_cap=None,
+        currency="INR" if indian else "USD", market="IN" if indian else "US",
+        ts=datetime.fromisoformat(d).replace(tzinfo=timezone.utc),
+    )

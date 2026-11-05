@@ -18,7 +18,7 @@ UNIVERSE = [
     "NFLX", "ORCL", "ADBE", "CSCO", "ACN", "IBM", "SHOP", "SNOW", "PANW", "NOW",
     "UBER", "ABNB",
     # Fintech / Growth
-    "PLTR", "SOFI", "COIN", "SQ", "PYPL", "HOOD", "MARA",
+    "PLTR", "SOFI", "COIN", "XYZ", "PYPL", "HOOD", "MARA",
     # Semiconductors
     "SMCI", "INTC", "QCOM", "MU", "TXN", "MRVL", "ON", "LRCX", "KLAC", "AMAT",
     # Healthcare / Pharma
@@ -74,7 +74,7 @@ SECTOR_MAP: dict[str, str] = {
     "WFC": "Financial Services", "BLK": "Financial Services",
     "SCHW": "Financial Services", "AXP": "Financial Services",
     "C": "Financial Services", "BRK-B": "Financial Services",
-    "COIN": "Financial Services", "SQ": "Financial Services",
+    "COIN": "Financial Services", "XYZ": "Financial Services",
     "PYPL": "Financial Services", "SOFI": "Financial Services",
     "HOOD": "Financial Services", "MARA": "Financial Services",
     # Healthcare
@@ -99,10 +99,10 @@ SECTOR_MAP: dict[str, str] = {
     "SBILIFE": "Financial Services", "PNBHOUSING": "Financial Services",
     # IT
     "TCS": "Technology", "INFY": "Technology", "WIPRO": "Technology",
-    "TECHM": "Technology", "LTIM": "Technology", "HCLTECH": "Technology",
+    "TECHM": "Technology", "LTM": "Technology", "HCLTECH": "Technology",
     "PERSISTENT": "Technology", "COFORGE": "Technology",
     # Auto
-    "TATAMOTORS": "Consumer Cyclical", "MARUTI": "Consumer Cyclical",
+    "TMPV": "Consumer Cyclical", "TMCV": "Industrials", "MARUTI": "Consumer Cyclical",
     "M&M": "Consumer Cyclical", "BAJAJ-AUTO": "Consumer Cyclical",
     "EICHERMOT": "Consumer Cyclical", "TVSMOTOR": "Consumer Cyclical",
     "HEROMOTOCO": "Consumer Cyclical",
@@ -112,7 +112,7 @@ SECTOR_MAP: dict[str, str] = {
     "MAXHEALTH": "Healthcare", "BIOCON": "Healthcare",
     # Defence / Capital Goods
     "HAL": "Industrials", "BEL": "Industrials", "LT": "Industrials",
-    "BHEL": "Industrials", "MAZAGON": "Industrials", "COCHINSHIP": "Industrials",
+    "BHEL": "Industrials", "MAZDOCK": "Industrials", "COCHINSHIP": "Industrials",
     # Energy / Power (Reliance is primarily oil & gas / energy conglomerate)
     "RELIANCE": "Energy", "NTPC": "Energy", "POWERGRID": "Energy",
     "ADANIGREEN": "Energy", "ONGC": "Energy", "COALINDIA": "Energy",
@@ -144,7 +144,7 @@ MCAP_APPROX: dict[str, float] = {
     "AMGN": 170e9, "AXP": 170e9, "ISRG": 170e9, "RTX": 160e9, "LMT": 160e9,
     "PLTR": 150e9, "PFE": 150e9, "BLK": 150e9, "CAT": 170e9, "BA": 140e9,
     "HON": 150e9, "LOW": 150e9, "UPS": 140e9, "DE": 130e9, "SCHW": 140e9,
-    "PANW": 130e9, "UBER": 160e9, "ABNB": 90e9, "SNOW": 70e9, "SQ": 50e9,
+    "PANW": 130e9, "UBER": 160e9, "ABNB": 90e9, "SNOW": 70e9, "XYZ": 50e9,
     "INTC": 120e9, "NKE": 100e9, "SBUX": 110e9, "SHOP": 120e9, "GILD": 110e9,
     "VRTX": 120e9, "TMUS": 270e9, "T": 160e9, "VZ": 170e9, "CMCSA": 160e9,
     "COP": 130e9, "C": 130e9, "TGT": 70e9, "LULU": 45e9, "MU": 110e9,

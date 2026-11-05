@@ -63,6 +63,12 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
         {q && (
           <div className="text-right">
             <p className="font-mono text-3xl font-bold">{q.currency} {q.price?.toFixed(2)}</p>
+            {/* Daily-history quotes carry a midnight-UTC bar date instead of a live timestamp */}
+            {q.ts && String(q.ts).includes("T00:00:00") && (
+              <p className="text-[11px] text-amber-300/80">
+                End-of-day close · {new Date(q.ts).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" })}
+              </p>
+            )}
             <p className="text-xs text-ink-500">
               Change: <span className={changeColor(q.change)}>{q.change >= 0 ? "+" : ""}{q.change?.toFixed(2)}</span>
               {volRatio && <span className="ml-2">Vol: <span className={cn("font-mono", parseFloat(volRatio) > 1.5 ? "text-crimson-400" : "text-ink-300")}>{volRatio}x</span></span>}

@@ -37,7 +37,7 @@ _UNIVERSE = {
         "NFLX", "ORCL", "ADBE", "CSCO", "ACN", "IBM", "SHOP", "SNOW", "PANW", "NOW",
         "UBER", "ABNB",
         # Fintech / Growth
-        "PLTR", "SOFI", "AFRM", "COIN", "SQ", "PYPL", "HOOD", "MARA",
+        "PLTR", "SOFI", "AFRM", "COIN", "XYZ", "PYPL", "HOOD", "MARA",
         # Semiconductors
         "SMCI", "INTC", "QCOM", "MU", "TXN", "MRVL", "ON", "LRCX", "KLAC", "AMAT",
         # Healthcare / Pharma
@@ -60,13 +60,13 @@ _UNIVERSE = {
         "RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK", "AXISBANK",
         "BAJFINANCE", "BAJAJFINSV", "HDFCLIFE", "SBILIFE", "PNBHOUSING",
         # IT
-        "TCS", "INFY", "WIPRO", "TECHM", "LTIM", "HCLTECH", "PERSISTENT", "COFORGE",
+        "TCS", "INFY", "WIPRO", "TECHM", "LTM", "HCLTECH", "PERSISTENT", "COFORGE",
         # Auto
-        "TATAMOTORS", "MARUTI", "M&M", "BAJAJ-AUTO", "EICHERMOT", "TVSMOTOR", "HEROMOTOCO",
+        "TMPV", "TMCV", "MARUTI", "M&M", "BAJAJ-AUTO", "EICHERMOT", "TVSMOTOR", "HEROMOTOCO",
         # Pharma / Healthcare
         "SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "APOLLOHOSP", "MAXHEALTH", "BIOCON",
         # Defence / Capital Goods
-        "HAL", "BEL", "LT", "BHEL", "MAZAGON", "COCHINSHIP",
+        "HAL", "BEL", "LT", "BHEL", "MAZDOCK", "COCHINSHIP",
         # Energy / Power
         "NTPC", "POWERGRID", "ADANIGREEN", "ONGC", "COALINDIA", "TATAPOWER", "GAIL",
         # FMCG / Consumer
@@ -82,7 +82,7 @@ _UNIVERSE = {
         "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "CRM",
         "NFLX", "ORCL", "ADBE", "CSCO", "ACN", "IBM", "SHOP", "SNOW", "PANW", "NOW",
         "UBER", "ABNB",
-        "PLTR", "SOFI", "COIN", "SQ", "PYPL", "HOOD",
+        "PLTR", "SOFI", "COIN", "XYZ", "PYPL", "HOOD",
         "SMCI", "INTC", "QCOM", "MU", "TXN", "MRVL", "AMAT",
         "UNH", "JNJ", "LLY", "PFE", "ABBV", "MRK", "TMO", "AMGN", "MRNA",
         "JPM", "V", "MA", "GS", "BAC", "MS", "WFC", "BLK",
@@ -92,8 +92,8 @@ _UNIVERSE = {
         # India — broad coverage (45)
         "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "KOTAKBANK",
         "BAJFINANCE", "AXISBANK", "HDFCLIFE",
-        "TATAMOTORS", "MARUTI", "M&M", "BAJAJ-AUTO", "HEROMOTOCO",
-        "HAL", "BEL", "LT", "BHEL", "MAZAGON",
+        "TMPV", "MARUTI", "M&M", "BAJAJ-AUTO", "HEROMOTOCO",
+        "HAL", "BEL", "LT", "BHEL", "MAZDOCK",
         "SUNPHARMA", "DRREDDY", "CIPLA", "APOLLOHOSP",
         "ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "TATACONSUM",
         "NTPC", "POWERGRID", "ADANIENT", "TATASTEEL", "HINDALCO", "TATAPOWER",
