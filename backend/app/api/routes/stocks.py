@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.adapters.registry import providers
 from app.services import sentiment as sentiment_svc
@@ -7,6 +7,14 @@ from app.services.explain import why_moving
 from app.services.forecast import forecast_price
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
+
+
+@router.get("/search")
+async def search(q: str = Query("", max_length=20)):
+    """Find any US or NSE/BSE stock: the tracked universe first, then Finnhub."""
+    from app.services.symbols import search as search_symbols
+
+    return {"data": await search_symbols(q)}
 
 
 @router.get("/{symbol}")

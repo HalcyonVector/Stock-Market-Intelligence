@@ -26,18 +26,38 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { MarketSwitch } from "@/components/ui/MarketSwitch";
 
-const NAV = [
-  { href: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/portfolio", icon: Briefcase, label: "Portfolio" },
-  { href: "/paper", icon: Wallet, label: "Paper Trading" },
-  { href: "/research", icon: Newspaper, label: "Research" },
-  { href: "/watchlists", icon: Star, label: "Watchlists" },
-  { href: "/screener", icon: Filter, label: "Screener" },
-  { href: "/heatmap", icon: Grid3x3, label: "Heatmap" },
-  { href: "/compare", icon: GitCompare, label: "Compare" },
-  { href: "/backtest", icon: FlaskConical, label: "Backtest" },
-  { href: "/alerts", icon: Bell, label: "Alerts" },
-  { href: "/invest", icon: Shield, label: "Safe Invest" },
+// Grouped so eleven pages read as four short lists. Labels say what each
+// tool is for (e.g. "Strategy Tester" rather than "Backtest").
+const NAV_GROUPS = [
+  {
+    title: "Markets",
+    items: [
+      { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { href: "/heatmap", icon: Grid3x3, label: "Heatmap" },
+      { href: "/screener", icon: Filter, label: "Screener" },
+      { href: "/research", icon: Newspaper, label: "AI Research" },
+    ],
+  },
+  {
+    title: "Mine",
+    items: [
+      { href: "/watchlists", icon: Star, label: "Watchlists" },
+      { href: "/alerts", icon: Bell, label: "Alerts" },
+      { href: "/paper", icon: Wallet, label: "Paper Trading" },
+    ],
+  },
+  {
+    title: "Analyse",
+    items: [
+      { href: "/portfolio", icon: Briefcase, label: "Portfolio Lab" },
+      { href: "/compare", icon: GitCompare, label: "Compare Stocks" },
+      { href: "/backtest", icon: FlaskConical, label: "Strategy Tester" },
+    ],
+  },
+  {
+    title: "Learn",
+    items: [{ href: "/invest", icon: Shield, label: "Safe Invest" }],
+  },
 ];
 
 const COLLAPSE_KEY = "si_sidebar_collapsed";
@@ -63,8 +83,15 @@ function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: ()
   // Stock detail pages highlight nothing in nav
   const isStockPage = pathname.startsWith("/stock/");
   return (
-    <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-      {NAV.map(({ href, icon: Icon, label }) => {
+    <nav aria-label="Main" className="flex-1 overflow-y-auto px-2 py-3">
+      {NAV_GROUPS.map((group, gi) => (
+        <div key={group.title} className={cn("space-y-1", gi > 0 && "mt-3")}>
+          {expanded ? (
+            <p className="px-3 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-600">{group.title}</p>
+          ) : (
+            gi > 0 && <div className="mx-3 mb-2 border-t border-white/5" aria-hidden />
+          )}
+      {group.items.map(({ href, icon: Icon, label }) => {
         const active = !isStockPage && (href === "/" ? pathname === "/" : pathname.startsWith(href));
         return (
           <Link
@@ -75,7 +102,7 @@ function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: ()
             aria-current={active ? "page" : undefined}
             title={expanded ? undefined : label}
             className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+              "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson-500/60",
               active
                 ? "bg-crimson-600/15 text-crimson-300 shadow-[0_0_12px_rgba(225,29,58,0.15)]"
@@ -94,6 +121,8 @@ function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: ()
           </Link>
         );
       })}
+        </div>
+      ))}
     </nav>
   );
 }

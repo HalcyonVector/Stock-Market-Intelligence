@@ -1,8 +1,9 @@
 """
 FastAPI application entrypoint.
 
-Lifespan starts the Redis pub/sub relay so the WebSocket layer receives events
-published by Celery workers. Read endpoints work without a database (mock mode),
+Lifespan starts the Redis pub/sub relay for the WebSocket layer, warms the
+dashboard caches and runs the periodic market refresh (all in this process:
+there is no separate worker). Read endpoints work without a database (mock mode),
 which keeps the bar to "running locally" extremely low for a solo engineer.
 """
 from __future__ import annotations
@@ -24,6 +25,14 @@ from app.realtime.manager import manager
 
 configure_logging()
 log = get_logger("app")
+
+if settings.SENTRY_DSN:
+    # Free tier: 5K errors/month. Errors only, no performance tracing, so the
+    # quota goes to real crashes.
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV,
+                    traces_sample_rate=0.0, send_default_pii=False)
 
 
 async def _warm_caches() -> None:
@@ -113,8 +122,8 @@ async def _seed_livefeed_from_movers(movers: dict | None) -> None:
 async def _publish_market_events() -> list:
     """Fetch quotes and publish unusual-activity events to the Redis bus.
 
-    Replicates the detect-and-publish logic from the Celery refresh_market task
-    so the LiveFeed WebSocket card works without Celery running. Returns the
+    Detects unusual moves and publishes them so the LiveFeed WebSocket card
+    stays live. Returns the
     fetched quotes so the caller can reuse them (see _periodic_market_refresh)
     instead of paying for a second full-universe fetch.
     """
@@ -151,8 +160,8 @@ async def _publish_market_events() -> list:
 
 
 async def _periodic_market_refresh() -> None:
-    """Background loop that periodically refreshes market data and publishes
-    LiveFeed events, replacing Celery beat for the refresh_market task.
+    """Background loop that periodically refreshes market data, publishes
+    LiveFeed events and checks price alerts.
 
     Runs every REFRESH_MARKET seconds (default 15 min). Skips a cycle if the
     previous one is still running. Failures are swallowed so the loop never dies.
@@ -206,16 +215,12 @@ async def lifespan(app: FastAPI):
     log.info("startup", env=settings.ENV, data_mode=settings.DATA_MODE)
 
     # Pre-warm all dashboard caches so the first browser visit sees data
-    # immediately, even without Celery worker/beat running.
+    # immediately.
     import asyncio
     asyncio.create_task(_warm_caches())
 
     # Periodic market refresh loop — keeps the LiveFeed WebSocket card alive
-    # by publishing price ticks and unusual-activity events to Redis pub/sub,
-    # independent of Celery. Only start it if there's no separate Celery
-    # worker+beat doing the same job — otherwise this duplicates
-    # refresh_market's full-universe fetch+publish on its own schedule and
-    # roughly doubles Redis command usage for no benefit.
+    # by publishing price ticks and unusual-activity events to Redis pub/sub.
     refresh_task = None
     if settings.RUN_INPROCESS_MARKET_REFRESH:
         refresh_task = asyncio.create_task(_periodic_market_refresh())

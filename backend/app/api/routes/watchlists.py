@@ -41,6 +41,16 @@ async def get_one(watchlist_id: int, user: str = Depends(get_current_user),
     return {"data": await svc.with_quotes(db, user, watchlist_id)}
 
 
+@router.get("/{watchlist_id}/digest")
+async def digest(watchlist_id: int, user: str = Depends(get_current_user),
+                 db: AsyncSession = Depends(get_session)):
+    """Last five trading days for every stock in the list + a short AI recap."""
+    from app.services.digest import watchlist_digest
+
+    wl = await svc._owned(db, user, watchlist_id)
+    return {"data": await watchlist_digest([i.symbol for i in wl.items])}
+
+
 @router.post("/{watchlist_id}/items")
 async def add_item(watchlist_id: int, body: ItemCreate,
                    user: str = Depends(get_current_user),

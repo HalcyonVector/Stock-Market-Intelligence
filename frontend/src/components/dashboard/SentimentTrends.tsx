@@ -16,12 +16,12 @@ function sentimentBadge(score: number) {
 
 export function SentimentTrends() {
   const market = useMarket();
-  const { data, dataUpdatedAt } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
+  const { data, dataUpdatedAt, isError, refetch } = useQuery({ queryKey: ["trending", market], queryFn: () => api.trending(market) });
   const sorted = [...(data ?? [])].sort((a: any, b: any) => (b.mention_volume ?? 0) - (a.mention_volume ?? 0));
   const maxVolume = sorted.length > 0 ? Math.max(...sorted.map((r: any) => r.mention_volume ?? 0)) : 1;
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Retail Sentiment"
       subtitle="Attention & tone shifts"

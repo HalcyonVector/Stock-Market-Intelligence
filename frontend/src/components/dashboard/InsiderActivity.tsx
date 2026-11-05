@@ -20,7 +20,7 @@ function formatShares(n: number): string {
 }
 
 export function InsiderActivity() {
-  const { data, isLoading, dataUpdatedAt } = useQuery({
+  const { data, isLoading, dataUpdatedAt, isError, refetch } = useQuery({
     queryKey: ["insider-activity"],
     queryFn: () => api.insiderActivity(),
     staleTime: 10 * 60 * 1000,
@@ -29,7 +29,7 @@ export function InsiderActivity() {
   const items = (data ?? []).slice(0, 12);
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Insider Activity"
       subtitle="Recent insider buys & sells"

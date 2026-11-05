@@ -1,6 +1,6 @@
 """
 Market heatmap data — returns stocks grouped by sector with market cap + change%.
-Concurrent fetching + Redis cache. Pre-computed by Celery beat.
+Concurrent fetching + Redis cache. Pre-computed in the background.
 """
 from __future__ import annotations
 
@@ -177,7 +177,7 @@ async def _fetch_one(sym: str, sem: asyncio.Semaphore) -> dict | None:
 
 
 async def compute_heatmap() -> dict:
-    """Heavy computation — called by Celery beat or on cache miss."""
+    """Heavy computation — called in the background or on cache miss."""
     sem = asyncio.Semaphore(8)
     results = await asyncio.gather(*(_fetch_one(s, sem) for s in UNIVERSE))
 

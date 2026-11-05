@@ -11,13 +11,15 @@ All payloads wrap data as `{ "data": ... }`; insight endpoints add a `disclaimer
 | GET | `/market/candles/{symbol}?interval=1d&lookback=90` | OHLCV series |
 | GET | `/discovery?market=` | Full ranked discovery scan |
 | GET | `/discovery/buckets?market=` | Momentum / breakout / surge / top buckets |
-| GET | `/stocks/{symbol}` | Profile + quote + news |
+| GET | `/stocks/search?q=` | Find any US / NSE / BSE stock (tracked list, then Finnhub) |
+| GET | `/stocks/{symbol}` | Profile + quote + news. Quotes carry `source`: `live`, `eod` (last daily close) or `mock` (sample data) |
 | GET | `/stocks/{symbol}/why` | **Flagship** explanation + evidence + confidence |
 | GET | `/stocks/{symbol}/sentiment` | Per-source + aggregate sentiment |
 | GET | `/sectors/rotation?market=` | Sector momentum + net flow |
 | GET | `/sentiment/trending?market=` | Attention-ranked tickers |
 | GET | `/insights/briefing?market=` | AI daily market briefing |
-| GET | `/health` | Liveness + data/AI mode + redis |
+| GET | `/insights/events?symbols=A,B&days=90` | Upcoming earnings / ex-dividend / dividend dates (synced daily) |
+| GET | `/health` | Liveness + data/AI mode + redis; `market.mock_recent` is true while sample data is being served |
 
 ## Realtime
 | Transport | Path | Notes |
@@ -69,6 +71,19 @@ the SPA works with zero setup. Set `AUTH_SECRET` in production to require tokens
 | GET | `/watchlists/{id}` | Watchlist **enriched with live quotes** |
 | POST | `/watchlists/{id}/items` | Add `{symbol}` (auto-uppercased, deduped) |
 | DELETE | `/watchlists/{id}/items/{symbol}` | Remove a symbol |
+| GET | `/watchlists/{id}/digest` | Five-day move per stock + AI recap (cached per list per day) |
+
+## Alerts, push and paper trading (per browser identity)
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET/POST | `/alerts` | List / create price alerts |
+| GET | `/alerts/push` | Whether Web Push is configured, its public VAPID key, device count |
+| POST | `/alerts/push` | Register this browser's push subscription |
+| POST | `/alerts/push/unsubscribe` | Remove it `{endpoint}` |
+| POST | `/alerts/push/test` | Send a test notification to this identity's devices |
+| GET | `/paper` | Paper account, positions, recent orders |
+| POST | `/paper/orders` | Practice buy/sell (refused when only sample prices are available) |
+| GET | `/paper/history` | Daily account value per currency vs. SPY / Nifty 50 |
 
 Ownership is enforced on every read/mutation (non-owners get `404`). Symbols are
 normalised to upper-case; duplicates are ignored.

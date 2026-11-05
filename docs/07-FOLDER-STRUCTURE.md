@@ -9,7 +9,7 @@ stock-discovery-intelligence/
 │   │   ├── adapters/               # provider seam: base, mock, live, ai, registry
 │   │   ├── scoring/                # engine (5 scores) + indicators
 │   │   ├── services/               # market, discovery, sentiment, sector, explain, briefing
-│   │   ├── etl/                    # celery_app + tasks (beat schedule)
+│   │   ├── etl/                    # market-aware refresh interval
 │   │   ├── realtime/               # connection manager + pub/sub fan-out
 │   │   ├── api/routes/             # market, discovery, stocks, sentiment, sectors, insights, realtime, health
 │   │   ├── models/                 # SQLAlchemy entities
@@ -34,6 +34,6 @@ stock-discovery-intelligence/
 - **Vertical seams** (adapters / scoring / services) keep business logic testable
   in isolation and vendor-agnostic.
 - **Routes are thin**: they only translate HTTP ⇄ services. All logic lives in
-  `services/` + `scoring/`, which have no FastAPI imports → reusable from Celery.
+  `services/` + `scoring/`, which have no FastAPI imports → reusable from background jobs and scripts.
 - **Frontend mirrors product modules** (dashboard/stock) so the file tree reads
   like the product.

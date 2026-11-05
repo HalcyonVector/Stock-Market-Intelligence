@@ -165,11 +165,11 @@ export default function ScreenerPage() {
             <p className="py-8 text-center text-sm text-ink-500">No stocks match your filters. Try loosening the criteria.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[620px] text-xs">
                 <thead>
                   <tr className="border-b border-white/5 text-ink-500">
                     <th className="py-2 text-left font-medium">Symbol</th>
-                    <th className="py-2 text-left font-medium">Name</th>
+                    <th className="hidden py-2 text-left font-medium sm:table-cell">Name</th>
                     <th className="py-2 text-right font-medium">Price</th>
                     <th className="py-2 text-right font-medium">Change %</th>
                     <th className="py-2 text-right font-medium">Volume</th>
@@ -192,8 +192,8 @@ export default function ScreenerPage() {
                           {r.symbol}
                         </Link>
                       </td>
-                      <td className="py-2 text-ink-300 max-w-[150px] truncate">{r.name ?? "—"}</td>
-                      <td className="py-2 text-right font-mono text-ink-100">{money(r.price, r.symbol)}</td>
+                      <td className="hidden py-2 text-ink-300 max-w-[150px] truncate sm:table-cell">{r.name ?? "—"}</td>
+                      <td className="py-2 text-right font-mono text-ink-100">{money(r.price, r.currency ?? r.symbol)}</td>
                       <td className={cn("py-2 text-right font-mono", changeColor(r.change_pct))}>
                         {pct(r.change_pct)}
                       </td>

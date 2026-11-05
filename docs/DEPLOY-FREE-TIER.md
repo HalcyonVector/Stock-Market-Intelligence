@@ -14,7 +14,7 @@ Browser → Vercel (Next.js frontend)
          Groq (LLM)
 ```
 
-> **No Celery in production.** Render's free tier gives one web service (750 instance-hours/month, and a 24/7 pinger already uses ~744 of them), so there is no room for separate worker/beat services. Instead the API process does the periodic work itself: an in-process loop (`RUN_INPROCESS_MARKET_REFRESH`, on by default) refreshes quotes, publishes LiveFeed events and checks price alerts every `REFRESH_MARKET` seconds, and the `/health/warm` pinger refreshes the dashboard snapshots. Celery worker + beat only run in the local Docker Compose stack, so the `CELERY_*` variables are not needed on Render.
+> **One process, no worker.** Render's free tier gives one web service (750 instance-hours/month, and a 24/7 pinger already uses ~744 of them), so the API process does the periodic work itself: an in-process loop refreshes quotes, publishes LiveFeed events and checks price alerts every `REFRESH_MARKET` seconds, and the `/health/warm` pinger refreshes the dashboard snapshots. (The old Celery worker/beat code has been removed.)
 
 ## Prerequisites
 
@@ -109,6 +109,8 @@ In the Render dashboard under **Environment**, add these:
 | `FINNHUB_API_KEY` | Your Finnhub key (optional) |
 | `ALPHAVANTAGE_API_KEY` | Your Alpha Vantage key (optional) |
 | `TWELVEDATA_API_KEY` | Free key from https://twelvedata.com (US price history backup; 800 credits/day) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Optional: turns on phone/desktop notifications for price alerts. Generate once with `cd backend && python -m scripts.gen_vapid` (keep the private key secret). |
+| `SENTRY_DSN` | Optional: backend error tracking on Sentry's free tier (5K errors/month). Errors only, no tracing. |
 
 ### 4c. Prevent Sleep + Keep Data Warm (Critical)
 
@@ -131,7 +133,13 @@ Render free services sleep after 15 minutes of inactivity. To keep the in-proces
 
 ## Step 4d — Daily price history (GitHub Actions)
 
-Yahoo Finance blocks Render's IPs, so daily price history (charts, technicals, forecasts, scores) is fetched by a free scheduled workflow instead: `.github/workflows/sync-history.yml` runs `backend/scripts/sync_history.py` every weekday at 22:30 UTC. It fetches ~400 days of bars for all tracked US **and** NSE stocks and stores them in Upstash Redis (~160 commands/day, ~3 MB).
+Yahoo Finance blocks Render's IPs, so daily price history (charts, technicals, forecasts, scores, NSE end-of-day prices) is fetched by a free scheduled workflow instead: `.github/workflows/sync-history.yml` runs `backend/scripts/sync_history.py` every weekday at 10:30 UTC (after the NSE close) and 22:30 UTC (after the US close). It fetches ~400 days of bars for:
+
+- all tracked US **and** NSE stocks,
+- two benchmarks (SPY, Nifty 50) for the paper-trading comparison chart,
+- any stock outside the tracked list that someone added to a watchlist, alert or paper trade (up to 300; ones that fail three runs in a row are dropped).
+
+The evening run also stores upcoming earnings and dividend dates (`scripts/sync_events.py`) for the watchlist page. Cost: about one Upstash command per stock per run (~10K/month), ~3-5 MB of storage.
 
 1. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**
 2. Name `REDIS_URL`, value: the same `rediss://.../0` URL you set on Render.
@@ -158,8 +166,9 @@ If a symbol is missing from the snapshot, US stocks fall back to Twelve Data (`T
 | Variable | Value |
 |----------|-------|
 | `BACKEND_URL` | `https://stockintel-api.onrender.com` |
+| `NEXT_PUBLIC_SENTRY_DSN` | Optional: front-end error tracking (Sentry free tier). The SDK is only downloaded when this is set. |
 
-This is the only env var needed. The `next.config.mjs` rewrite rule proxies `/api/*` to this URL.
+`BACKEND_URL` is the only required one. The `next.config.mjs` rewrite rule proxies `/api/*` to this URL.
 
 ### 5c. Deploy
 
@@ -219,7 +228,10 @@ Added Groq config block and commented-out cloud deployment section with Neon/Ups
 | Render Free | 750 instance-hours/mo | Sleeps after 15min (pinger prevents this) |
 | Neon Free | 0.5 GB, 100 CU-hrs | Storage (seed data is ~2 MB, won't hit this) |
 | Upstash Free | 256 MB, 500K cmds/mo | Commands (reduced intervals keep you at ~100K) |
-| Groq Free | 30 RPM, 1K RPD | RPD (only hit by heavy manual use) |
+| Groq Free | 30 RPM, 1K RPD | RPD (only hit by heavy manual use; watchlist recaps are cached one per list per day) |
+| GitHub Actions | Unlimited minutes (public repo) | Scheduled runs pause after 60 days without commits |
+| Web Push | Free (browser vendors' push services) | None; needs the VAPID keys above |
+| Sentry (optional) | 5K errors/month | Errors only, no tracing |
 | **Total** | | **$0/month** |
 
 ---

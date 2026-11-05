@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, hasIdentity } from "@/lib/api";
 import { toast } from "@/components/ui/Toaster";
@@ -39,6 +39,16 @@ export function AlertNotifier() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  // With Web Push on, the server already sent a system notification for each
+  // fired alert; don't show a second one from this tab.
+  const [pushOn, setPushOn] = useState(false);
+  useEffect(() => {
+    navigator.serviceWorker?.getRegistration()
+      .then((reg) => reg?.pushManager.getSubscription())
+      .then((sub) => setPushOn(!!sub))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!alerts?.length) return;
     const seen = readSeen();
@@ -50,13 +60,13 @@ export function AlertNotifier() {
       const body = describe(a) + (a.note ? ` — ${a.note}` : "");
       toast("Price alert triggered", { body, tone: "warn", href: `/stock/${a.symbol}`, ttl: 12000 });
       try {
-        if ("Notification" in window && Notification.permission === "granted") {
+        if (!pushOn && "Notification" in window && Notification.permission === "granted") {
           new Notification("StockIntel price alert", { body, tag: `alert-${a.id}` });
         }
       } catch { /* some mobile browsers throw on the constructor */ }
     }
     if (changed) writeSeen(seen);
-  }, [alerts]);
+  }, [alerts, pushOn]);
 
   return null;
 }

@@ -245,7 +245,7 @@ export function Rebalancer({ symbols }: Props) {
                     {data.assets.map((a: any) => (
                       <tr key={a.symbol} className="border-b border-white/5">
                         <td className="py-2 font-medium text-ink-200">{a.symbol}</td>
-                        <td className="py-2 text-right text-ink-300">{money(a.price, a.symbol)}</td>
+                        <td className="py-2 text-right text-ink-300">{money(a.price, a.currency ?? a.symbol)}</td>
                         <td className="py-2 text-right text-ink-300">{a.target_weight}%</td>
                         <td className="py-2 text-right text-ink-300">{a.current_weight}%</td>
                         <td className={cn("py-2 text-right font-medium",

@@ -97,5 +97,5 @@ def latest_quote(raw: str, symbol: str, now: datetime | None = None):
         change_pct=round((close - prev) / prev * 100, 2) if prev else 0.0,
         volume=int(vol or 0), avg_volume=avg_vol or 1, market_cap=None,
         currency="INR" if indian else "USD", market="IN" if indian else "US",
-        ts=datetime.fromisoformat(d).replace(tzinfo=timezone.utc),
+        ts=datetime.fromisoformat(d).replace(tzinfo=timezone.utc), source="eod",
     )

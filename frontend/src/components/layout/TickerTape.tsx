@@ -39,7 +39,7 @@ export function TickerTape() {
             className="inline-flex items-center gap-2 px-4 text-xs"
           >
             <span className="font-mono font-medium text-ink-100">{t.symbol}</span>
-            <span className="text-ink-500">{money(t.price, t.symbol)}</span>
+            <span className="text-ink-500">{money(t.price, t.currency ?? t.symbol)}</span>
             <span className={cn("font-mono", changeColor(t.change_pct))}>
               {pct(t.change_pct)}
             </span>

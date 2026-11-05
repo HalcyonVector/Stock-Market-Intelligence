@@ -6,9 +6,11 @@ import { Wallet, Loader2, RotateCcw, ArrowUpRight, ArrowDownRight } from "lucide
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { toast } from "@/components/ui/Toaster";
+import { EquityCurve } from "@/components/paper/EquityCurve";
+import { SourceBadge } from "@/components/ui/SourceBadge";
 import { cn, changeColor, pct, money, currencySymbol } from "@/lib/utils";
 
-const SUGGESTIONS = ["AAPL", "MSFT", "NVDA", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"];
+const SUGGESTIONS = ["AAPL", "MSFT", "NVDA", "TSLA", "RELIANCE", "TCS", "INFY"];
 
 function fmtMoney(v: number, cur: string) {
   const sym = cur === "INR" ? "₹" : "$";
@@ -56,7 +58,7 @@ function OrderTicket({ initialSymbol, accounts }: { initialSymbol: string; accou
     onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["paper"] });
       toast(`${r.side === "buy" ? "Bought" : "Sold"} ${r.quantity} ${r.symbol}`, {
-        body: `at ${money(r.price, r.symbol)}${r.side === "sell" ? ` · realized ${fmtMoney(r.realized_pnl, r.currency)}` : ""}`,
+        body: `at ${money(r.price, r.currency)}${r.side === "sell" ? ` · realized ${fmtMoney(r.realized_pnl, r.currency)}` : ""}`,
         tone: "success",
       });
     },
@@ -120,7 +122,7 @@ function OrderTicket({ initialSymbol, accounts }: { initialSymbol: string; accou
           <div className="flex justify-between">
             <span className="text-ink-500">Price</span>
             <span className="font-mono text-ink-200">
-              {quoting ? "…" : quote?.price ? money(quote.price, sym) : sym ? "not found" : "—"}
+              {quoting ? "…" : quote?.price ? money(quote.price, quote.currency) : sym ? "not found" : "—"}
             </span>
           </div>
           <div className="flex justify-between">
@@ -223,9 +225,10 @@ export default function PaperTradingPage() {
                           <Link href={`/stock/${p.symbol}`} className="font-mono font-medium text-ink-100 hover:text-crimson-300">{p.symbol}</Link>
                         </td>
                         <td className="py-2 text-right font-mono">{p.quantity}</td>
-                        <td className="py-2 text-right font-mono text-ink-300">{money(p.avg_cost, p.symbol)}</td>
+                        <td className="py-2 text-right font-mono text-ink-300">{fmtMoney(p.avg_cost, p.currency)}</td>
                         <td className="py-2 text-right font-mono text-ink-200" title={p.price_is_live ? "" : "Live price unavailable; showing cost"}>
-                          {money(p.price, p.symbol)}{!p.price_is_live && "*"}
+                          {p.price_source === "eod" && <SourceBadge source="eod" className="mr-1.5" />}
+                          {fmtMoney(p.price, p.currency)}{!p.price_is_live && "*"}
                         </td>
                         <td className="py-2 text-right font-mono text-ink-200">{fmtMoney(p.market_value, p.currency)}</td>
                         <td className={cn("py-2 text-right font-mono", changeColor(p.unrealized_pnl))}>
@@ -239,6 +242,8 @@ export default function PaperTradingPage() {
             )}
           </BentoCard>
 
+          <EquityCurve version={data.trades.length ? data.trades[0].id : 0} />
+
           <BentoCard span="col-span-12" title="Recent orders">
             {data.trades.length === 0 ? (
               <p className="py-4 text-center text-sm text-ink-500">No orders yet.</p>
@@ -250,7 +255,7 @@ export default function PaperTradingPage() {
                       {t.side === "buy" ? <ArrowUpRight size={14} className="text-emerald-400" /> : <ArrowDownRight size={14} className="text-crimson-400" />}
                       <span className="capitalize text-ink-300">{t.side}</span>
                       <span className="font-mono text-ink-100">{t.quantity} {t.symbol}</span>
-                      <span className="text-ink-500">@ {money(t.price, t.symbol)}</span>
+                      <span className="text-ink-500">@ {money(t.price, t.currency)}</span>
                     </span>
                     <span className="flex items-center gap-3">
                       {t.side === "sell" && (

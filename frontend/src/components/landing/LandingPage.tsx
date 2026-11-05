@@ -31,8 +31,11 @@ function ParticleField() {
     resize();
     window.addEventListener("resize", resize);
 
-    // Create particles
-    for (let i = 0; i < 80; i++) {
+    // Fewer particles on phones (the line-linking pass is O(n²)), and a
+    // single still frame for people who asked their OS to reduce motion.
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const count = window.innerWidth < 768 ? 35 : 80;
+    for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
@@ -77,13 +80,19 @@ function ParticleField() {
         });
       });
 
-      animId = requestAnimationFrame(animate);
+      if (!reduceMotion && !document.hidden) animId = requestAnimationFrame(animate);
     };
     animate();
+    // Pause while the tab is in the background; resume when it's visible.
+    const onVisibility = () => {
+      if (!document.hidden && !reduceMotion) { cancelAnimationFrame(animId); animId = requestAnimationFrame(animate); }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 

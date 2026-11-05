@@ -57,6 +57,9 @@ async def add_item(db: AsyncSession, user_id: str, watchlist_id: int, symbol: st
         wl.items.append(WatchlistItem(symbol=symbol))
         await db.commit()
         await db.refresh(wl, attribute_names=["items"])
+
+        from app.services.symbols import register_extra
+        await register_extra(symbol)
     return wl
 
 

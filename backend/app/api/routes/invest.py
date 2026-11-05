@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.services.safe_invest import (
-    RATES_AS_OF, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
+    RATES_AS_OF, RATES_VALID_UNTIL, RISK_PROFILES, sip_calculator, goal_planner, ai_advise, allocation_calc,
     get_instruments,
 )
 
@@ -17,7 +17,7 @@ async def instruments(country: str = Query("IN")):
     returns, Treasury yields). Falls back to the curated static table -
     labeled as such - for anything without a reliable free feed."""
     data = await get_instruments(country)
-    return {"data": data, "rates_as_of": RATES_AS_OF}
+    return {"data": data, "rates_as_of": RATES_AS_OF, "rates_valid_until": RATES_VALID_UNTIL}
 
 
 @router.get("/profiles")

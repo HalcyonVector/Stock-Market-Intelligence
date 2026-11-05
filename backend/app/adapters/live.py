@@ -167,12 +167,15 @@ class YFinanceMarketProvider(MarketDataProvider):
 class RSSNewsProvider(NewsProvider):
     """Public financial RSS feeds. No key required."""
     name = "rss"
+    # Checked 2026-11: all return items. (feeds.reuters.com shut down in 2020.)
     FEEDS = [
-        "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
-        "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-        "https://www.moneycontrol.com/rss/marketreports.xml",      # India
-        "https://www.business-standard.com/rss/markets-106.rss",   # India
-        "https://feeds.reuters.com/reuters/businessNews",          # global
+        ("WSJ Markets", "https://feeds.a.dj.com/rss/RSSMarketsMain.xml"),
+        ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+        ("CNBC Finance", "https://www.cnbc.com/id/10000664/device/rss/rss.html"),
+        ("Economic Times", "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"),
+        ("Mint", "https://www.livemint.com/rss/markets"),
+        ("Business Standard", "https://www.business-standard.com/rss/markets-106.rss"),
+        ("Moneycontrol", "https://www.moneycontrol.com/rss/marketreports.xml"),
     ]
 
     def __init__(self) -> None:
@@ -180,24 +183,53 @@ class RSSNewsProvider(NewsProvider):
 
     async def latest(self, symbol: str | None = None, limit: int = 20) -> list[NewsItem]:
         try:
-            import feedparser
+            import calendar
 
-            def _fetch() -> list[NewsItem]:
+            import feedparser
+            import httpx
+
+            async def _get(client, url):
+                try:
+                    r = await client.get(url)
+                    r.raise_for_status()
+                    return r.content
+                except Exception as e:  # noqa: BLE001 -- one dead feed shouldn't sink the rest
+                    log.warning("rss.feed_failed", url=url, error=str(e)[:120])
+                    return None
+
+            async with httpx.AsyncClient(
+                timeout=8, follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (StockIntel news reader)"},
+            ) as client:
+                bodies = await asyncio.gather(*(_get(client, u) for _, u in self.FEEDS))
+
+            def _parse() -> list[NewsItem]:
                 items: list[NewsItem] = []
-                for url in self.FEEDS:
-                    feed = feedparser.parse(url)
-                    for e in feed.entries[:limit]:
-                        if symbol and symbol.lower() not in (e.get("title", "")).lower():
+                seen: set[str] = set()
+                for (name, _), body in zip(self.FEEDS, bodies):
+                    if not body:
+                        continue
+                    for e in feedparser.parse(body).entries[:limit]:
+                        title = (e.get("title") or "").strip()
+                        if not title or title.lower() in seen:
                             continue
+                        if symbol and symbol.lower() not in title.lower():
+                            continue
+                        seen.add(title.lower())
+                        t = e.get("published_parsed") or e.get("updated_parsed")
+                        published = (datetime.fromtimestamp(calendar.timegm(t), tz=timezone.utc)
+                                     if t else datetime.now(timezone.utc))
                         items.append(NewsItem(
-                            symbol=symbol, headline=e.get("title", ""),
-                            url=e.get("link", ""), source=feed.feed.get("title", "RSS"),
-                            published_at=datetime.now(timezone.utc),
-                            summary=e.get("summary", "")[:300],
+                            symbol=symbol, headline=title, url=e.get("link", ""),
+                            source=name, published_at=published,
+                            summary=(e.get("summary") or "")[:300],
                         ))
+                # Newest first across all feeds, so one busy feed doesn't
+                # crowd out the others.
+                items.sort(key=lambda n: n.published_at, reverse=True)
                 return items[:limit]
 
-            items = await asyncio.to_thread(_fetch)
+            items = await asyncio.to_thread(_parse)
             return items or await self._fallback.latest(symbol, limit)
         except Exception as e:  # noqa: BLE001
             log.warning("rss.fallback", error=str(e))

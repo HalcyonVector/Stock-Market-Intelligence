@@ -8,7 +8,7 @@ import { BentoCard } from "@/components/ui/BentoCard";
 
 export function MarketBriefing() {
   const market = useMarket();
-  const { data, isLoading, dataUpdatedAt } = useQuery({
+  const { data, isLoading, dataUpdatedAt, isError, refetch } = useQuery({
     queryKey: ["briefing", market],
     queryFn: () => api.briefing(market),
     // When the briefing is still pending (placeholder), poll faster (5s) so
@@ -25,7 +25,7 @@ export function MarketBriefing() {
       : null;
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt}
+    <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-7"
       title="AI Market Briefing"
       subtitle="Synthesised from movers, sectors and discovery scores"

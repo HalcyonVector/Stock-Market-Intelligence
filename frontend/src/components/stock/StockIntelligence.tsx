@@ -12,6 +12,7 @@ import { FundamentalsCard } from "./FundamentalsCard";
 import { DeepResearch } from "./DeepResearch";
 import { PriceForecast } from "./PriceForecast";
 import { StockActions } from "./StockActions";
+import { SourceBadge } from "@/components/ui/SourceBadge";
 import { Term } from "@/components/ui/Term";
 import { pct, changeColor, cn, money, currencySymbol } from "@/lib/utils";
 
@@ -63,8 +64,13 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
         {q && (
           <div className="text-right">
             <p className="font-mono text-3xl font-bold">{q.currency} {q.price?.toFixed(2)}</p>
+            {q.source === "mock" && (
+              <p className="mt-1 flex items-center justify-end gap-1.5 text-[11px] text-sky-300/90">
+                <SourceBadge source="mock" /> Live data unavailable
+              </p>
+            )}
             {/* Daily-history quotes carry a midnight-UTC bar date instead of a live timestamp */}
-            {q.ts && String(q.ts).includes("T00:00:00") && (
+            {q.source !== "mock" && q.ts && String(q.ts).includes("T00:00:00") && (
               <p className="text-[11px] text-amber-300/80">
                 End-of-day close · {new Date(q.ts).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" })}
               </p>
@@ -136,7 +142,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
                   <span className="font-mono text-sm font-medium">{peer.symbol}</span>
                   <span className={cn("text-xs font-mono", changeColor(peer.change_pct))}>{pct(peer.change_pct)}</span>
                 </div>
-                <p className="mt-1 text-xs text-ink-500">{money(peer.price, peer.symbol)}</p>
+                <p className="mt-1 text-xs text-ink-500">{money(peer.price, peer.currency ?? peer.symbol)}</p>
               </Link>
             ))}
           </div>

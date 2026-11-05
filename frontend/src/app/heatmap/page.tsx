@@ -26,11 +26,21 @@ function getTextSize(cap: number, maxCap: number): string {
 }
 
 export default function HeatmapPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["heatmap"],
     queryFn: () => api.heatmap(),
     staleTime: 60_000,
   });
+
+  if (isError && !data) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <p className="text-sm text-ink-400">Couldn&apos;t load the heatmap right now.</p>
+        <button onClick={() => refetch()}
+          className="rounded-lg border border-white/10 px-4 py-1.5 text-sm text-ink-300 hover:bg-white/5">Retry</button>
+      </div>
+    );
+  }
 
   if (isLoading || !data) {
     return (
@@ -112,7 +122,9 @@ export default function HeatmapPage() {
                       style={{
                         flexBasis: `${widthPct}%`,
                         flexGrow: weight > 0.1 ? 2 : 1,
-                        minHeight: weight > 0.15 ? 72 : weight > 0.05 ? 56 : 40,
+                        minHeight: weight > 0.15 ? 72 : weight > 0.05 ? 56 : 44,
+                        // Keeps small tiles readable on phones, where 4% of the width is ~14px.
+                        minWidth: 64,
                       }}
                     >
                       <span className={cn("font-mono leading-tight text-white/90", getTextSize(stock.market_cap, maxSingleCap))}>

@@ -21,7 +21,9 @@ export function changeColor(n: number) {
 
 /** Currency symbol for a ticker: NSE/BSE listings trade in rupees. */
 export function currencySymbol(symbol?: string) {
-  return symbol && /\.(NS|BO)$/i.test(symbol) ? "₹" : "$";
+  // Accepts a ticker ("TCS.NS") or a currency code from the API ("INR").
+  // Tracked NSE stocks have no suffix, so prefer passing the quote's currency.
+  return symbol && (symbol === "INR" || /\.(NS|BO)$/i.test(symbol)) ? "₹" : "$";
 }
 
 /** Price with the right currency symbol, e.g. money(2950.4, "RELIANCE.NS") -> "₹2950.40". */

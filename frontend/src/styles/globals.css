@@ -49,3 +49,15 @@ body {
 .ticker-scroll:hover {
   animation-play-state: paused;
 }
+
+/* Respect the OS "reduce motion" setting: no background drift, no looping or
+   entrance animations (framer-motion is handled by <MotionConfig> too). */
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

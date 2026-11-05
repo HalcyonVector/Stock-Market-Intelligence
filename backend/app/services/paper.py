@@ -28,7 +28,18 @@ SYMBOL_RE = re.compile(r"^[A-Z0-9.^=&-]{1,20}$")
 
 
 def currency_of(symbol: str) -> str:
-    return "INR" if symbol.upper().endswith((".NS", ".BO")) else "USD"
+    # Tracked NSE stocks have no suffix (RELIANCE), others do (IRCTC.NS).
+    from app.adapters.history_store import is_indian
+
+    return "INR" if is_indian(symbol) else "USD"
+
+
+def _is_sample(q) -> bool:
+    """Sample (mock) price served because every live source failed. In mock
+    mode everything is sample data, so only refuse it when running live."""
+    from app.core.config import settings
+
+    return settings.DATA_MODE == "live" and getattr(q, "source", "live") == "mock"
 
 
 def _cash_attr(currency: str) -> str:
@@ -94,7 +105,9 @@ async def summary(db: AsyncSession, user_id: str) -> dict:
     for p in sorted(positions, key=lambda x: x.symbol):
         cur = currency_of(p.symbol)
         q = quotes.get(p.symbol.upper())
-        price = q.price if q and q.price else p.avg_cost
+        if q is not None and (not q.price or _is_sample(q)):
+            q = None  # never mark a position to sample data
+        price = q.price if q else p.avg_cost
         mv = price * p.quantity
         cost = p.avg_cost * p.quantity
         totals[cur]["market_value"] += mv
@@ -105,7 +118,8 @@ async def summary(db: AsyncSession, user_id: str) -> dict:
             "quantity": round(p.quantity, 4),
             "avg_cost": round(p.avg_cost, 4),
             "price": round(price, 4),
-            "price_is_live": bool(q and q.price),
+            "price_is_live": q is not None,
+            "price_source": q.source if q else "cost",
             "day_change_pct": q.change_pct if q else None,
             "market_value": round(mv, 2),
             "unrealized_pnl": round(mv - cost, 2),
@@ -153,9 +167,13 @@ async def place_order(db: AsyncSession, user_id: str, symbol: str, side: str, qu
         quote = await providers.market.quote(symbol)
     except Exception:  # noqa: BLE001
         quote = None
-    if quote is None or not quote.price or quote.price <= 0:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"No price available for {symbol} right now")
+    if (quote is None or not quote.price or quote.price <= 0
+            or _is_sample(quote)):
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"No real price available for {symbol} right now")
     price = float(quote.price)
+
+    from app.services.symbols import register_extra
+    await register_extra(symbol)
 
     acct = await _get_or_create(db, user_id)
     cur = currency_of(symbol)
@@ -229,3 +247,98 @@ async def reset(db: AsyncSession, user_id: str) -> None:
     await db.execute(delete(PaperAccount).where(PaperAccount.id == acct_id))
     await db.commit()
     db.expunge_all()
+
+
+BENCHMARKS = {"USD": ("SPY", "S&P 500 (SPY)"), "INR": ("^NSEI", "Nifty 50")}
+HISTORY_MAX_DAYS = 365
+
+
+async def history(db: AsyncSession, user_id: str, today=None) -> dict:
+    """Daily account value per currency, with a benchmark index on the same
+    scale ("what if the starting cash had gone into the index instead").
+
+    Nothing extra is stored: the curve is rebuilt by walking the kept trade
+    log *backwards* from today's cash and positions, and pricing each day's
+    holdings with the daily closes from the history snapshot.
+    """
+    from datetime import datetime as _dt, timedelta, timezone as _tz
+
+    acct = await _load(db, user_id)
+    if acct is None:
+        return {"curves": {}}
+    trades = list((await db.execute(
+        select(PaperTrade).where(PaperTrade.account_id == acct.id).order_by(PaperTrade.id.desc())
+    )).scalars().all())
+    if not trades:
+        return {"curves": {}}
+
+    today = today or _dt.now(_tz.utc).date()
+    curves = {}
+    for cur in ("USD", "INR"):
+        cur_trades = [t for t in trades if currency_of(t.symbol) == cur]  # newest first
+        if not cur_trades:
+            continue
+        first_day = min(t.ts for t in cur_trades if t.ts).date() if any(t.ts for t in cur_trades) else today
+        start = max(first_day - timedelta(days=1), today - timedelta(days=HISTORY_MAX_DAYS))
+        lookback = (today - start).days + 7
+
+        symbols = sorted({t.symbol for t in cur_trades} | {p.symbol for p in acct.positions if currency_of(p.symbol) == cur})
+        bench_sym, bench_name = BENCHMARKS[cur]
+        closes: dict[str, dict] = {}
+        for s in symbols + [bench_sym]:
+            try:
+                cs = await providers.market.candles(s, "1d", lookback)
+            except Exception:  # noqa: BLE001
+                cs = []
+            closes[s] = {c.ts.date(): c.close for c in cs if c.close}
+
+        # Trading days come from the benchmark (or any held stock).
+        days = sorted(d for d in (closes.get(bench_sym) or {}) if start <= d <= today)
+        if not days:
+            days = sorted({d for s in symbols for d in closes.get(s, {}) if start <= d <= today})
+        if not days:
+            continue
+
+        def price_on(sym, day, fallback):
+            series = closes.get(sym) or {}
+            best = None
+            for d, c in series.items():
+                if d <= day and (best is None or d > best[0]):
+                    best = (d, c)
+            return best[1] if best else fallback
+
+        # Walk backwards from the current state.
+        cash = getattr(acct, _cash_attr(cur))
+        qty = {p.symbol: p.quantity for p in acct.positions if currency_of(p.symbol) == cur}
+        last_px = {t.symbol: t.price for t in reversed(cur_trades)}  # latest trade price per symbol
+        pending = list(cur_trades)  # newest first
+        points = []
+        for day in reversed(days):
+            # Undo trades made after this day's close.
+            while pending and pending[0].ts and pending[0].ts.date() > day:
+                t = pending.pop(0)
+                if t.side == "buy":
+                    cash += t.price * t.quantity
+                    qty[t.symbol] = qty.get(t.symbol, 0.0) - t.quantity
+                else:
+                    cash -= t.price * t.quantity
+                    qty[t.symbol] = qty.get(t.symbol, 0.0) + t.quantity
+            equity = cash + sum(q * price_on(s, day, last_px.get(s, 0.0)) for s, q in qty.items() if q > 1e-9)
+            points.append({"date": day.isoformat(), "equity": round(equity, 2)})
+        points.reverse()
+
+        # Benchmark: the first point's equity invested in the index.
+        bench = closes.get(bench_sym) or {}
+        b0 = price_on(bench_sym, days[0], None)
+        if b0:
+            base = points[0]["equity"]
+            for p, day in zip(points, days):
+                b = price_on(bench_sym, day, None)
+                p["benchmark"] = round(base * b / b0, 2) if b else None
+        curves[cur] = {
+            "points": points,
+            "benchmark": bench_name if bench and b0 else None,
+            "starting_cash": STARTING_CASH[cur],
+            "truncated": len(trades) >= MAX_TRADES_KEPT,
+        }
+    return {"curves": curves}

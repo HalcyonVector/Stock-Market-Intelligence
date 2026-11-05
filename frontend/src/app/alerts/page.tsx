@@ -9,6 +9,7 @@ import {
   ArrowDown, CheckCircle2, Clock, AlertTriangle, Loader2, RefreshCw, BellPlus,
 } from "lucide-react";
 import { cn, money } from "@/lib/utils";
+import { PushCard } from "@/components/alerts/PushCard";
 
 const CONDITIONS = [
   { id: "above", label: "Price Above", icon: ArrowUp, desc: "Triggers when price rises above target" },
@@ -19,7 +20,7 @@ const CONDITIONS = [
 
 const POPULAR_SYMBOLS = [
   "AAPL", "MSFT", "GOOGL", "NVDA", "TSLA", "AMZN", "META",
-  "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS",
+  "RELIANCE", "TCS", "INFY", "HDFCBANK",
 ];
 
 export default function AlertsPage() {
@@ -30,19 +31,11 @@ export default function AlertsPage() {
   const [threshold, setThreshold] = useState<number | "">("");
   const [note, setNote] = useState("");
 
-  const [notifPerm, setNotifPerm] = useState<string>("default");
-
   useEffect(() => {
     // Prefill from links like /alerts?symbol=AAPL (e.g. the stock page's "Alert" button).
     const s = new URLSearchParams(window.location.search).get("symbol");
     if (s) { setSymbol(s.toUpperCase()); setShowCreate(true); }
-    if ("Notification" in window) setNotifPerm(Notification.permission);
-    else setNotifPerm("unsupported");
   }, []);
-
-  const enableNotifications = async () => {
-    try { setNotifPerm(await Notification.requestPermission()); } catch { /* ignore */ }
-  };
 
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ["alerts"],
@@ -84,19 +77,11 @@ export default function AlertsPage() {
             Price Alerts
           </h1>
           <p className="mt-1 text-sm text-ink-400">
-            Checked automatically every ~30 min during US market hours (less often off-hours) while the server is awake. You&apos;ll get an in-app
-            notice (and a system notification if enabled) the next time this site is open.
+            Checked automatically every ~30 min during market hours (less often off-hours). Turn on notifications below to hear
+            about them even when this site is closed.
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {notifPerm === "default" && (
-            <button
-              onClick={enableNotifications}
-              className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2.5 text-sm text-ink-300 transition hover:bg-white/10"
-            >
-              <BellPlus size={14} /> Enable notifications
-            </button>
-          )}
           <button
             onClick={() => checkMut.mutate()}
             disabled={checkMut.isPending}
@@ -113,6 +98,8 @@ export default function AlertsPage() {
           </button>
         </div>
       </div>
+
+      <PushCard />
 
       {/* Create form */}
       <AnimatePresence>
@@ -285,7 +272,7 @@ function AlertRow({ alert, onDelete, triggered }: { alert: any; onDelete: () => 
         {alert.note && <p className="text-xs text-ink-500 truncate">{alert.note}</p>}
         {triggered && alert.trigger_price && (
           <p className="text-xs text-emerald-400">
-            Triggered at {money(alert.trigger_price, alert.symbol)} ({alert.trigger_change_pct?.toFixed(2)}%)
+            Triggered at {money(alert.trigger_price, alert.currency ?? alert.symbol)} ({alert.trigger_change_pct?.toFixed(2)}%)
           </p>
         )}
       </div>

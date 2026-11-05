@@ -6,10 +6,10 @@ cadences (configurable in `core/config.py`):
 
 | Data | Cadence | Mechanism |
 |------|---------|-----------|
-| Market quotes / ticks | 15–60s (default 30s) | Celery beat → worker → Redis pub/sub → WS |
-| News | 5m | Celery beat → ingest → cache |
-| Sentiment | 5–15m (default 10m) | Celery beat → aggregate |
-| Discovery scores | 15m | Celery beat → recompute → event |
+| Market quotes / ticks | 15–60s (default 30s) | in-process refresh loop → Redis pub/sub → WS |
+| News | 5m | on request → cache |
+| Sentiment | 5–15m (default 10m) | /health/warm → aggregate |
+| Discovery scores | 15m | /health/warm → recompute |
 
 ## Fan-out design
 ```
