@@ -1,0 +1,43 @@
+# Daily price history for every tracked stock (US + NSE), written to Upstash
+# Redis for the API to serve. Runs here because Yahoo blocks Render's IPs.
+#
+# Free: public repos get unlimited Actions minutes (one run is ~1-2 min), and
+# it costs ~160 Upstash commands/day.
+#
+# Setup: Settings -> Secrets and variables -> Actions -> New repository secret
+#   REDIS_URL = the same rediss://... URL the backend uses on Render.
+#
+# Note: GitHub pauses scheduled workflows in public repos after 60 days with no
+# commits. If history goes stale, re-enable it from the Actions tab.
+name: Sync price history
+
+on:
+  schedule:
+    # 22:30 UTC Mon-Fri: after the US close (20:00/21:00 UTC) and long after
+    # NSE (10:00 UTC).
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-history
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Latest yfinance on purpose: it's the piece that has to keep up with
+      # Yahoo's changes. Only the libraries the script imports are installed.
+      - run: pip install "yfinance>=0.2.50" "redis>=5"
+      - name: Fetch history and write to Redis
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: python -m scripts.sync_history

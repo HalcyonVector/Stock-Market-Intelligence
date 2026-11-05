@@ -40,7 +40,10 @@ def _note_mock(kind: str, reason) -> None:
 
 # Cache TTLs in seconds
 QUOTE_TTL = 300       # 5 minutes
-CANDLE_TTL = 900      # 15 minutes
+CANDLE_TTL = 900      # 15 minutes (intraday intervals)
+# Daily bars only change once a day; caching them for 12 h is what keeps
+# Twelve Data's free 800 credits/day sufficient.
+DAILY_CANDLE_TTL = 12 * 3600
 PROFILE_TTL = 3600    # 1 hour
 
 # Same breaker instance as app.core.snapshot's -- once Upstash's monthly
@@ -100,14 +103,15 @@ def _build_market_chain() -> list[MarketDataProvider]:
     except Exception:
         pass
 
-    # 2. Stooq — free, no key, reliable daily OHLCV (US coverage). Sits right
-    #    behind yfinance so when Yahoo is rate-limited we still get real
-    #    candles/quotes instead of falling straight through to mock.
-    try:
-        from app.adapters.stooq_provider import StooqMarketProvider
-        chain.append(StooqMarketProvider())
-    except Exception:
-        pass
+    # 2. Stooq used to sit here, but its CSV download now sits behind a
+    #    JavaScript bot check, so every request returned an HTML page and
+    #    failed. Re-enable with STOOQ_ENABLED=true if that ever changes.
+    if settings.STOOQ_ENABLED:
+        try:
+            from app.adapters.stooq_provider import StooqMarketProvider
+            chain.append(StooqMarketProvider())
+        except Exception:
+            pass
 
     # 3. Finnhub — needs API key
     if settings.FINNHUB_API_KEY:
@@ -117,7 +121,15 @@ def _build_market_chain() -> list[MarketDataProvider]:
         except Exception:
             pass
 
-    # 4. Alpha Vantage — needs API key
+    # 4. Twelve Data — needs API key; daily candles for US stocks only.
+    if settings.TWELVEDATA_API_KEY:
+        try:
+            from app.adapters.twelvedata_provider import TwelveDataMarketProvider
+            chain.append(TwelveDataMarketProvider())
+        except Exception:
+            pass
+
+    # 5. Alpha Vantage — needs API key
     if settings.ALPHAVANTAGE_API_KEY:
         try:
             from app.adapters.alphavantage_provider import AlphaVantageMarketProvider
@@ -264,6 +276,17 @@ class FallbackMarketProvider(MarketDataProvider):
         if local_hit is not None:
             return local_hit
 
+        # 1. Daily history written by the GitHub Actions sync job (US + NSE).
+        if interval == "1d":
+            from app.adapters import history_store
+
+            raw = await self._cache_get(history_store.KEY.format(symbol=symbol.upper()))
+            snap = history_store.decode(raw, lookback) if raw else None
+            if snap:
+                _local_set(local_key, snap)
+                _note_live("history_snapshot")
+                return snap
+
         cache_key = f"candles:{symbol}:{interval}:{lookback}"
         hit = await self._cache_get(cache_key)
         if hit:
@@ -287,7 +310,7 @@ class FallbackMarketProvider(MarketDataProvider):
                         {"ts": c.ts.isoformat(), "open": c.open, "high": c.high,
                          "low": c.low, "close": c.close, "volume": c.volume}
                         for c in result
-                    ]), CANDLE_TTL)
+                    ]), DAILY_CANDLE_TTL if interval == "1d" else CANDLE_TTL)
                     _local_set(local_key, result)
                     log.info("candles.success", symbol=symbol, provider=provider.name)
                     _note_live(provider.name)
