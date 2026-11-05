@@ -82,13 +82,19 @@ export function FearGreedGauge() {
   ];
 
   return (
-    <BentoCard updatedAt={dataUpdatedAt} span="col-span-12 lg:col-span-4" title="Fear & Greed">
+    <BentoCard
+      updatedAt={dataUpdatedAt}
+      span="col-span-12 lg:col-span-5"
+      title="Fear & Greed"
+      subtitle="Breadth, momentum and retail sentiment"
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="flex flex-col items-center justify-center h-full"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:justify-between"
       >
+       <div className="flex shrink-0 flex-col items-center">
         {/* Gauge */}
         <div className="relative">
           <svg width="200" height="115" viewBox="0 0 200 115">
@@ -174,23 +180,36 @@ export function FearGreedGauge() {
             {text}
           </span>
         </div>
+       </div>
 
-        {/* Mini stat pills */}
-        <div className="mt-4 flex w-full gap-2">
-          {miniStats.map((stat) => (
-            <motion.div
+        {/* Component readings: one row each, with a 0-100 bar */}
+        <ul className="flex w-full min-w-0 flex-col gap-3 sm:max-w-[220px]">
+          {miniStats.map((stat, i) => (
+            <motion.li
               key={stat.label}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-white/[0.04] px-2 py-1.5 border border-white/[0.06]"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 + i * 0.08, duration: 0.35 }}
             >
-              <stat.icon size={12} className="text-ink-500" />
-              <span className="text-[10px] text-ink-500">{stat.label}</span>
-              <span className="font-mono text-xs font-semibold text-ink-100">{stat.value}</span>
-            </motion.div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="flex items-center gap-1.5 text-ink-400">
+                  <stat.icon size={12} className="text-ink-500" aria-hidden />
+                  {stat.label}
+                </span>
+                <span className="font-mono font-semibold text-ink-100">{stat.value}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.max(2, Math.min(100, stat.value))}%`, background: label(stat.value).color }}
+                />
+              </div>
+            </motion.li>
           ))}
-        </div>
+          <li className="text-[10px] leading-snug text-ink-500">
+            0 = extreme fear · 100 = extreme greed. A rough gauge from today&apos;s movers, not a market index.
+          </li>
+        </ul>
       </motion.div>
     </BentoCard>
   );
