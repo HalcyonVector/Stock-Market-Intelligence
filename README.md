@@ -1,8 +1,12 @@
-# Stock Discovery & Intelligence — AI-Powered Market Intelligence Platform
+# Stock Discovery & Intelligence: AI-Powered Market Intelligence Platform
 
 A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Groq/Ollama, and Docker.
 
-> **Live demo:** [stock-market-intelligence-sable.vercel.app](https://stock-market-intelligence-sable.vercel.app) — deployed for free on Vercel + Render + Neon + Upstash + Groq ($0/month)
+> **What it's for:** find stocks that are starting to move, see why with cited evidence, and test ideas with a portfolio optimizer and a strategy backtester, for learning rather than trading advice.
+
+**Live demo:** [stock-market-intelligence-sable.vercel.app](https://stock-market-intelligence-sable.vercel.app) (frontend on Vercel, API on Render)
+
+![Dashboard: AI market briefing, fear and greed gauge, market movers, opportunity radar and news](docs/screenshots/overview.png)
 
 ---
 
@@ -18,64 +22,64 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ### Core Intelligence
 
-- **AI Dashboard** — Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
-- **"Why Is This Stock Moving?"** — Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
-- **AI Deep Research** — Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (gpt-oss-120b) or Ollama (qwen2.5:7b)
-- **Search Any Stock** — `Cmd-K` / `Ctrl-K` finds any US or NSE/BSE listing (tracked list first, then Finnhub's free symbol search); stocks outside the tracked list get daily prices once someone adds them to a watchlist
+- **AI Dashboard**: Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
+- **"Why Is This Stock Moving?"**: Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
+- **AI Deep Research**: Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (gpt-oss-120b) or Ollama (qwen2.5:7b)
+- **Search Any Stock**: `Cmd-K` / `Ctrl-K` finds any US or NSE/BSE listing (tracked list first, then Finnhub's free symbol search); stocks outside the tracked list get daily prices once someone adds them to a watchlist
 
 ### Portfolio & Optimization
 
-- **Portfolio Optimizer** — Mean-variance optimization (scipy SLSQP), 15,000-point Monte Carlo cloud, optimizer-traced efficient frontier, 5 allocation strategies
-- **Monte Carlo Simulation** — 2,000-path Student-t fat-tail growth simulation with percentile bands
-- **Stress Testing** — 6 historical crash scenarios (2008 GFC, COVID, Dot-com, etc.) applied to your portfolio
-- **Correlation Heatmap** — Pairwise asset correlation matrix for diversification analysis
-- **Portfolio Rebalancer** — Drift detection, equal/custom weight strategies, trade suggestions with turnover calculation
-- **Strategy Backtester** — Test RSI, MACD, SMA, Bollinger strategies with equity curves, trade logs, Sharpe ratio, max drawdown, and alpha
+- **Portfolio Optimizer**: Mean-variance optimization (scipy SLSQP), 15,000-point Monte Carlo cloud, optimizer-traced efficient frontier, 5 allocation strategies
+- **Monte Carlo Simulation**: 2,000-path Student-t fat-tail growth simulation with percentile bands
+- **Stress Testing**: 6 historical crash scenarios (2008 GFC, COVID, Dot-com, etc.) applied to your portfolio
+- **Correlation Heatmap**: Pairwise asset correlation matrix for diversification analysis
+- **Portfolio Rebalancer**: Drift detection, equal/custom weight strategies, trade suggestions with turnover calculation
+- **Strategy Backtester**: Test RSI, MACD, SMA, Bollinger strategies with equity curves, trade logs, Sharpe ratio, max drawdown, and alpha
 
 ### Analysis Tools
 
-- **Technical Indicators** — RSI, MACD, Bollinger Bands, Stochastic, ATR, OBV with interactive multi-timeframe charts
-- **Fundamental Analysis** — P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
-- **ML Price Forecast** — SARIMA (Seasonal ARIMA) time-series model fitted on log prices with model-derived 80%/95% confidence intervals. Gracefully falls back to a linear-regression + Holt exponential-smoothing ensemble if the fit fails to converge
-- **Smart Screener** — Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
-- **Market Heatmap** — Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and background pre-computation
-- **Stock Comparison** — Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
+- **Technical Indicators**: RSI, MACD, Bollinger Bands, Stochastic, ATR, OBV with interactive multi-timeframe charts
+- **Fundamental Analysis**: P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
+- **ML Price Forecast**: SARIMA (Seasonal ARIMA) time-series model fitted on log prices with model-derived 80%/95% confidence intervals. Gracefully falls back to a linear-regression + Holt exponential-smoothing ensemble if the fit fails to converge
+- **Smart Screener**: Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
+- **Market Heatmap**: Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and background pre-computation
+- **Stock Comparison**: Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
 
 ### Market Data
 
-- **Sector Rotation Tracker** — Relative sector performance with rotation signals
-- **Retail Sentiment** — Reddit/Google Trends sentiment aggregation with trending tickers
-- **Earnings Calendar** — Upcoming earnings dates with estimate vs. actual tracking
-- **Economic Calendar** — Key economic events (CPI, Fed, GDP, jobs) with impact ratings
-- **Price Alerts** — Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts are pushed to your phone/desktop via Web Push (free, works with the site closed; installable as an app) and shown as in-app toasts
-- **Watchlists** — Per-browser watchlists with live quotes, upcoming earnings/dividend dates and a weekly AI recap (no sign-up: each browser gets an anonymous, server-issued identity)
-- **Paper Trading** — Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L, order history and a performance chart against the S&P 500 / Nifty 50
+- **Sector Rotation Tracker**: Relative sector performance with rotation signals
+- **Retail Sentiment**: Reddit/Google Trends sentiment aggregation with trending tickers
+- **Earnings Calendar**: Upcoming earnings dates with estimate vs. actual tracking
+- **Economic Calendar**: Key economic events (CPI, Fed, GDP, jobs) with impact ratings
+- **Price Alerts**: Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts are pushed to your phone/desktop via Web Push (free, works with the site closed; installable as an app) and shown as in-app toasts
+- **Watchlists**: Per-browser watchlists with live quotes, upcoming earnings/dividend dates and a weekly AI recap (no sign-up: each browser gets an anonymous, server-issued identity)
+- **Paper Trading**: Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L, order history and a performance chart against the S&P 500 / Nifty 50
 
 ### Safe Investment Guide (India + US)
 
-- **33 Indian Instruments** — PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings/RD, SCSS, SSY, MSSC, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
-- **12 US Instruments** — HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
-- **Live Rate Overlay** — **[IN]** 12 mutual fund categories (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU/corporate-bond/overnight/ultra-short/conservative-hybrid/multi-asset funds) get their current rate computed from real trailing-1-year NAV history via mfapi.in. **[US]** Treasury Bill rates come from Treasury.gov's FiscalData API. Both use a stale-while-revalidate cache so a slow upstream never blocks the page. The remaining instruments (bank/corporate FDs; **[IN]** govt small-savings schemes like PPF/NSC/SCSS) have no reliable free feed and stay on the curated static table. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
-- **After Tax & Inflation** — What each instrument really returns after your tax slab (India new regime / US bracket) and inflation, in today's money
-- **SIP Calculator** — Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.), plus a lump-sum-vs-spreading-out comparison
-- **Deposit Ladder** — Split an FD/CD across staggered maturities and see each rung's value
-- **Goal Planner** — Reverse SIP for a target, plus saved goals with progress tracking (kept in your browser) and a one-click emergency-fund goal
-- **Allocation Builder** — Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
-- **Withdrawal & Lock-in View** — Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
-- **AI Advisor** — LLM-powered Q&A for personalized (educational) investment guidance
-- **4 Risk Profiles** — Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
-- **Dated Rates** — Government small-savings rates are official (current for Q3 FY2026-27) with a warning once the quarter they apply to has ended; bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
+- **33 Indian Instruments**: PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings/RD, SCSS, SSY, MSSC, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
+- **12 US Instruments**: HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
+- **Live Rate Overlay**: **[IN]** 12 mutual fund categories (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU/corporate-bond/overnight/ultra-short/conservative-hybrid/multi-asset funds) get their current rate computed from real trailing-1-year NAV history via mfapi.in. **[US]** Treasury Bill rates come from Treasury.gov's FiscalData API. Both use a stale-while-revalidate cache so a slow upstream never blocks the page. The remaining instruments (bank/corporate FDs; **[IN]** govt small-savings schemes like PPF/NSC/SCSS) have no reliable free feed and stay on the curated static table. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
+- **After Tax & Inflation**: What each instrument really returns after your tax slab (India new regime / US bracket) and inflation, in today's money
+- **SIP Calculator**: Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.), plus a lump-sum-vs-spreading-out comparison
+- **Deposit Ladder**: Split an FD/CD across staggered maturities and see each rung's value
+- **Goal Planner**: Reverse SIP for a target, plus saved goals with progress tracking (kept in your browser) and a one-click emergency-fund goal
+- **Allocation Builder**: Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
+- **Withdrawal & Lock-in View**: Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
+- **AI Advisor**: LLM-powered Q&A for personalized (educational) investment guidance
+- **4 Risk Profiles**: Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
+- **Dated Rates**: Government small-savings rates are official (current for Q3 FY2026-27) with a warning once the quarter they apply to has ended; bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
 
 ### UI/UX
 
-- **Animated Landing Page** — Particle field, glowing orbs, gradient text, scroll-reveal feature cards, animated counters, Framer Motion throughout
-- **Dark-first Terminal Aesthetic** — Red/black gradient identity (Perplexity x Linear x Bloomberg)
-- **Glass-morphism Cards** — Backdrop blur, subtle borders, glow-on-hover across all components
-- **Scrolling Ticker Tape** — Live stock ticker marquee across the top
-- **Responsive Navigation** — Collapsible sidebar on desktop, slide-out drawer on mobile, US / India / Global market switch
-- **Customizable Dashboard** — Hide or show any card (hidden cards stop polling); "fetched X ago" freshness on every card
-- **Plain-English Tooltips** — Hover or tap metrics like P/E, RSI, Sharpe and Max Drawdown for a definition
-- **Shareable Links** — Compare and Portfolio setups live in the URL, so a link reproduces the same view
+- **Animated Landing Page**: Particle field, glowing orbs, gradient text, scroll-reveal feature cards, animated counters, Framer Motion throughout
+- **Dark-first Terminal Aesthetic**: Red/black gradient identity (Perplexity x Linear x Bloomberg)
+- **Glass-morphism Cards**: Backdrop blur, subtle borders, glow-on-hover across all components
+- **Scrolling Ticker Tape**: Live stock ticker marquee across the top
+- **Responsive Navigation**: Collapsible sidebar on desktop, slide-out drawer on mobile, US / India / Global market switch
+- **Customizable Dashboard**: Hide or show any card (hidden cards stop polling); "fetched X ago" freshness on every card
+- **Plain-English Tooltips**: Hover or tap metrics like P/E, RSI, Sharpe and Max Drawdown for a definition
+- **Shareable Links**: Compare and Portfolio setups live in the URL, so a link reproduces the same view
 
 ---
 
@@ -108,16 +112,16 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 ## Prerequisites
 
-- **Docker Desktop** — [Download here](https://www.docker.com/products/docker-desktop/) (recommended)
-- **Node.js 18+** — [Download here](https://nodejs.org/) (for local frontend dev)
-- **Python 3.12+** — [Download here](https://python.org/) (for local backend dev)
-- **Ollama** — [Download here](https://ollama.ai/) (for AI features)
+- **Docker Desktop**: [Download here](https://www.docker.com/products/docker-desktop/) (recommended)
+- **Node.js 18+**: [Download here](https://nodejs.org/) (for local frontend dev)
+- **Python 3.12+**: [Download here](https://python.org/) (for local backend dev)
+- **Ollama**: [Download here](https://ollama.ai/) (for AI features)
 
 ---
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended — One Command)
+### Option 1: Docker Compose (Recommended, One Command)
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
@@ -130,7 +134,7 @@ docker compose -f infra/docker-compose.yml up --build
 | **PostgreSQL** | localhost:5432 |
 | **Redis** | localhost:6379 |
 
-Runs in **mock mode** by default — zero API keys, deterministic offline data, full UI + pipeline + scoring working immediately.
+Runs in **mock mode** by default, zero API keys, deterministic offline data, full UI + pipeline + scoring working immediately.
 
 ### Option 2: Run Locally (No Docker)
 
@@ -164,12 +168,12 @@ ollama serve   # runs on port 11434
 | **API Docs** | http://localhost:8000/docs |
 | **Ollama** | http://localhost:11434 |
 
-### Option 3: Free Cloud Deployment ($0/month)
+### Option 3: Cloud Deployment
 
-Deploy the full stack using free tiers of Vercel + Render + Neon + Upstash + Groq:
+Deploy the full stack on Vercel + Render + Neon + Upstash + Groq:
 
-| Service | Role | Free Tier |
-|---------|------|-----------|
+| Service | Role | Limits used |
+|---------|------|-------------|
 | **Vercel** | Next.js frontend | 100 GB BW |
 | **Render** | FastAPI (Docker, in-process refresh loop) | 750 instance-hrs/mo |
 | **Neon** | Managed Postgres | 0.5 GB, scale-to-zero |
@@ -716,9 +720,9 @@ GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
 
-## 📄 License
+## License
 
-MIT License — see [LICENSE](./LICENSE). Free to use, modify, and distribute, with no warranty.
+MIT License, see [LICENSE](./LICENSE). Free to use, modify, and distribute, with no warranty.
 
 ---
 
