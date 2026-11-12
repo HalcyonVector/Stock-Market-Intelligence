@@ -86,6 +86,9 @@ def fetch_batch(symbols: list[str]) -> dict[str, list[Candle]]:
 
 
 def main() -> int:
+    # SYNC_MARKET=IN: the midday run, NSE stocks only (a delayed intraday price
+    # for stocks that have no free live quote source).
+    only_in = os.environ.get("SYNC_MARKET", "ALL").upper() == "IN"
     url = os.environ.get("REDIS_URL")
     if not url:
         print("REDIS_URL is not set", file=sys.stderr)
@@ -94,7 +97,12 @@ def main() -> int:
 
     core = universe()
     extra = extras(r)
-    syms = core + BENCHMARKS + extra
+    benchmarks = BENCHMARKS
+    if only_in:
+        core = [s for s in core if yahoo_symbol(s).endswith(".NS")]
+        extra = [s for s in extra if s.endswith((".NS", ".BO"))]
+        benchmarks = ["^NSEI"]
+    syms = core + benchmarks + extra
     ok, failed = 0, []
     for i in range(0, len(syms), BATCH):
         batch = syms[i:i + BATCH]

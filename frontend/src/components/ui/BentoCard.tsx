@@ -12,7 +12,7 @@ function ago(ts: number, now: number) {
   return `${Math.round(m / 60)}h ago`;
 }
 
-/** "Fetched 3m ago" — when this browser last got the data (not the quote time). */
+/** "Fetched 3m ago": when this browser last got the data (not the quote time). */
 function Freshness({ at }: { at: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

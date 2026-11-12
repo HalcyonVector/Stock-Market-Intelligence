@@ -91,3 +91,23 @@ class RebalanceRequest(BaseModel):
 async def rebalance(body: RebalanceRequest):
     """Analyze drift and suggest rebalancing trades."""
     return {"data": await analyze_drift(body.symbols, body.target_weights, body.portfolio_value)}
+
+
+class HoldingIn(BaseModel):
+    symbol: str
+    quantity: float
+    avg_cost: float = 0
+
+
+class HoldingsIn(BaseModel):
+    market: str = "IN"
+    holdings: list[HoldingIn]
+
+
+@router.post("/holdings/value")
+async def value_holdings(body: HoldingsIn):
+    """Price holdings parsed (in the browser) from a broker CSV. Nothing is stored."""
+    from app.services.holdings import value
+
+    market = "IN" if body.market.upper() == "IN" else "US"
+    return {"data": await value([h.model_dump() for h in body.holdings], market)}

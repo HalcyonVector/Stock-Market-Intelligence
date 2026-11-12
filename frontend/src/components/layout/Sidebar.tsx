@@ -21,7 +21,10 @@ import {
   Wallet,
   Menu,
   X,
+  Smartphone,
+  BookOpen,
 } from "lucide-react";
+import { DeviceSyncDialog } from "./DeviceSync";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { MarketSwitch } from "@/components/ui/MarketSwitch";
@@ -56,7 +59,10 @@ const NAV_GROUPS = [
   },
   {
     title: "Learn",
-    items: [{ href: "/invest", icon: Shield, label: "Safe Invest" }],
+    items: [
+      { href: "/invest", icon: Shield, label: "Safe Invest" },
+      { href: "/learn", icon: BookOpen, label: "Learn the Basics" },
+    ],
   },
 ];
 
@@ -132,6 +138,7 @@ export function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   // Remember the collapsed state between visits.
   useEffect(() => {
@@ -174,6 +181,18 @@ export function Sidebar() {
           <kbd className="rounded bg-black/40 px-1.5 text-[10px] text-ink-500">⌘K</kbd>
         </>
       )}
+    </button>
+  );
+
+  const syncButton = (showLabel: boolean) => (
+    <button
+      onClick={() => { setMobileOpen(false); setSyncOpen(true); }}
+      aria-label="Use on another device"
+      title={showLabel ? undefined : "Use on another device"}
+      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-ink-500 transition hover:bg-white/5 hover:text-ink-300"
+    >
+      <Smartphone size={18} className="shrink-0" aria-hidden />
+      {showLabel && <span className="flex-1 text-left">Other devices</span>}
     </button>
   );
 
@@ -234,7 +253,7 @@ export function Sidebar() {
               </div>
               <div className="border-b border-white/5 px-3 py-3"><MarketSwitch /></div>
               <NavLinks expanded />
-              <div className="border-t border-white/5 px-2 py-3">{searchButton(true)}</div>
+              <div className="border-t border-white/5 px-2 py-3">{searchButton(true)}{syncButton(true)}</div>
             </motion.aside>
           </>
         )}
@@ -256,7 +275,7 @@ export function Sidebar() {
 
         <NavLinks expanded={expanded} />
 
-        <div className="border-t border-white/5 px-2 py-3">{searchButton(expanded)}</div>
+        <div className="border-t border-white/5 px-2 py-3">{searchButton(expanded)}{syncButton(expanded)}</div>
 
         <div className="border-t border-white/5 px-2 py-3">
           <button
@@ -270,6 +289,7 @@ export function Sidebar() {
       </aside>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <DeviceSyncDialog open={syncOpen} onClose={() => setSyncOpen(false)} />
     </>
   );
 }

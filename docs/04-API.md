@@ -39,7 +39,7 @@ Event envelope: `{ "channel": "events:market", "data": { "type": "unusual_activi
 - **Caching at service layer**, not HTTP, so WebSocket pushes and REST share one
   source of truth in Redis.
 
-## Example — `GET /stocks/NVDA/why`
+## Example: `GET /stocks/NVDA/why`
 ```json
 { "data": {
   "symbol": "NVDA",

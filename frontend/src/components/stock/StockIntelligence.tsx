@@ -60,6 +60,7 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
           </div>
           <p className="mt-1 text-sm text-ink-500">{[p?.name, p?.sector, p?.industry].filter(Boolean).join(" · ")}</p>
           <div className="mt-3"><StockActions symbol={symbol} /></div>
+          <UpcomingEvents symbol={symbol} />
         </div>
         {q && (
           <div className="text-right">
@@ -67,6 +68,11 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
             {q.source === "mock" && (
               <p className="mt-1 flex items-center justify-end gap-1.5 text-[11px] text-sky-300/90">
                 <SourceBadge source="mock" /> Live data unavailable
+              </p>
+            )}
+            {q.source === "delayed" && (
+              <p className="text-[11px] text-amber-300/80">
+                Delayed intraday price · as of {new Date(q.ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
               </p>
             )}
             {/* Daily-history quotes carry a midnight-UTC bar date instead of a live timestamp */}
@@ -157,6 +163,30 @@ function Row({ k, v }: { k: string; v: any }) {
     <div className="flex justify-between border-b border-white/[0.03] pb-1">
       <dt className="text-ink-500"><Term>{k}</Term></dt>
       <dd className="font-mono text-ink-100">{v ?? "—"}</dd>
+    </div>
+  );
+}
+
+/** Next earnings / ex-dividend / dividend dates for this stock (synced daily). */
+function UpcomingEvents({ symbol }: { symbol: string }) {
+  const { data } = useQuery({
+    queryKey: ["events", symbol],
+    queryFn: () => api.events([symbol], 120),
+    staleTime: 60 * 60_000,
+  });
+  const events: any[] = data?.events ?? [];
+  if (!events.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {events.map((e) => (
+        <span key={e.type} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-ink-300"
+          title={e.eps_estimate != null ? `EPS estimate ${e.eps_estimate}` : undefined}>
+          {e.label} {e.days_until === 0 ? "today" : e.days_until === 1 ? "tomorrow" : `in ${e.days_until} days`}
+          <span className="ml-1 text-ink-500">
+            ({new Date(e.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })})
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

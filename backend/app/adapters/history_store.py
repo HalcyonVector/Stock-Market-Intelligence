@@ -21,6 +21,9 @@ from datetime import datetime, timedelta, timezone
 from app.adapters.base import Candle
 
 KEY = "hist:1d:{symbol}"
+# Regular-session close in UTC (US uses the later, winter close). A snapshot
+# written before this on the same day as its last bar holds a partial day.
+SESSION_CLOSE_UTC = {"IN": 10, "US": 21}
 # A long weekend + one failed run is ~4 days; older than this, don't trust it.
 MAX_AGE_DAYS = 5
 
@@ -92,6 +95,19 @@ def latest_quote(raw: str, symbol: str, now: datetime | None = None):
     recent = [b[5] for b in bars[-21:-1] if b[5]]
     avg_vol = int(sum(recent) / len(recent)) if recent else int(vol or 0)
     indian = is_indian(symbol)
+    # The midday NSE sync stores today's bar while the market is still open:
+    # that's a delayed intraday price, not a close.
+    partial = (updated.date().isoformat() == d
+               and updated.hour < SESSION_CLOSE_UTC["IN" if indian else "US"])
+    if partial:
+        avg_vol = avg_vol or 1
+        return Quote(
+            symbol=symbol, price=round(close, 2), change=round(close - prev, 2),
+            change_pct=round((close - prev) / prev * 100, 2) if prev else 0.0,
+            volume=int(vol or 0), avg_volume=avg_vol, market_cap=None,
+            currency="INR" if indian else "USD", market="IN" if indian else "US",
+            ts=updated, source="delayed",
+        )
     return Quote(
         symbol=symbol, price=round(close, 2), change=round(close - prev, 2),
         change_pct=round((close - prev) / prev * 100, 2) if prev else 0.0,

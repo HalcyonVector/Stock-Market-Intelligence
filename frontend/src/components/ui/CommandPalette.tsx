@@ -59,7 +59,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <Search size={16} className="text-ink-500" aria-hidden />
           <input
             autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKeyDown}
-            placeholder="Search any stock — name or ticker (e.g. Apple, IRCTC)…"
+            placeholder="Search any stock by name or ticker (e.g. Apple, IRCTC)…"
             aria-label="Search stocks"
             className="w-full bg-transparent text-sm outline-none placeholder:text-ink-500"
           />

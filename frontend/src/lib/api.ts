@@ -79,6 +79,25 @@ async function req<T>(path: string, init: RequestInit = {}, authed = false): Pro
   return (json.data ?? json) as T;
 }
 
+/** Swap this browser onto another device's identity using a one-time code
+ *  from that device. This browser's previous data stays on the server but is
+ *  no longer reachable from here. */
+export async function redeemTransferCode(code: string): Promise<string> {
+  const res = await fetch(`${BASE}/auth/transfer/redeem`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    let detail: string | undefined;
+    try { detail = (await res.json())?.detail; } catch { /* ignore */ }
+    throw new ApiError("/auth/transfer/redeem", res.status, detail);
+  }
+  const { access_token, user_id } = await res.json();
+  storeToken(access_token);
+  return user_id as string;
+}
+
 async function get<T>(path: string): Promise<T> {
   return req<T>(path);
 }
@@ -166,6 +185,13 @@ export const api = {
 
   // --- Identity ---
   me: () => user.get<any>("/auth/me"),
+  transferCode: () => user.send<{ code: string; expires_in: number }>("/auth/transfer", "POST"),
+
+  // --- Mutual funds (India, AMFI NAVs) and broker holdings ---
+  mfSearch: (q: string) => get<Array<{ code: number; name: string }>>(`/invest/mf/search?q=${encodeURIComponent(q)}`),
+  mfScheme: (code: number) => get<any>(`/invest/mf/${code}`),
+  holdingsValue: (market: "IN" | "US", holdings: Array<{ symbol: string; quantity: number; avg_cost: number }>) =>
+    req<any>("/portfolio/holdings/value", { method: "POST", body: JSON.stringify({ market, holdings }) }),
 
   // --- Watchlists ---
   watchlists: () => user.get<any[]>("/watchlists"),
