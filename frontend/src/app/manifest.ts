@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 // iPhones receive Web Push notifications for price alerts.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "StockIntel — Stock Discovery & Intelligence",
+    name: "StockIntel: Stock Discovery & Intelligence",
     short_name: "StockIntel",
     description: "Market dashboards, watchlists, price alerts and safe-investing tools. Educational use only.",
     start_url: "/",

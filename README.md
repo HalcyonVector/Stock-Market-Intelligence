@@ -1,85 +1,117 @@
-# Stock Discovery & Intelligence: AI-Powered Market Intelligence Platform
+# StockIntel: A Data Study of US and Indian Stocks, and What Savers Actually Keep
 
-A full-stack market intelligence platform that surfaces emerging stocks, explains *why* they're moving (with cited evidence and confidence scores), optimizes portfolios via mean-variance optimization, backtests trading strategies, forecasts prices with a SARIMA time-series model, and includes a zero-loss Safe Investment Guide for beginners. Built with Next.js, FastAPI, Groq/Ollama, and Docker.
+An analysis project that asks two practical questions with public market data. First, how did a broad set of US and Indian stocks actually behave over the past year: returns, volatility, drawdowns and how much they move together? Second, for an Indian saver choosing between FDs, PPF, index funds and stocks, what return is left after tax and inflation? Daily prices for 160 tracked stocks (97 US, 63 NSE) plus benchmarks are collected twice a day, cleaned, and joined with mutual fund NAVs, government savings rates, news and earnings calendars. The results are explored through an interactive dashboard: screeners, a portfolio optimizer, stress tests, a strategy backtester, and calculators that turn the findings into decisions.
 
-> **What it's for:** find stocks that are starting to move, see why with cited evidence, and test ideas with a portfolio optimizer and a strategy backtester, for learning rather than trading advice.
+Built with Python (pandas, NumPy, SciPy, statsmodels), FastAPI, PostgreSQL, Redis, Next.js and Recharts, on public market APIs (Yahoo Finance via yfinance, Finnhub, Twelve Data, AMFI NAVs via mfapi.in) with a scheduled GitHub Actions pipeline.
 
-**Live demo:** [stock-market-intelligence-sable.vercel.app](https://stock-market-intelligence-sable.vercel.app) (frontend on Vercel, API on Render)
+> **What it's for:** see what the data says about risk and return in US and Indian markets, compare savings options by what you actually keep, and test your own ideas (a watchlist, a portfolio, a trading rule) against real history before trusting them.
 
-![Dashboard: AI market briefing, fear and greed gauge, market movers, opportunity radar and news](docs/screenshots/overview.png)
+**Live demo:** [stock-market-intelligence-sable.vercel.app](https://stock-market-intelligence-sable.vercel.app)
+
+![Dashboard: AI market briefing generated from the day's movers, a fear and greed gauge built from breadth, momentum and sentiment, ranked movers and an opportunity radar](docs/screenshots/overview.png)
+
+![After Tax and Inflation: 100,000 rupees over five years across Indian instruments, sorted by real return after a 10% tax slab and 5% inflation](docs/screenshots/after-tax-returns.png)
 
 ---
 
 ## Disclaimer
 
-**This project is for educational and informational purposes only. It is NOT financial, investment, or trading advice.**
+**This project is for education and analysis only. It is not financial, investment or tax advice.** Nothing here is a recommendation to buy, sell or hold any security. Scores, forecasts and "opportunity" rankings are outputs of simple statistical models and can be wrong. Market data comes from public APIs and can be delayed, incomplete or incorrect, and tax rules are simplified. No brokerage account is connected and no real trades are placed. See Honest Limitations for specifics.
 
-Nothing in this application constitutes a recommendation to buy, sell, or hold any security. All forecasts, scores, and "opportunity" signals are illustrative outputs of statistical models and may be inaccurate or out of date. Market data is sourced from free-tier providers and may be delayed or wrong. No brokerage credentials are stored and **no trades are ever executed**. Past performance does not guarantee future results. Always do your own research and consult a licensed financial advisor before making any financial decision. The author accepts no liability for any losses arising from use of this software.
+---
+
+## Findings
+
+Numbers below are from 12 Nov 2025 to 12 Nov 2026 (260 trading days) unless stated, using adjusted daily closes for the tracked universe. Medians are across stocks in each market.
+
+**Markets**
+
+| Measure | US (97 stocks) | India (63 NSE stocks) |
+|---|---|---|
+| Median 1-year return | **+11.6%** | **+1.5%** |
+| Share of stocks that rose | 67% | 51% |
+| Median annualised volatility | 34.7% | 25.3% |
+| Median maximum drawdown | -28.9% | -25.5% |
+| Benchmark | S&P 500 ETF (SPY) +12.0% | Nifty 50 -2.2% |
+
+- **The year split sharply by market.** Two thirds of the US names rose and the median US stock roughly matched the S&P 500. In India the typical stock was flat and the Nifty 50 fell slightly, so a diversified Indian equity holder ended the year about where they started, before inflation.
+- **US stocks were riskier, not just better.** The median US stock swung 37% more than the median Indian one (34.7% vs 25.3% annualised) and had a deeper worst fall. Part of that is the tracked US list itself, which leans towards high-beta technology, crypto-linked and recent IPO names; see Honest Limitations.
+- **Even "good" years contain deep falls.** The median stock in both markets fell more than 25% from a peak at some point in the year. Anyone who sizes a position assuming a smooth ride will sell at the bottom.
+- **Same-day correlation between US and Indian stocks is essentially zero (0.01).** That looks like perfect diversification, but it is mostly a time-zone artefact: the NSE closes before New York opens, so a US move shows up in Indian prices the next day. Lagged correlation is listed under Suggested Future Features.
+
+**Saving and investing in India**
+
+- **A 7% bank FD in the 30% slab loses money in real terms (-0.1% a year)** once 5% inflation is counted, while PPF at 7.1% tax-free keeps +2.0% a year. The headline rate ranks them almost equally; the after-tax, after-inflation rate does not. This is what the After Tax and Inflation tab computes for every instrument.
+- **Direct mutual fund plans beat Regular plans of the same fund by 0.5 to 0.85 percentage points a year**, measured from AMFI NAVs over five years: Parag Parikh Flexi Cap 11.79% vs 10.94%, HDFC Flexi Cap 16.82% vs 16.05%, UTI Nifty Next 50 Index 11.53% vs 11.03%. The fund and its holdings are identical; the gap is the distributor commission inside the Regular plan's expense ratio.
+
+**Data quality: what the pipeline had to fix**
+
+- **The free US quote feed reports zero volume for every stock.** Finnhub's free quote endpoint has no volume field, so "volume vs average" and unusual-activity detection silently read 0 for all 97 US names. Volume and the 20-day average are now taken from the daily history instead.
+- **No free source gives live NSE quotes to a cloud server.** Yahoo blocks requests from Render's IP range, and the keyed APIs cover US listings only. Indian prices therefore come from the scheduled history sync: the latest close, plus a delayed midday snapshot during the session, and every such price is labelled.
+- **A fallback that "succeeds" with fake data hides outages.** The original Yahoo adapter returned sample data instead of raising an error, so the provider chain never tried the next source and the site showed plausible but invented prices. The API now counts sample data served (`mock_served` on `/health`), refuses to fire alerts or fill paper trades on it, and badges it in the UI. Production currently serves none.
+- **Tickers change under you.** Four tracked symbols were renamed or split during the year (SQ to XYZ, LTIM to LTM, MAZAGON to MAZDOCK, and Tata Motors demerging into TMPV and TMCV), each silently turning into missing data until the symbol map was updated.
+- **Scheduled jobs don't run on schedule.** Across ten measured runs, GitHub started this repo's scheduled sync 3.6 to 10.5 hours late. The "midday" NSE run is scheduled at 02:00 UTC so that, with typical delays, it lands inside the 03:45 to 10:00 UTC trading session.
 
 ---
 
 ## Features
 
-### Core Intelligence
+### Market Analysis
 
-- **AI Dashboard**: Real-time market overview with fear/greed gauge, sector rotation heatmap, volume leaders, opportunity radar, and AI-powered briefings
-- **"Why Is This Stock Moving?"**: Flagship AI-generated explanations with confidence scores, cited signals, and event timelines for any ticker
-- **AI Deep Research**: Comprehensive stock analysis combining technicals, fundamentals, sentiment, and news into a single research report via Groq (gpt-oss-120b) or Ollama (qwen2.5:7b)
-- **Search Any Stock**: `Cmd-K` / `Ctrl-K` finds any US or NSE/BSE listing (tracked list first, then Finnhub's free symbol search); stocks outside the tracked list get daily prices once someone adds them to a watchlist
+- **Dashboard:** AI market briefing generated from the day's movers, sector rotation and discovery scores; fear and greed gauge built from breadth, momentum and retail sentiment; movers by gain, loss and volume; opportunity radar; news from seven financial feeds sorted by publish time.
+- **Heatmap:** sectors and stocks sized by market cap and coloured by daily change.
+- **Screener:** filter the universe by change, RSI, volume ratio, P/E and market cap, with preset strategies.
+- **Search any stock:** any US, NSE or BSE listing, not only the tracked 160; untracked stocks join the daily history sync once someone adds them to a watchlist.
+- **Data provenance on every price:** each quote is tagged live, delayed, end-of-day or sample, and the UI badges anything that is not live.
 
-### Portfolio & Optimization
+### Stock Research
 
-- **Portfolio Optimizer**: Mean-variance optimization (scipy SLSQP), 15,000-point Monte Carlo cloud, optimizer-traced efficient frontier, 5 allocation strategies
-- **Monte Carlo Simulation**: 2,000-path Student-t fat-tail growth simulation with percentile bands
-- **Stress Testing**: 6 historical crash scenarios (2008 GFC, COVID, Dot-com, etc.) applied to your portfolio
-- **Correlation Heatmap**: Pairwise asset correlation matrix for diversification analysis
-- **Portfolio Rebalancer**: Drift detection, equal/custom weight strategies, trade suggestions with turnover calculation
-- **Strategy Backtester**: Test RSI, MACD, SMA, Bollinger strategies with equity curves, trade logs, Sharpe ratio, max drawdown, and alpha
+- **"Why is it moving?":** an AI explanation of the day's move grounded in price, volume, technicals and recent headlines, with the evidence it used and a confidence level.
+- **Technicals, fundamentals and a SARIMA forecast** with 80% and 95% intervals (falls back to a linear and Holt smoothing ensemble when the fit doesn't converge).
+- **Upcoming earnings and dividend dates**, synced daily, and a side-by-side comparison of up to six stocks.
 
-### Analysis Tools
+### Portfolio Analysis
 
-- **Technical Indicators**: RSI, MACD, Bollinger Bands, Stochastic, ATR, OBV with interactive multi-timeframe charts
-- **Fundamental Analysis**: P/E, P/B, EPS, dividend yield, market cap, revenue, and margins from yfinance + Finnhub
-- **ML Price Forecast**: SARIMA (Seasonal ARIMA) time-series model fitted on log prices with model-derived 80%/95% confidence intervals. Gracefully falls back to a linear-regression + Holt exponential-smoothing ensemble if the fit fails to converge
-- **Smart Screener**: Filter 115+ stocks by change%, RSI, volume ratio, P/E, market cap with preset strategy filters
-- **Market Heatmap**: Treemap visualization of 96 US stocks across 8 sectors with concurrent fetching and background pre-computation
-- **Stock Comparison**: Side-by-side analysis of up to 6 stocks: normalized price overlay, technicals, and fundamentals
+- **Import your holdings:** upload a broker CSV (Zerodha, Upstox, or any file with symbol, quantity and average cost). It is parsed in the browser; only tickers and quantities are sent to be priced, and nothing is stored.
+- **Optimizer:** mean-variance optimisation (SciPy SLSQP) with an efficient frontier, five allocation strategies, a 2,000-path Student-t Monte Carlo, a correlation matrix, six historical crash stress tests and a rebalancer.
+- **Strategy tester:** backtest RSI, MACD, moving-average and Bollinger rules with equity curves, Sharpe ratio, maximum drawdown and alpha against buy-and-hold.
+- **Paper trading:** virtual USD and INR accounts at real (delayed) prices, with a daily performance chart against the S&P 500 or Nifty 50 rebuilt from the trade log.
 
-### Market Data
+### Saving and Investing (India and US)
 
-- **Sector Rotation Tracker**: Relative sector performance with rotation signals
-- **Retail Sentiment**: Reddit/Google Trends sentiment aggregation with trending tickers
-- **Earnings Calendar**: Upcoming earnings dates with estimate vs. actual tracking
-- **Economic Calendar**: Key economic events (CPI, Fed, GDP, jobs) with impact ratings
-- **Price Alerts**: Redis-backed alerts with 4 condition types (above/below/change % above/below), checked in the background every market refresh cycle (~30 min in session, backing off off-hours) with one batched quote fetch; triggered alerts are pushed to your phone/desktop via Web Push (free, works with the site closed; installable as an app) and shown as in-app toasts
-- **Watchlists**: Per-browser watchlists with live quotes, upcoming earnings/dividend dates and a weekly AI recap (no sign-up: each browser gets an anonymous, server-issued identity)
-- **Paper Trading**: Practice buying and selling with virtual money ($100K + ₹10L, separate USD/INR cash), live-marked positions, realized/unrealized P&L, order history and a performance chart against the S&P 500 / Nifty 50
+- **45 instruments** (33 Indian, 12 US) with official government small-savings rates for the current quarter, a warning once that quarter has ended, and live trailing returns for 12 mutual fund categories from AMFI NAVs.
+- **After tax and inflation:** what each instrument returns after your tax slab and inflation, in today's money.
+- **My mutual funds:** track the funds you hold at the latest NAV, with 1, 3 and 5-year returns and a NAV history.
+- **Calculators:** SIP with step-up, lump sum vs spreading out, FD or CD ladder, goal planner with saved goals and an emergency-fund preset, allocation builder, and an AI Q&A for beginners.
+- **Learn the basics:** six short lessons and a searchable glossary of every term the app uses.
 
-### Safe Investment Guide (India + US)
+### Watchlists and Alerts
 
-- **33 Indian Instruments**: PPF, FD, RD, NSC, KVP, Post Office MIS/TD/Savings/RD, SCSS, SSY, MSSC, EPF, VPF, Atal Pension Yojana, RBI Floating Rate Bond, Liquid/Debt/Overnight/Ultra-Short/Gilt/Banking-PSU/Corporate Bond/Arbitrage/Hybrid Conservative/Multi-Asset Funds, SGB, NPS, ELSS, Index Fund, Small Finance Bank FD, Corporate/NBFC FD, 5-Year Tax Saver FD
-- **12 US Instruments**: HYSA, Treasury Bills, Money Market, Bond ETF, CD, Brokered CD, S&P 500 ETF, I-Bonds, EE-Bonds, TIPS, Municipal Bond Fund, Corporate Bond ETF
-- **Live Rate Overlay**: **[IN]** 12 mutual fund categories (liquid/debt/ELSS/index/arbitrage/gilt/banking-PSU/corporate-bond/overnight/ultra-short/conservative-hybrid/multi-asset funds) get their current rate computed from real trailing-1-year NAV history via mfapi.in. **[US]** Treasury Bill rates come from Treasury.gov's FiscalData API. Both use a stale-while-revalidate cache so a slow upstream never blocks the page. The remaining instruments (bank/corporate FDs; **[IN]** govt small-savings schemes like PPF/NSC/SCSS) have no reliable free feed and stay on the curated static table. Every instrument is tagged `rate_source`/`rate_as_of` so the UI shows "live" vs. "static estimate" instead of presenting a hardcoded number as current
-- **After Tax & Inflation**: What each instrument really returns after your tax slab (India new regime / US bracket) and inflation, in today's money
-- **SIP Calculator**: Compound interest with optional upfront lump sum and annual step-up, preset budgets (Student ₹1K, Starter ₹5K, etc.), plus a lump-sum-vs-spreading-out comparison
-- **Deposit Ladder**: Split an FD/CD across staggered maturities and see each rung's value
-- **Goal Planner**: Reverse SIP for a target, plus saved goals with progress tracking (kept in your browser) and a one-click emergency-fund goal
-- **Allocation Builder**: Multi-instrument combined returns with lump sum + monthly contributions, blended rate, risk tracking, guaranteed portion %, pie chart, growth projections
-- **Withdrawal & Lock-in View**: Per-instrument lock-in / liquidity and a summary of how much is accessible anytime vs. the binding longest lock-in, so you know when you can actually take money out
-- **AI Advisor**: LLM-powered Q&A for personalized (educational) investment guidance
-- **4 Risk Profiles**: Ultra Safe, Conservative, Balanced Safe, Growth with preset allocations
-- **Dated Rates**: Government small-savings rates are official (current for Q3 FY2026-27) with a warning once the quarter they apply to has ended; bank/corporate FD rates and market-linked estimates without a live feed are flagged as static
+- **Watchlists** with live quotes, upcoming earnings and dividend dates, and a weekly recap (five-day moves plus a short AI summary).
+- **Price alerts** checked in the background each market refresh, delivered as Web Push notifications to phone or desktop even with the site closed.
+- **No accounts:** each browser gets an anonymous identity, and a one-time code (or QR code) links a second device to the same data.
 
-### UI/UX
+### UI
 
-- **Animated Landing Page**: Particle field, glowing orbs, gradient text, scroll-reveal feature cards, animated counters, Framer Motion throughout
-- **Dark-first Terminal Aesthetic**: Red/black gradient identity (Perplexity x Linear x Bloomberg)
-- **Glass-morphism Cards**: Backdrop blur, subtle borders, glow-on-hover across all components
-- **Scrolling Ticker Tape**: Live stock ticker marquee across the top
-- **Responsive Navigation**: Collapsible sidebar on desktop, slide-out drawer on mobile, US / India / Global market switch
-- **Customizable Dashboard**: Hide or show any card (hidden cards stop polling); "fetched X ago" freshness on every card
-- **Plain-English Tooltips**: Hover or tap metrics like P/E, RSI, Sharpe and Max Drawdown for a definition
-- **Shareable Links**: Compare and Portfolio setups live in the URL, so a link reproduces the same view
+Dark "terminal" layout with glass cards, a grouped sidebar, a US / India / Global market switch and `Ctrl-K` search. Installable as an app. Works at phone width, respects reduced-motion settings, shows a retry state instead of loading forever, and explains every metric in a tooltip.
+
+---
+
+## Data Source
+
+| Source | Type | API Key? | What It Provides |
+|--------|------|----------|-------------------|
+| [Yahoo Finance](https://finance.yahoo.com) via [yfinance](https://github.com/ranaroussi/yfinance) | Python library, run in GitHub Actions | No | ~400 days of daily OHLCV for US and NSE stocks and benchmarks; earnings and dividend dates |
+| [Finnhub](https://finnhub.io) | REST | Yes | US real-time quotes, symbol search, company profiles, basic fundamentals, company news |
+| [Twelve Data](https://twelvedata.com) | REST | Yes | Backup US daily history for symbols the sync missed |
+| [mfapi.in](https://www.mfapi.in) (AMFI NAV files) | REST | No | Daily NAV history for every Indian mutual fund scheme |
+| [US Treasury FiscalData](https://fiscaldata.treasury.gov) | REST | No | Treasury bill rates |
+| India Ministry of Finance notifications | Curated quarterly | No | Small-savings rates (PPF, SCSS, SSY, NSC, KVP, POMIS and others) |
+| WSJ, CNBC, Economic Times, Mint, Business Standard, Moneycontrol | RSS | No | Market headlines with publish times |
+| Reddit, StockTwits, Google Trends | REST | Reddit: yes | Retail attention and sentiment |
+| [Groq](https://groq.com) (gpt-oss-120b) | LLM API | Yes | Briefings, "why is it moving" explanations, research summaries, watchlist recaps |
+
+**Cleaning and joining:** daily bars are stored per symbol and rejected when older than five days; quotes from all sources are normalised to one schema with a source tag; NSE symbols are stored without the `.NS` suffix for tracked stocks and with it for others, so the two never collide; renamed tickers are remapped; Indian and US prices are kept in their own currency and never converted. Mutual fund returns use Growth-option NAVs (IDCW NAVs drop at each payout and would understate returns).
 
 ---
 
@@ -87,58 +119,38 @@ Nothing in this application constitutes a recommendation to buy, sell, or hold a
 
 | Layer | Technology | Details |
 |-------|-----------|---------|
-| **Frontend Framework** | Next.js 14 + React 18 | App Router, server/client components, TypeScript |
-| **State Management** | TanStack React Query 5 | Caching, refetching, stale-while-revalidate |
-| **Charts** | Recharts 2 | Area, Line, Bar, Pie, Scatter, Treemap, Radar |
-| **Animations** | Framer Motion 11 | Page transitions, scroll reveals, layout animations |
-| **Icons** | Lucide React | 30+ icons across the UI |
-| **Styling** | Tailwind CSS 3 | Custom dark theme with crimson/ink/ember palettes |
-| **Backend Framework** | FastAPI | Async Python, auto-generated OpenAPI docs at `/docs` |
-| **ORM** | SQLAlchemy 2 (async) | AsyncPG driver, Alembic migrations |
-| **Background jobs** | In-process asyncio loop + GitHub Actions | Quote refresh, LiveFeed and alert checks run inside the API process (market-aware cadence); daily price history and earnings/dividend dates are synced by a scheduled GitHub Actions workflow |
-| **AI Provider** | Groq (gpt-oss-120b) / Ollama (qwen2.5:7b) | Groq free cloud LLM (30 RPM) or local Ollama, both via OpenAI-compatible API |
-| **Market Data** | yfinance → Stooq → Finnhub → Alpha Vantage | Provider fallback chain with circuit breakers + 429 backoff, live quotes + candles + fundamentals |
-| **Fundamentals** | Finnhub (free tier) | Basic financials, company profiles, insider transactions |
-| **News/Sentiment** | Finnhub + RSS + StockTwits + Reddit | Free-tier data sources with fallback to mock |
-| **Database** | PostgreSQL 16 | Persistent storage for watchlists, alerts, history |
-| **Cache/PubSub** | Redis 7 | Price caching, alert storage, real-time event relay |
-| **Portfolio Math** | NumPy + SciPy | SLSQP optimizer, covariance matrices, Monte Carlo |
-| **Forecasting** | statsmodels | SARIMA seasonal time-series model (linear + Holt ensemble fallback) |
-| **Data Processing** | Pandas + Polars | Market data wrangling and indicator computation |
-| **Containerization** | Docker Compose | 6-service stack: postgres, redis, api, worker, beat, web |
-| **Identity** | JWT (HS256) | Anonymous per-browser identity minted by `POST /auth/anon` (no accounts) |
+| **Analysis** | pandas, NumPy, SciPy, statsmodels | Returns, volatility, drawdowns, correlation (`scripts/market_findings.py`), SLSQP optimisation, Monte Carlo, SARIMA |
+| **Data pipeline** | GitHub Actions + yfinance | Scheduled history and events sync into Redis, twice a day plus a midday NSE run |
+| **API** | FastAPI (async Python) | Provider fallback chain with circuit breakers, caching, OpenAPI docs at `/docs` |
+| **Storage** | PostgreSQL (Neon), Redis (Upstash) | Watchlists and paper trades in Postgres; price history, quote cache and alerts in Redis |
+| **AI** | Groq (gpt-oss-120b) or local Ollama | OpenAI-compatible API, auto-switches if a model is retired |
+| **Frontend** | Next.js 14, React 18, TanStack Query, Recharts, Tailwind | Dashboard, charts and calculators |
+| **Notifications** | Web Push (VAPID) + service worker | Price alerts with the site closed |
+| **Testing** | pytest, Playwright | Unit and API tests; browser smoke tests at desktop and phone sizes |
+| **Hosting** | Vercel (web), Render (API) | See `docs/DEPLOY-FREE-TIER.md` |
 
 ---
 
 ## Prerequisites
 
-- **Docker Desktop**: [Download here](https://www.docker.com/products/docker-desktop/) (recommended)
-- **Node.js 18+**: [Download here](https://nodejs.org/) (for local frontend dev)
-- **Python 3.12+**: [Download here](https://python.org/) (for local backend dev)
-- **Ollama**: [Download here](https://ollama.ai/) (for AI features)
+- **Python 3.12+**: [Download here](https://python.org/)
+- **Node.js 20+**: [Download here](https://nodejs.org/)
+- **Docker Desktop** (optional, for the one-command local stack): [Download here](https://www.docker.com/products/docker-desktop/)
+- **Ollama** (optional, for local AI): [Download here](https://ollama.ai/)
 
 ---
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended, One Command)
+### Docker (one command)
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| **Web UI** | http://localhost:9000 |
-| **API Docs** | http://localhost:8000/docs |
-| **PostgreSQL** | localhost:5432 |
-| **Redis** | localhost:6379 |
+Opens the web UI on http://localhost:9000 and the API docs on http://localhost:8000/docs. It starts in **mock mode**: no API keys, deterministic sample data, everything clickable.
 
-Runs in **mock mode** by default, zero API keys, deterministic offline data, full UI + pipeline + scoring working immediately.
-
-### Option 2: Run Locally (No Docker)
-
-#### Backend
+### Without Docker
 
 ```bash
 cd backend
@@ -147,582 +159,131 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-#### Frontend
-
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-#### Ollama (for AI features)
+Set `DATA_MODE=live` and add the keys in `backend/.env.example` to use real data. To fill the price history yourself (normally done by GitHub Actions):
 
 ```bash
-ollama pull qwen2.5:7b
-ollama serve   # runs on port 11434
+cd backend && REDIS_URL=redis://localhost:6379/0 python -m scripts.sync_history
 ```
 
-| Service | URL |
-|---------|-----|
-| **Frontend** | http://localhost:3000 |
-| **API Docs** | http://localhost:8000/docs |
-| **Ollama** | http://localhost:11434 |
+### Reproduce the Findings
 
-### Option 3: Cloud Deployment
+```bash
+cd backend && python -m scripts.market_findings          # summary
+cd backend && python -m scripts.market_findings --json   # full numbers
+```
 
-Deploy the full stack on Vercel + Render + Neon + Upstash + Groq:
-
-| Service | Role | Limits used |
-|---------|------|-------------|
-| **Vercel** | Next.js frontend | 100 GB BW |
-| **Render** | FastAPI (Docker, in-process refresh loop) | 750 instance-hrs/mo |
-| **Neon** | Managed Postgres | 0.5 GB, scale-to-zero |
-| **Upstash** | Managed Redis (TLS) | 256 MB, 500K cmds/mo |
-| **Groq** | LLM (gpt-oss-120b) | 30 RPM, 1K RPD |
-
-See `docs/DEPLOY-FREE-TIER.md` for the step-by-step guide.
-
----
-
-## How to Use the App
-
-| Page | Route | What It Does |
-|------|-------|-------------|
-| **Landing** | `/` | Animated intro with feature showcase, click "Launch Dashboard" to enter |
-| **Dashboard** | `/` | AI briefing, opportunity radar, live movers, sector heatmap, sentiment, volume leaders |
-| **Portfolio** | `/portfolio` | Build a portfolio, run optimization, view frontier/Monte Carlo/stress tests, rebalance |
-| **Research** | `/research` | AI-powered deep research reports per stock |
-| **Watchlists** | `/watchlists` | Create/manage personal watchlists with live quotes |
-| **Screener** | `/screener` | Filter stocks by technical/fundamental criteria |
-| **Heatmap** | `/heatmap` | Treemap of market sectors and individual stock performance |
-| **Compare** | `/compare` | Side-by-side comparison of up to 6 stocks |
-| **Backtest** | `/backtest` | Test RSI/MACD/SMA/Bollinger strategies against historical data |
-| **Alerts** | `/alerts` | Set price alerts with 4 condition types, auto-checks every 30s |
-| **Safe Invest** | `/invest` | Zero-loss instruments, SIP calculator, goal planner, allocation builder, AI advisor |
-| **Stock Detail** | `/stock/[SYMBOL]` | "Why is this moving?", technicals, fundamentals, forecast, deep research |
-
-Use **Cmd-K / Ctrl-K** anywhere to open the command palette and search for any ticker.
+It downloads adjusted daily closes for the tracked universe and both benchmarks, recomputes every market statistic in Findings for the trailing year (or `--period 2y`, etc.), and fetches the Direct vs Regular fund returns from AMFI NAVs. No API keys needed. Results move with the window, so rerunning on a later date gives that year's numbers.
 
 ---
 
 ## Project Structure
 
 ```
-stock-discovery-intelligence/
-├── README.md                           # This file
-├── infra/
-│   └── docker-compose.yml              # 6-service Docker stack
-├── db/
-│   ├── schema.sql                      # PostgreSQL schema
-│   ├── seed.sql                        # Seed data
-│   └── migrations/                     # Alembic migrations
-│
+StockIntel/
 ├── backend/
-│   ├── Dockerfile                      # Python 3.12-slim image
-│   ├── requirements.txt                # 20 Python dependencies
-│   ├── .env.example                    # Environment variable template
 │   ├── app/
-│   │   ├── main.py                     # FastAPI app, lifespan, CORS, router registration
-│   │   ├── core/
-│   │   │   ├── config.py               # Pydantic Settings (DB, Redis, Groq/Ollama, CORS)
-│   │   │   ├── redis.py                # Redis client + pub/sub channels
-│   │   │   ├── security.py             # JWT encode/decode
-│   │   │   └── logging.py              # Structured logging
-│   │   ├── api/routes/                  # 15 route modules
-│   │   │   ├── market.py               # /quote, /movers, /candles, /heatmap
-│   │   │   ├── stocks.py               # /overview, /why, /technicals, /fundamentals, /research, /forecast
-│   │   │   ├── portfolio.py            # /analyze, /saved, /rebalance
-│   │   │   ├── insights.py             # /briefing, /news, /earnings, /economic-calendar
-│   │   │   ├── invest.py               # /instruments, /profiles, /sip, /goal, /allocate, /advise
-│   │   │   ├── alerts.py               # CRUD + /check
-│   │   │   ├── backtest.py             # /strategies, POST /backtest
-│   │   │   ├── screener.py             # GET with filter params
-│   │   │   ├── discovery.py            # /discovery, /buckets
-│   │   │   ├── sentiment.py            # /trending
-│   │   │   ├── sectors.py              # /rotation
-│   │   │   ├── watchlists.py           # CRUD + items
-│   │   │   ├── auth.py                 # /token, /me
-│   │   │   ├── realtime.py             # WebSocket /ws/live
-│   │   │   └── health.py               # /health
-│   │   ├── services/                   # 19 service modules
-│   │   │   ├── portfolio.py            # Mean-variance optimization, Monte Carlo, stress testing
-│   │   │   ├── safe_invest.py          # 45 instruments (33 IN + 12 US), SIP calc, goal planner, allocation engine
-│   │   │   ├── live_rates.py           # Live mutual-fund NAV returns (mfapi.in) + US Treasury yields, stale-while-revalidate cache
-│   │   │   ├── backtester.py           # RSI/MACD/SMA/Bollinger strategy engine
-│   │   │   ├── forecast.py             # SARIMA time-series model (linear + Holt ensemble fallback)
-│   │   │   ├── deep_research.py        # AI-powered comprehensive stock research
-│   │   │   ├── technicals.py           # RSI, MACD, Bollinger, Stochastic, ATR, OBV
-│   │   │   ├── fundamentals.py         # P/E, P/B, EPS, dividends, revenue from yfinance
-│   │   │   ├── rebalance.py            # Drift detection, trade suggestions
-│   │   │   ├── alerts.py               # Redis-backed price alert engine
-│   │   │   ├── screener.py             # Multi-criteria stock filtering
-│   │   │   ├── briefing.py             # Daily AI market briefing
-│   │   │   ├── explain.py              # "Why is this stock moving?"
-│   │   │   ├── heatmap.py              # Sector/stock treemap data
-│   │   │   ├── market.py               # Quote/candle data via yfinance
-│   │   │   ├── discovery.py            # Stock discovery scoring
-│   │   │   ├── sentiment.py            # Reddit + Trends sentiment
-│   │   │   ├── sector.py               # Sector rotation tracking
-│   │   │   └── watchlist.py            # Watchlist CRUD
-│   │   ├── adapters/                   # Data source abstraction
-│   │   │   ├── base.py                 # Abstract adapter interface
-│   │   │   ├── resilience.py           # Circuit breakers, shared yfinance session, pooled httpx clients
-│   │   │   ├── live.py                 # yfinance (breaker + 429 backoff) + RSS adapter
-│   │   │   ├── stooq_provider.py       # Stooq: free no-key daily OHLCV fallback
-│   │   │   ├── finnhub_provider.py     # Finnhub: quotes, profiles, news, fundamentals (candles are paid → skipped)
-│   │   │   ├── alphavantage_provider.py # Alpha Vantage: last-resort quotes/candles, daily-quota breaker
-│   │   │   ├── fallback.py             # Ordered provider chain + Redis caching
-│   │   │   ├── mock.py                 # Deterministic offline data (115+ stocks)
-│   │   │   ├── ai.py                   # Groq + Ollama (OpenAI-compat) + Anthropic providers
-│   │   │   ├── sentiment_live.py       # StockTwits + Reddit + Google Trends (breakers + null-body guard)
-│   │   │   └── registry.py             # Adapter selection by config
-│   │   ├── scoring/                    # Discovery scoring engine
-│   │   │   ├── engine.py               # Composite scoring pipeline
-│   │   │   └── indicators.py           # Technical indicator calculations
-│   │   ├── etl/                        # Background jobs
-│   │   │   └── market_calendar.py      # Market-aware refresh interval (back off when market closed)
-│   │   ├── models/entities.py          # SQLAlchemy ORM models
-│   │   ├── schemas/                    # Pydantic request/response models
-│   │   ├── db/session.py               # Async engine + session factory
-│   │   └── realtime/manager.py         # WebSocket connection manager + Redis relay
-│   ├── scripts/validate_live.py        # Live adapter smoke test
-│   └── tests/                          # 10 test modules (api, auth, scoring, watchlists, hardening, forecast, portfolio, backtester, safe_invest, schedule)
-│
+│   │   ├── adapters/        # Data sources: yfinance, Finnhub, Twelve Data, Alpha Vantage, RSS,
+│   │   │                    #   history snapshot reader, fallback chain, sample data
+│   │   ├── api/routes/      # FastAPI routes (market, stocks, portfolio, invest, alerts, paper, ...)
+│   │   ├── services/        # Analysis: portfolio optimiser, backtester, forecast, technicals,
+│   │   │                    #   safe-invest maths, mutual funds, holdings, digest, alerts, push
+│   │   ├── scoring/         # Discovery score engine and indicators
+│   │   ├── models/          # SQLAlchemy models
+│   │   └── main.py          # App, background refresh loop, caching headers
+│   ├── scripts/
+│   │   ├── sync_history.py  # Daily bars for the universe, benchmarks and watchlist extras
+│   │   ├── sync_events.py   # Earnings and dividend dates
+│   │   ├── market_findings.py # Recomputes the README Findings
+│   │   └── gen_vapid.py     # Keys for Web Push
+│   └── tests/               # pytest suite
 ├── frontend/
-│   ├── Dockerfile                      # Multi-stage Node 20 Alpine build
-│   ├── package.json                    # 8 runtime + 9 dev dependencies
-│   ├── tailwind.config.ts              # Custom crimson/ink/ember/base color palette
-│   ├── tsconfig.json                   # TypeScript strict config
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx              # Root layout with ShellLayout wrapper
-│   │   │   ├── page.tsx                # Landing page overlay → Dashboard
-│   │   │   ├── portfolio/page.tsx      # Portfolio optimizer (1011 lines)
-│   │   │   ├── invest/page.tsx         # Safe Investment Guide (1075 lines)
-│   │   │   ├── alerts/page.tsx         # Price alerts CRUD
-│   │   │   ├── backtest/page.tsx       # Strategy backtester
-│   │   │   ├── compare/page.tsx        # Stock comparison
-│   │   │   ├── heatmap/page.tsx        # Market heatmap
-│   │   │   ├── research/page.tsx       # AI research reports
-│   │   │   ├── screener/page.tsx       # Stock screener
-│   │   │   ├── watchlists/page.tsx     # Watchlist management
-│   │   │   └── stock/[symbol]/page.tsx # Dynamic stock detail
-│   │   ├── components/
-│   │   │   ├── landing/
-│   │   │   │   └── LandingPage.tsx     # Animated landing (particles, counters, feature cards)
-│   │   │   ├── dashboard/              # 12 dashboard widgets
-│   │   │   │   ├── Dashboard.tsx       # Main dashboard layout
-│   │   │   │   ├── FearGreedGauge.tsx  # Fear/greed semicircle gauge
-│   │   │   │   ├── MarketOverview.tsx  # Stats bar with sparklines
-│   │   │   │   ├── MarketBriefing.tsx  # AI-generated daily briefing
-│   │   │   │   ├── OpportunityRadar.tsx # Scored stock opportunities
-│   │   │   │   ├── MoversList.tsx      # Top gainers/losers
-│   │   │   │   ├── SectorHeatmap.tsx   # Sector performance grid
-│   │   │   │   ├── SentimentTrends.tsx # Retail sentiment chart
-│   │   │   │   ├── VolumeLeaders.tsx   # Unusual volume stocks
-│   │   │   │   ├── NewsCarousel.tsx    # Scrolling news feed
-│   │   │   │   ├── EarningsCalendar.tsx # Upcoming earnings
-│   │   │   │   ├── EconomicCalendar.tsx # Economic events
-│   │   │   │   └── LiveFeed.tsx        # Real-time activity feed
-│   │   │   ├── portfolio/              # 10 portfolio components
-│   │   │   │   ├── PortfolioBuilder.tsx # Symbol selector + analyze button
-│   │   │   │   ├── EfficientFrontier.tsx # Scatter plot frontier
-│   │   │   │   ├── MonteCarloChart.tsx  # Growth simulation fan
-│   │   │   │   ├── RiskProfiles.tsx     # Risk/return profiles
-│   │   │   │   ├── StrategyComparison.tsx # Strategy bar chart
-│   │   │   │   ├── CorrelationHeatmap.tsx # Correlation matrix
-│   │   │   │   ├── StressTest.tsx       # Crash scenario analysis
-│   │   │   │   ├── BacktestChart.tsx    # Strategy equity curves
-│   │   │   │   ├── AssetTable.tsx       # Detailed asset grid
-│   │   │   │   └── Rebalancer.tsx       # Drift + trade suggestions
-│   │   │   ├── stock/                  # 7 stock detail components
-│   │   │   │   ├── StockIntelligence.tsx # Main stock page layout
-│   │   │   │   ├── WhyMovingCard.tsx    # AI "why" explanation
-│   │   │   │   ├── PriceChart.tsx       # Interactive candlestick/line chart
-│   │   │   │   ├── TechnicalIndicators.tsx # RSI, MACD, Bollinger panels
-│   │   │   │   ├── FundamentalsCard.tsx # Key financial metrics
-│   │   │   │   ├── PriceForecast.tsx    # Price trend projection chart
-│   │   │   │   └── DeepResearch.tsx     # Full AI research report
-│   │   │   ├── layout/                 # Shell components
-│   │   │   │   ├── ShellLayout.tsx     # Sidebar + ticker + main wrapper
-│   │   │   │   ├── Sidebar.tsx         # Collapsible 10-page nav
-│   │   │   │   ├── TickerTape.tsx      # Scrolling stock marquee
-│   │   │   │   └── TopBar.tsx          # (Legacy) top bar
-│   │   │   └── ui/                     # Shared UI primitives
-│   │   │       ├── BentoCard.tsx       # Glass-morphism card wrapper
-│   │   │       ├── CommandPalette.tsx   # Cmd-K search modal
-│   │   │       ├── ScorePill.tsx       # Color-coded score badge
-│   │   │       └── Sparkline.tsx       # Inline mini chart
-│   │   ├── hooks/useLiveFeed.ts        # WebSocket hook for real-time events
-│   │   ├── lib/
-│   │   │   ├── api.ts                  # API client (40+ methods)
-│   │   │   ├── providers.tsx           # React Query provider
-│   │   │   └── utils.ts               # cn(), pct(), scoreColor(), changeColor()
-│   │   └── styles/globals.css          # Tailwind directives, glass utilities, animations
-│
-└── docs/                               # 17 documentation files
-    ├── GETTING-STARTED.md
-    ├── 01-PRD.md                       # Product Requirements Document
-    ├── 02-ARCHITECTURE.md              # System architecture
-    ├── 03-DATABASE.md                  # Schema documentation
-    ├── 04-API.md                       # API reference
-    ├── 05-STREAMING.md                 # WebSocket/real-time docs
-    ├── 06-ETL.md                       # Background job pipeline
-    ├── 07-FOLDER-STRUCTURE.md          # Codebase organization
-    ├── 08-SCORING.md                   # Discovery scoring algorithm
-    ├── 09-DESIGN-SYSTEM.md             # UI/UX design tokens
-    ├── 10-WIREFRAMES.md                # Page wireframes
-    ├── 11-COMPONENTS.md                # Component library docs
-    ├── 12-TESTING.md                   # Test strategy
-    ├── 13-DEPLOYMENT.md                # Deployment guide
-    ├── 14-MONITORING.md                # Observability
-    ├── 15-RISK.md                      # Risk assessment
-    └── 16-ROADMAP.md                   # Feature roadmap
+│   ├── src/app/             # Pages: dashboard, heatmap, screener, stock, portfolio, invest, learn, ...
+│   ├── src/components/      # Dashboard cards, charts, calculators, portfolio tools
+│   ├── src/lib/             # API client, CSV parser, push helpers
+│   └── e2e/                 # Playwright smoke tests and screenshot script
+├── db/schema.sql            # PostgreSQL schema
+├── infra/docker-compose.yml # Local stack: Postgres, Redis, API, web
+├── .github/workflows/       # CI (tests, build, browser tests) and the data sync schedule
+└── docs/                    # Architecture, API, deployment guide, screenshots
 ```
-
----
-
-## API Endpoints (15 Route Modules, 40+ Endpoints)
-
-### Market Data
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/market/quote/{symbol}` | Real-time quote for a ticker |
-| GET | `/api/v1/market/movers` | Top gainers, losers, most active |
-| GET | `/api/v1/market/candles/{symbol}` | OHLCV candles (interval, lookback params) |
-| GET | `/api/v1/market/heatmap` | Sector treemap data |
-
-### Stock Analysis
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/stocks/{symbol}` | Full stock overview |
-| GET | `/api/v1/stocks/{symbol}/why` | AI "why is this moving?" explanation |
-| GET | `/api/v1/stocks/{symbol}/technicals` | RSI, MACD, Bollinger, Stochastic, ATR, OBV |
-| GET | `/api/v1/stocks/{symbol}/fundamentals` | P/E, P/B, EPS, revenue, margins |
-| GET | `/api/v1/stocks/{symbol}/research` | AI deep research report |
-| GET | `/api/v1/stocks/{symbol}/forecast` | SARIMA price forecast (30-day default) |
-
-### Portfolio
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/portfolio/analyze` | Full optimization (frontier, Monte Carlo, stress tests) |
-| GET | `/api/v1/portfolio/saved` | List saved portfolios |
-| POST | `/api/v1/portfolio/saved` | Save a portfolio |
-| DELETE | `/api/v1/portfolio/saved/{name}` | Delete a saved portfolio |
-| POST | `/api/v1/portfolio/rebalance` | Calculate rebalancing trades |
-
-### Safe Investment Guide
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/invest/instruments` | List instruments by country (IN/US) |
-| GET | `/api/v1/invest/profiles` | Risk profiles with preset allocations |
-| GET | `/api/v1/invest/sip` | SIP calculator (monthly, rate, years, step_up, lump_sum) |
-| GET | `/api/v1/invest/goal` | Goal planner (target, years, rate) |
-| POST | `/api/v1/invest/allocate` | Multi-instrument allocation projection (lump sum + monthly, with lock-in/liquidity) |
-| POST | `/api/v1/invest/advise` | AI advisor Q&A |
-
-### Alerts, Screener, Backtest
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/alerts` | List active alerts |
-| POST | `/api/v1/alerts` | Create a price alert |
-| DELETE | `/api/v1/alerts/{id}` | Delete an alert |
-| GET | `/api/v1/alerts/check` | Check all alerts against live prices |
-| GET | `/api/v1/screener` | Filter stocks by criteria |
-| GET | `/api/v1/backtest/strategies` | List available strategies |
-| POST | `/api/v1/backtest` | Run a strategy backtest |
-
-### Insights & Discovery
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/insights/briefing` | AI-generated daily market briefing |
-| GET | `/api/v1/insights/news` | Latest market news (RSS) |
-| GET | `/api/v1/insights/earnings` | Upcoming earnings calendar |
-| GET | `/api/v1/insights/economic-calendar` | Economic events |
-| GET | `/api/v1/discovery` | Scored stock discovery list |
-| GET | `/api/v1/sentiment/trending` | Trending tickers by sentiment |
-| GET | `/api/v1/sectors/rotation` | Sector rotation data |
-
-### Auth & Watchlists
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/auth/anon` | Get an anonymous per-browser JWT |
-| GET | `/api/v1/auth/me` | Current user info |
-| GET/POST/DELETE | `/api/v1/watchlists` | Watchlist CRUD |
-| POST/DELETE | `/api/v1/watchlists/{id}/items` | Add/remove symbols |
-| WS | `/api/v1/ws/live` | Real-time price + event stream |
-
----
-
-## Configuration
-
-All config is in `backend/.env` (copy from `.env.example`):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATA_MODE` | `mock` | `mock` for offline data, `live` for real market data |
-| `AI_PROVIDER` | `ollama` | `groq`, `ollama`, `anthropic`, `openai`, or `mock` |
-| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `qwen2.5:7b` | Model for AI features |
-| `GROQ_API_KEY` | *(empty)* | Free tier: https://console.groq.com/keys (30 RPM, 1K RPD) |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model for AI features (auto-switches if Groq retires it) |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./sdi.db` | PostgreSQL in Docker, SQLite locally |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
-| `FINNHUB_API_KEY` | *(empty)* | Free tier: quotes, profiles, basic financials, news |
-| `ALPHAVANTAGE_API_KEY` | *(empty)* | Optional: additional market data fallback |
-| `ANTHROPIC_API_KEY` | *(empty)* | Optional: for Claude-based AI |
-| `OPENAI_API_KEY` | *(empty)* | Optional: for OpenAI-based AI |
-| `REDDIT_CLIENT_ID` | *(empty)* | Optional: Reddit API for sentiment |
-| `REDDIT_CLIENT_SECRET` | *(empty)* | Optional: Reddit API for sentiment |
-| `SCHEDULE_MARKET_AWARE` | `true` | Back off ETL refresh cadences when the US market is closed (set `false` for constant cadence) |
-| `OFFHOURS_BACKOFF` | `4.0` | Interval multiplier on weekday off-hours (outside 09:30–16:00 ET) |
-| `WEEKEND_BACKOFF` | `12.0` | Interval multiplier on weekends |
-
-**Refresh cadences** (`REFRESH_MARKET` 5m, `REFRESH_NEWS` 10m, `REFRESH_SENTIMENT`/`REFRESH_SCORES` 30m) apply during US market hours. When `SCHEDULE_MARKET_AWARE=true`, the in-process refresh loop multiplies these intervals by `OFFHOURS_BACKOFF` off-hours and `WEEKEND_BACKOFF` on weekends to conserve free-tier provider rate limits (see `app/etl/market_calendar.py`).
-
-In `live` mode, providers fall back in chain: **yfinance → Stooq → Finnhub → Alpha Vantage → mock**. Each provider is wrapped in a circuit breaker (opens on repeated 429/403/quota errors, half-opens after a cooldown) so a rate-limited or down source is skipped instead of retried per-symbol; yfinance additionally retries 429s with exponential backoff over a shared connection-pooled session. Results are Redis-cached, and `/sectors/rotation` and `/insights/briefing` serve from cache and recompute in the background (never blocking the request). Zero-config mock mode works out of the box.
 
 ---
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────┐
-                    │   Next.js 14 (Port 3000)    │
-                    │   React 18 + TypeScript     │
-                    │   TanStack Query + Recharts │
-                    │   Framer Motion + Tailwind  │
-                    └──────────┬──────────────────┘
-                               │ REST + WebSocket
-                    ┌──────────▼──────────────────┐
-                    │   FastAPI (Port 8000)        │
-                    │   15 route modules           │
-                    │   19 service modules          │
-                    │   Adapter pattern (mock/live)│
-                    └──┬────────┬────────┬────────┘
-                       │        │        │
-              ┌────────▼─┐ ┌───▼────┐ ┌─▼────────────┐
-              │ Postgres  │ │ Redis  │ │ Groq/Ollama  │
-              │ (history, │ │ (cache,│ │ (LLM)       │
-              │  watchlists│ │  alerts│ │ free cloud   │
-              │  alerts)  │ │  pubsub│ │ or local     │
-              └───────────┘ └───┬────┘ └──────────────┘
-                                │
-                    ┌───────────▼──────────────────┐
-                    │ In-process refresh loop +    │
-                    │ /health/warm pinger; daily   │
-                    │ history + events synced by   │
-                    │ GitHub Actions (yfinance)    │
-                    │ → shared Redis snapshots     │
-                    └──────────────────────────────┘
+                 GitHub Actions (scheduled)
+          yfinance: daily bars + earnings/dividends
+          02:00 UTC NSE midday · 10:30 UTC NSE close · 22:30 UTC US close
+                            │
+                            ▼
+   Finnhub ──┐        ┌──────────┐        ┌──────────────┐
+   Twelve ───┼──────► │  Redis   │ ◄────► │   FastAPI    │ ◄── Groq LLM
+   RSS/news ─┤        │ history, │        │ fallback     │
+   mfapi.in ─┘        │ quotes,  │        │ chain, maths,│ ◄── Postgres
+                      │ alerts   │        │ refresh loop │     (watchlists,
+                      └──────────┘        └──────┬───────┘      paper trades)
+                                                 │ JSON (edge-cached)
+                                                 ▼
+                                        Next.js dashboard
+                                     (Vercel) + Web Push
 ```
 
----
-
-## Data Sources
-
-| Source | Type | API Key? | What It Provides |
-|--------|------|----------|-----------------|
-| **yfinance** | Market data | No | Quotes, OHLCV candles, fundamentals, earnings (breaker + 429 backoff) |
-| **Stooq** | Market data | No | Free daily OHLCV fallback (US coverage) when yfinance is rate-limited |
-| **Finnhub** | Market data | Free (60 calls/min) | Quotes, company profiles, basic financials, news (candles are paid-only → skipped) |
-| **Alpha Vantage** | Market data | Free (25 calls/day) | Last-resort quotes/candles; trips a 6h breaker when the daily quota is hit |
-| **StockTwits** | Sentiment | No | Social sentiment and trending tickers (null-body guarded; breaker on block) |
-| **RSS feeds** | News | No | Market news from major financial outlets |
-| **Reddit (PRAW)** | Sentiment | Free app | r/wallstreetbets, r/stocks trending analysis |
-| **Google Trends** | Sentiment | No | Search interest for tickers |
-| **Groq** | AI | Free (30 RPM) | Research reports, briefings, explanations, advisor (cloud, no credit card) |
-| **Ollama** | AI | No (local) | Research reports, briefings, explanations, advisor (local fallback) |
-| **Mock adapter** | Fallback | No | Deterministic offline data for all endpoints |
+- **History first, APIs second.** Daily bars come from the scheduled sync; live APIs are only asked for what the snapshot can't answer (US intraday quotes, search, profiles). Every price carries its source.
+- **One process.** The API runs a market-aware refresh loop (every 30 minutes in session, backing off when markets are closed) that updates quotes, publishes live-feed events and checks price alerts. A keep-alive pinger refreshes the dashboard snapshots.
+- **Cheap on shared quotas.** All quotes live in one shared Redis key read at most once a minute; AI outputs are cached per day; public endpoints are cached at the edge.
 
 ---
 
 ## Testing
 
-```bash
-cd backend
-pip install -r requirements.txt  # includes statsmodels, needed by the forecast tests
-pytest -q                        # Run all tests
-
-# By module
-pytest tests/test_api.py         # API route smoke tests
-pytest tests/test_auth.py        # JWT auth tests
-pytest tests/test_scoring.py     # Scoring engine tests
-pytest tests/test_watchlists.py  # Watchlist CRUD tests
-pytest tests/test_hardening.py   # Circuit breakers, provider fallbacks, guards
-pytest tests/test_forecast.py    # SARIMA + linear/Holt forecast (+ fallback path)
-pytest tests/test_portfolio.py   # Optimizer, risk metrics, frontier, analyze()
-pytest tests/test_backtester.py  # Signal generation + trade simulation
-pytest tests/test_safe_invest.py # SIP/lump-sum/goal/allocation math + lock-in
-pytest tests/test_schedule.py    # Market-hours back-off scheduling
-```
-
-Tests are network-free (providers and Redis are faked), so no live keys are required. The forecast suite skips the SARIMA assertions automatically if `statsmodels` isn't installed.
-
----
-
-## Available Scripts
-
-### Frontend
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| **Dev Server** | `npm run dev` | Start HMR dev server at localhost:3000 |
-| **Build** | `npm run build` | Compile and bundle for production |
-| **Start** | `npm run start` | Serve production build |
-| **Lint** | `npm run lint` | Run ESLint across all source files |
-
-### Backend
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| **Dev Server** | `uvicorn app.main:app --reload` | Start with hot reload at localhost:8000 |
-| **Tests** | `pytest -q` | Run all tests |
-| **History sync** | `REDIS_URL=... python -m scripts.sync_history` | Fetch daily price history into Redis (normally run by GitHub Actions) |
-| **VAPID keys** | `python -m scripts.gen_vapid` | Generate the key pair that turns on push notifications |
-| **Validate** | `python scripts/validate_live.py` | Smoke test live adapters |
-
-### Docker
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| **Full Stack** | `docker compose -f infra/docker-compose.yml up --build` | Start all 6 services |
-| **Rebuild** | `docker compose -f infra/docker-compose.yml up --build --force-recreate` | Force rebuild |
-| **Logs** | `docker compose -f infra/docker-compose.yml logs -f api` | Follow API logs |
-| **Down** | `docker compose -f infra/docker-compose.yml down -v` | Stop and remove volumes |
-
----
-
-## Troubleshooting
-
-### Issue: `npm install` fails with peer dependency errors
-
-**Solution:** Use the legacy peer deps flag:
+- **Backend:** 108 pytest tests covering the scoring engine, optimiser, backtester, forecast fallback, safe-invest maths, provider fallbacks and source tagging, history snapshots, alerts, paper trading and its equity curve, push, search, mutual fund returns, broker holdings and device linking.
+- **Browser:** Playwright smoke tests (27 runs across desktop and phone sizes) that open every page, fail on any uncaught error or sideways scrolling, and walk through creating a watchlist, the after-tax table, saved goals, search, a broker CSV import and linking a second device.
+- **CI** runs both on every pull request, plus a type check, lint and production build.
 
 ```bash
-npm install --legacy-peer-deps
-```
-
-### Issue: Port 3000 or 8000 already in use
-
-**Solution:** Kill the existing process or use a different port:
-
-```bash
-# Frontend
-npm run dev -- --port 3001
-
-# Backend
-uvicorn app.main:app --reload --port 8001
-```
-
-### Issue: Ollama not responding / AI features return errors
-
-**Solution:** Ensure Ollama is running and the model is downloaded:
-
-```bash
-ollama serve                    # Start Ollama server
-ollama list                     # Check installed models
-ollama pull qwen2.5:7b         # Download if missing
-```
-
-For Docker: Ollama runs on the host, so the API container uses `host.docker.internal:11434` to reach it. Ensure `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1` in `.env`.
-
-### Issue: Charts not rendering / blank dashboard
-
-**Solution:** The dashboard fetches data on mount. In mock mode it works instantly. In live mode, ensure the backend is reachable:
-
-```bash
-curl http://localhost:8000/health    # Should return {"status": "ok"}
-```
-
-### Issue: Docker build fails on Apple Silicon (M1/M2/M3)
-
-**Solution:** Add platform flag:
-
-```bash
-DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose -f infra/docker-compose.yml up --build
-```
-
-### Issue: PostgreSQL connection refused
-
-**Solution:** Wait for the health check to pass. Check status:
-
-```bash
-docker compose -f infra/docker-compose.yml ps
-```
-
-If postgres shows "unhealthy", check logs:
-
-```bash
-docker compose -f infra/docker-compose.yml logs postgres
+cd backend && DATA_MODE=mock python -m pytest -q
+cd frontend && npx playwright test   # with the API and `npm start` running
 ```
 
 ---
 
-## Documentation
+## Honest Limitations
 
-17 detailed documentation files in the `docs/` folder:
-
-| File | Topic |
-|------|-------|
-| `GETTING-STARTED.md` | Quick start and first steps |
-| `01-PRD.md` | Product Requirements Document |
-| `02-ARCHITECTURE.md` | System architecture and data flow |
-| `03-DATABASE.md` | PostgreSQL schema and models |
-| `04-API.md` | Full API reference |
-| `05-STREAMING.md` | WebSocket and real-time events |
-| `06-ETL.md` | Data pipeline design (scoring stages) |
-| `07-FOLDER-STRUCTURE.md` | Codebase organization guide |
-| `08-SCORING.md` | Discovery scoring algorithm |
-| `09-DESIGN-SYSTEM.md` | UI/UX design tokens and components |
-| `10-WIREFRAMES.md` | Page layout wireframes |
-| `11-COMPONENTS.md` | React component library docs |
-| `12-TESTING.md` | Test strategy and coverage |
-| `13-DEPLOYMENT.md` | Production deployment guide |
-| `14-MONITORING.md` | Observability and logging |
-| `15-RISK.md` | Risk assessment |
-| `16-ROADMAP.md` | Feature roadmap and milestones |
+- **Survivorship and selection bias.** The 160 tracked stocks are a hand-picked list of well-known names that exist today, not an index's historical membership. The US list leans towards volatile technology and crypto-linked stocks, which inflates both its returns and its volatility in Findings.
+- **Prices are delayed, and Indian prices are not live.** US quotes are around 15 minutes delayed; NSE prices are the last close or a delayed midday snapshot, and the midday run depends on GitHub's scheduling, which can be hours late.
+- **Same-day correlations across time zones understate the link** between US and Indian markets (see Findings).
+- **Tax maths is simplified:** India's new regime only, interest taxed yearly, no surcharge or cess, one LTCG exemption per redemption. Treat it as a comparison tool, not a tax calculation.
+- **Models are deliberately simple.** The SARIMA forecast, discovery scores and fear and greed gauge are illustrations, not predictions; backtests ignore transaction costs, taxes and slippage.
+- **Some cards depend on rate-limited or unofficial sources** (Google Trends, Reddit, StockTwits) and fall back to sample data when they fail; anything sample is labelled.
+- **Holdings and goals in Safe Invest live in the browser**, so they don't follow a linked device, and anonymous identities are lost if browser storage is cleared without linking another device first.
 
 ---
 
-## Project Stats
+## Suggested Future Features
 
-| Metric | Count |
-|--------|-------|
-| **Total files** | 128 |
-| **Backend Python files** | 77 |
-| **Frontend TSX/TS files** | 39 |
-| **API route modules** | 15 |
-| **Service modules** | 19 |
-| **Dashboard widgets** | 12 |
-| **Portfolio components** | 10 |
-| **Stock detail components** | 7 |
-| **Pages** | 11 |
-| **API endpoints** | 40+ |
-| **Safe investment instruments** | 45 (33 IN + 12 US) |
-| **Documentation files** | 17 |
-| **Test modules** | 10 |
+- Lagged cross-market correlation (US close vs next-day NSE) and a "global cues" view.
+- Index-membership history to remove survivorship bias from the market statistics.
+- Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
+- Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
+- Backtests with brokerage, STT and capital-gains tax deducted.
+- A downloadable dataset and notebook that regenerate the Findings tables.
 
 ---
 
 ## Author
 
 **Sagnik**
-
 GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
 
 ## License
 
-MIT License, see [LICENSE](./LICENSE). Free to use, modify, and distribute, with no warranty.
-
----
-
+MIT. See [LICENSE](LICENSE).

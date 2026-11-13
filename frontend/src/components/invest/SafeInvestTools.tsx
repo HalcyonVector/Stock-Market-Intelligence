@@ -13,7 +13,7 @@ import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
 export const fmtMoney = (n: number, cur: string) => {
-  if (!isFinite(n)) return "—";
+  if (!isFinite(n)) return "-";
   const sign = n < 0 ? "-" : "";
   const a = Math.abs(n);
   return cur === "₹"
@@ -392,7 +392,7 @@ export function SavedGoals({ cur }: { cur: string }) {
   const mine = goals.filter((g) => g.cur === cur);
 
   return (
-    <BentoCard span="" title="My goals" subtitle="Saved in this browser only — nothing is uploaded">
+    <BentoCard span="" title="My goals" subtitle="Saved in this browser only. Nothing is uploaded.">
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-3 lg:col-span-2">
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
@@ -471,7 +471,7 @@ export function SavedGoals({ cur }: { cur: string }) {
                   <p className="text-xs text-ink-300">
                     {need > 0
                       ? <>Put away <span className="font-semibold text-emerald-400">{fmtMoney(need, cur)}/month</span> at {g.rate}%</>
-                      : <span className="font-semibold text-emerald-400">On track — target reached</span>}
+                      : <span className="font-semibold text-emerald-400">On track: target reached</span>}
                   </p>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-ink-500">Saved:</span>

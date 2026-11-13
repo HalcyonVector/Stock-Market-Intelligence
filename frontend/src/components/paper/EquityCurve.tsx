@@ -55,7 +55,7 @@ export function EquityCurve({ version }: { version: number }) {
       {c && c.points.length > 0 && (
         <>
           {c.points.length < 3 && (
-            <p className="mb-2 text-[11px] text-ink-500">Only a day or two of history so far — check back after a few trading days.</p>
+            <p className="mb-2 text-[11px] text-ink-500">Only a day or two of history so far. Check back after a few trading days.</p>
           )}
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={c.points} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>

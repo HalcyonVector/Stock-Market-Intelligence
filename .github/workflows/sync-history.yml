@@ -14,6 +14,12 @@ name: Sync price history
 
 on:
   schedule:
+    # Midday NSE-only run, so Indian stocks show a delayed intraday price
+    # during the session (~70 Upstash commands a run). GitHub starts this
+    # repo's scheduled runs 3.5-10.5 hours late (measured over Nov 2026), so
+    # it is scheduled at 02:00 UTC to land inside the 03:45-10:00 UTC
+    # session most days. Running early or late just stores the latest close.
+    - cron: "0 2 * * 1-5"
     # 10:30 UTC Mon-Fri: just after the NSE close (10:00 UTC), so Indian
     # prices are the same day's close (they have no live quote source).
     - cron: "30 10 * * 1-5"
@@ -43,6 +49,7 @@ jobs:
       - name: Fetch history and write to Redis
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}
+          SYNC_MARKET: ${{ github.event.schedule == '0 2 * * 1-5' && 'IN' || 'ALL' }}
         run: python -m scripts.sync_history
       # Earnings / dividend dates for the watchlist page. Once a day is plenty
       # (they rarely change); a failure here never fails the price sync.

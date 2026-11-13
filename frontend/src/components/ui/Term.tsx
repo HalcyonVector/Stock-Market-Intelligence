@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /** Plain-English definitions for the jargon used around the app. */
 export const GLOSSARY: Record<string, string> = {
   "Market Cap": "Total value of all the company's shares (share price × shares outstanding).",
-  "Enterprise Value": "Market cap plus debt minus cash — roughly what it would cost to buy the whole business.",
+  "Enterprise Value": "Market cap plus debt minus cash: roughly what it would cost to buy the whole business.",
   "P/E": "Price-to-earnings: how many years of current profit you pay for. Higher often means the market expects growth.",
   "P/E (TTM)": "Price ÷ earnings per share over the last twelve months. Higher often means the market expects growth.",
   "P/E (Fwd)": "Price ÷ analysts' estimate of next year's earnings per share.",
@@ -29,7 +29,7 @@ export const GLOSSARY: Record<string, string> = {
   "Sharpe Ratio": "Return earned per unit of volatility. Above 1 is generally considered good.",
   Sortino: "Like Sharpe, but only counts downside volatility as risk.",
   Alpha: "Return above (or below) what simply holding the stock would have earned.",
-  "Max Drawdown": "Largest peak-to-trough fall in value during the period — the worst loss you'd have sat through.",
+  "Max Drawdown": "Largest peak-to-trough fall in value during the period: the worst loss you'd have sat through.",
   "Win Rate": "Share of closed trades that made money.",
   Volatility: "How much returns swing around. Higher means a bumpier ride.",
 };

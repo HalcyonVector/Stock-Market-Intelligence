@@ -1,8 +1,12 @@
 "use client";
 import { useMemo } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity } from "lucide-react";
 import { useLiveFeed } from "@/hooks/useLiveFeed";
+import { api } from "@/lib/api";
+import { useMarket } from "@/lib/market";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
@@ -47,8 +51,22 @@ function PulseRadar() {
   );
 }
 
+/** Plain-English reason for an unusual-activity event. */
+function describe(d: any): string {
+  const ch = typeof d.change_pct === "number" ? d.change_pct : 0;
+  const vr = typeof d.volume_ratio === "number" ? d.volume_ratio : null;
+  const move = Math.abs(ch) >= 5 ? (ch >= 0 ? "Sharp rise" : "Sharp drop") : "Volume spike";
+  return vr && vr >= 1.5 ? `${move} · ${vr.toFixed(1)}x usual volume` : move;
+}
+
+const MAX_ROWS = 8;
+
 export function LiveFeed() {
   const { events, connected } = useLiveFeed();
+  const market = useMarket();
+  // Shares the dashboard's cached movers query, so filling the card costs no
+  // extra request.
+  const { data: movers } = useQuery({ queryKey: ["movers", market], queryFn: () => api.movers(market) });
   const visible = useMemo(() => {
     const seen = new Set<string>();
     return events.filter((e) => {
@@ -56,8 +74,18 @@ export function LiveFeed() {
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, 8);
+    }).slice(0, MAX_ROWS);
   }, [events]);
+
+  // When the feed is quiet, fill the card with the day's biggest movers that
+  // haven't already appeared as events.
+  const alsoMoving = useMemo(() => {
+    const shown = new Set(visible.map((e) => e.data.symbol));
+    const all = [...(movers?.gainers ?? []), ...(movers?.losers ?? [])]
+      .filter((q: any) => q?.symbol && !shown.has(q.symbol))
+      .sort((a: any, b: any) => Math.abs(b.change_pct) - Math.abs(a.change_pct));
+    return all.slice(0, Math.max(0, MAX_ROWS - visible.length));
+  }, [movers, visible]);
 
   return (
     <BentoCard
@@ -83,10 +111,10 @@ export function LiveFeed() {
         </span>
       }
     >
-      {visible.length === 0 ? (
+      {visible.length === 0 && alsoMoving.length === 0 ? (
         <PulseRadar />
       ) : (
-        <div className="max-h-[22rem] space-y-1.5 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+        <div className="space-y-1.5">
           <AnimatePresence initial={false}>
             {visible.map((e, i) => {
               const changePct = e.data.change_pct;
@@ -115,14 +143,12 @@ export function LiveFeed() {
                   />
 
                   <div className="flex flex-1 items-center justify-between px-3 py-2.5">
-                    <div className="min-w-0">
-                      <span className="font-mono text-sm font-bold tracking-tight text-ink-100">
+                    <Link href={`/stock/${e.data.symbol}`} className="min-w-0">
+                      <span className="block font-mono text-sm font-bold tracking-tight text-ink-100">
                         {e.data.symbol ?? e.channel}
                       </span>
-                      <span className="ml-2 text-[11px] text-ink-500">
-                        {e.data.type ?? "tick"}
-                      </span>
-                    </div>
+                      <span className="block truncate text-[11px] text-ink-500">{describe(e.data)}</span>
+                    </Link>
 
                     <div className="flex shrink-0 items-center gap-2.5">
                       {typeof changePct === "number" && (
@@ -146,6 +172,29 @@ export function LiveFeed() {
               );
             })}
           </AnimatePresence>
+          {alsoMoving.length > 0 && (
+            <>
+              <p className="px-1 pt-2 text-[10px] uppercase tracking-wide text-ink-500">
+                {visible.length ? "Also moving today" : "Quiet feed · biggest moves today"}
+              </p>
+              {alsoMoving.map((q: any) => {
+                const up = q.change_pct >= 0;
+                const vr = q.avg_volume ? q.volume / q.avg_volume : null;
+                return (
+                  <Link key={q.symbol} href={`/stock/${q.symbol}`}
+                    className="flex items-center justify-between rounded-lg px-3 py-1.5 transition-colors hover:bg-white/[0.04]">
+                    <span className="min-w-0">
+                      <span className="font-mono text-xs font-semibold text-ink-200">{q.symbol}</span>
+                      {vr && vr >= 1.2 && <span className="ml-2 text-[10px] text-ink-500">{vr.toFixed(1)}x vol</span>}
+                    </span>
+                    <span className={cn("font-mono text-[11px]", up ? "text-emerald-300" : "text-crimson-300")}>
+                      {up ? "+" : ""}{q.change_pct.toFixed(2)}%
+                    </span>
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
     </BentoCard>

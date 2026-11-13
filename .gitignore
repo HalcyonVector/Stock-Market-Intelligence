@@ -54,3 +54,9 @@ docs/DEPLOY-FREE-TIER.md
 .write_test.txt
 .recovery_probe.py
 *.tsbuildinfo
+
+# Planning docs stay local
+docs/16-ROADMAP.md
+ROADMAP.md
+frontend/test-results/
+frontend/playwright-report/

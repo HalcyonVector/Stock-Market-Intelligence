@@ -20,6 +20,27 @@ async def instruments(country: str = Query("IN")):
     return {"data": data, "rates_as_of": RATES_AS_OF, "rates_valid_until": RATES_VALID_UNTIL}
 
 
+@router.get("/mf/search")
+async def mf_search(q: str = Query("", max_length=60)):
+    """Search Indian mutual fund schemes (AMFI data via mfapi.in)."""
+    from app.services.mutual_funds import search
+
+    return {"data": await search(q)}
+
+
+@router.get("/mf/{code}")
+async def mf_scheme(code: int):
+    """Latest NAV, trailing returns and a monthly NAV history for one scheme."""
+    from fastapi import HTTPException
+
+    from app.services.mutual_funds import scheme
+
+    data = await scheme(code)
+    if data is None:
+        raise HTTPException(404, "Fund not found or NAV source unavailable")
+    return {"data": data}
+
+
 @router.get("/profiles")
 async def profiles():
     """List risk profiles."""

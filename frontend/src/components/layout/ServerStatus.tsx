@@ -87,7 +87,7 @@ export function ServerStatus() {
             {state === "waking" ? (
               <>
                 <Loader2 size={14} className="animate-spin" aria-hidden />
-                Waking up the server — free hosting sleeps when idle, so this can take up to a minute.
+                Waking up the server. Free hosting sleeps when idle, so this can take up to a minute.
               </>
             ) : (
               <>

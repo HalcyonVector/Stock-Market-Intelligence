@@ -14,6 +14,7 @@ import { CorrelationHeatmap } from "@/components/portfolio/CorrelationHeatmap";
 import { AssetTable } from "@/components/portfolio/AssetTable";
 import { Rebalancer } from "@/components/portfolio/Rebalancer";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { BrokerImport } from "@/components/portfolio/BrokerImport";
 
 const DEFAULT_SYMBOLS = [
   "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "JPM",
@@ -75,6 +76,10 @@ export default function PortfolioPage() {
         {analyzeSymbols && <ShareButton />}
       </div>
 
+      <div className="bento">
+        <BrokerImport onAnalyze={(syms) => { handleAnalyze(syms); setBuilderKey((k) => k + 1); }} />
+      </div>
+
       {/* Interactive builder */}
       <PortfolioBuilder
         key={builderKey}
@@ -105,7 +110,7 @@ export default function PortfolioPage() {
           <div>
             <p className="text-sm font-medium text-crimson-300">Portfolio analysis failed</p>
             <p className="text-xs text-ink-500">
-              {data?.error || "Backend unreachable. Make sure Docker is running with numpy/scipy installed."}
+              {data?.error || "The server didn't answer. It may be waking up; try again in a minute."}
             </p>
           </div>
         </div>

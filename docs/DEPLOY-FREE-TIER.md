@@ -1,4 +1,4 @@
-# StockIntel — Free-Tier Cloud Deployment Guide
+# StockIntel: Free-Tier Cloud Deployment Guide
 
 Deploy the full StockIntel stack for $0/month using Vercel + Render + Neon + Upstash + Groq.
 
@@ -7,7 +7,7 @@ Deploy the full StockIntel stack for $0/month using Vercel + Render + Neon + Ups
 ```
 Browser → Vercel (Next.js frontend)
               ↓ /api/* rewrite
-         Render (FastAPI only — one uvicorn process)
+         Render (FastAPI only, one uvicorn process)
               ↓                    ↓
      Neon (Postgres)        Upstash (Redis)
               ↓
@@ -23,7 +23,7 @@ Browser → Vercel (Next.js frontend)
 
 ---
 
-## Step 1 — Groq API key
+## Step 1: Groq API key
 
 1. Go to https://console.groq.com/keys
 2. Click **Create API Key**, name it `stockintel`
@@ -35,7 +35,7 @@ Browser → Vercel (Next.js frontend)
 
 ---
 
-## Step 2 — Neon Postgres
+## Step 2: Neon Postgres
 
 1. Go to https://console.neon.tech → **New Project**
 2. Name: `stockintel`, Region: pick closest to your Render region (US East recommended)
@@ -55,7 +55,7 @@ Browser → Vercel (Next.js frontend)
 
 ---
 
-## Step 3 — Upstash Redis
+## Step 3: Upstash Redis
 
 1. Go to https://console.upstash.com → **Create Database**
 2. Name: `stockintel`, Region: `us-east-1` (match Render/Neon)
@@ -64,7 +64,7 @@ Browser → Vercel (Next.js frontend)
    ```
    rediss://default:xxxx@us1-xxx-xxx.upstash.io:6379
    ```
-   The `rediss://` (double s) means TLS — this is required.
+   The `rediss://` (double s) means TLS, this is required.
 5. Append `/0` to pick the logical database:
    ```
    REDIS_URL=rediss://default:xxxx@us1-xxx.upstash.io:6379/0
@@ -76,7 +76,7 @@ Browser → Vercel (Next.js frontend)
 
 ---
 
-## Step 4 — Render (Backend)
+## Step 4: Render (Backend)
 
 ### 4a. Create Web Service
 
@@ -84,11 +84,11 @@ Browser → Vercel (Next.js frontend)
 2. Connect your GitHub repo
 3. Configure:
    - **Name:** `stockintel-api`
-   - **Region:** US East (Ohio) — matches Neon/Upstash
+   - **Region:** US East (Ohio), matches Neon/Upstash
    - **Root Directory:** `backend`
    - **Runtime:** Docker (it will use your existing `backend/Dockerfile`)
    - **Instance Type:** Free
-   - **Start Command override (IMPORTANT):** Leave blank — uses Dockerfile CMD (`uvicorn`)
+   - **Start Command override (IMPORTANT):** Leave blank, uses Dockerfile CMD (`uvicorn`)
 
 ### 4b. Set Environment Variables
 
@@ -127,11 +127,20 @@ Render free services sleep after 15 minutes of inactivity. To keep the in-proces
 
 > **Why 10 minutes, not 5?** Render sleeps after 15 min idle, so 10-min pings still comfortably prevent that. Every ping is a handful of Redis commands per snapshot; halving the frequency roughly halves that load. Upstash's free tier caps at 500K commands/month -- combined with the frontend's own polling (each open dashboard tab re-queries independently), 5-min pings leave much less headroom. If you already have a 5-min job configured, just widen the interval.
 
-**Alternative pingers:** UptimeRobot (free, 5-min intervals — 10 if supported), Kuma (self-hosted).
+**Alternative pingers:** UptimeRobot (free, 5-min intervals, 10 if supported), Kuma (self-hosted).
+
+### 4e. Get told when live data breaks (optional)
+
+The API reports `"mock_recent": true` on `/health` while it is serving sample data (every live source failed). A free [UptimeRobot](https://uptimerobot.com) keyword monitor turns that into an email:
+
+1. **Add New Monitor → Keyword**
+2. **URL:** `https://your-app.vercel.app/backend-health`
+3. **Keyword:** `"mock_recent":false`, alert when the keyword **does not exist**
+4. **Interval:** 15 minutes (the free plan allows 5; 15 keeps it light). It reads in-process counters only, so it costs no Redis commands.
 
 ---
 
-## Step 4d — Daily price history (GitHub Actions)
+## Step 4d: Daily price history (GitHub Actions)
 
 Yahoo Finance blocks Render's IPs, so daily price history (charts, technicals, forecasts, scores, NSE end-of-day prices) is fetched by a free scheduled workflow instead: `.github/workflows/sync-history.yml` runs `backend/scripts/sync_history.py` every weekday at 10:30 UTC (after the NSE close) and 22:30 UTC (after the US close). It fetches ~400 days of bars for:
 
@@ -149,7 +158,7 @@ If a symbol is missing from the snapshot, US stocks fall back to Twelve Data (`T
 
 ---
 
-## Step 5 — Vercel (Frontend)
+## Step 5: Vercel (Frontend)
 
 ### 5a. Import Project
 
@@ -181,15 +190,15 @@ Go back to Render → `stockintel-api` → Environment, update `CORS_ORIGINS` to
 https://stockintel-xxx.vercel.app
 ```
 
-Save changes — Render will auto-redeploy.
+Save changes, Render will auto-redeploy.
 
 ---
 
-## Step 6 — Verify
+## Step 6: Verify
 
-1. Hit `https://stockintel-api.onrender.com/health` — should return `{"status":"ok"}`
+1. Hit `https://stockintel-api.onrender.com/health`, should return `{"status":"ok"}`
    (First request takes 30-50s if the service was sleeping)
-2. Open your Vercel URL — dashboard should load
+2. Open your Vercel URL, dashboard should load
 3. Click any stock → check that AI explanation loads (confirms Groq is working)
 4. Check Upstash console → Commands tab → verify command count is ticking up (confirms Redis is working)
 5. Check Neon console → verify tables were created (confirms Postgres working)
@@ -201,10 +210,10 @@ Save changes — Render will auto-redeploy.
 All changes are already committed. Here's what was modified:
 
 ### `backend/app/adapters/ai.py`
-Added `GroqAIProvider` class — 18 lines, uses the OpenAI SDK pointed at `https://api.groq.com/openai/v1`. Identical pattern to `OllamaAIProvider`.
+Added `GroqAIProvider` class, 18 lines, uses the OpenAI SDK pointed at `https://api.groq.com/openai/v1`. Identical pattern to `OllamaAIProvider`.
 
 ### `backend/app/adapters/registry.py`
-Added `groq` branch in `ProviderRegistry.ai` — returns `GroqAIProvider` when `AI_PROVIDER=groq` and `GROQ_API_KEY` is set.
+Added `groq` branch in `ProviderRegistry.ai`, returns `GroqAIProvider` when `AI_PROVIDER=groq` and `GROQ_API_KEY` is set.
 
 ### `backend/app/core/config.py`
 - Added `"groq"` to `AI_PROVIDER` literal type
@@ -240,11 +249,11 @@ Added Groq config block and commented-out cloud deployment section with Neon/Ups
 
 **Dashboard empty / "No data" on first deploy:** This is expected. The startup warm-up and first `/health/warm` pings need a few minutes to fill the Redis cache with market data. The AI briefing also depends on cached market data, so it won't generate until the cache is populated. Just wait and refresh.
 
-**yfinance 429 errors / "possibly delisted" in logs:** Yahoo Finance rate-limits requests from shared cloud IPs (Render, Railway, etc.). The fallback chain handles this — it retries, then falls through to Finnhub/Alpha Vantage. Once data is cached in Redis, subsequent requests don't hit Yahoo. This noise is heaviest during cold start and subsides within 20–30 minutes.
+**yfinance 429 errors / "possibly delisted" in logs:** Yahoo Finance rate-limits requests from shared cloud IPs (Render, Railway, etc.). The fallback chain handles this, it retries, then falls through to Finnhub/Alpha Vantage. Once data is cached in Redis, subsequent requests don't hit Yahoo. This noise is heaviest during cold start and subsides within 20–30 minutes.
 
 **Data or alerts not refreshing:** Check that the cron pinger is active. Render logs should show `livefeed.publish` and `alerts.background_check` lines every `REFRESH_MARKET` seconds. If the service is sleeping, nothing refreshes.
 
-**Redis URL parsing error (`must specify one of the following schemes`):** The env var value in Render has the key name baked in (e.g. `REDIS_URL=rediss://...` instead of just `rediss://...`). Render already uses the key field — the value should only contain the URL itself.
+**Redis URL parsing error (`must specify one of the following schemes`):** The env var value in Render has the key name baked in (e.g. `REDIS_URL=rediss://...` instead of just `rediss://...`). Render already uses the key field, the value should only contain the URL itself.
 
 **SSL errors with Upstash Redis:** Ensure URLs use `rediss://` (not `redis://`). If it still fails, append `?ssl_cert_reqs=required` to `REDIS_URL`.
 
@@ -252,10 +261,10 @@ Added Groq config block and commented-out cloud deployment section with Neon/Ups
 
 **AI returns mock responses:** Verify `AI_PROVIDER=groq` and `GROQ_API_KEY` is set in Render env vars. Check Render logs for `groq.fallback` warnings.
 
-**CORS errors in browser:** Update `CORS_ORIGINS` on Render to exactly match your Vercel URL (including `https://`). Use a plain string, not JSON brackets — the config validator handles both formats.
+**CORS errors in browser:** Update `CORS_ORIGINS` on Render to exactly match your Vercel URL (including `https://`). Use a plain string, not JSON brackets, the config validator handles both formats.
 
-**Neon connection timeouts:** Neon scales to zero after 5 minutes of inactivity. First query after wake-up takes 1-3s. The app handles this gracefully — SQLAlchemy retries automatically.
+**Neon connection timeouts:** Neon scales to zero after 5 minutes of inactivity. First query after wake-up takes 1-3s. The app handles this gracefully, SQLAlchemy retries automatically.
 
 **WebSocket disconnects:** If the pinger stops, Render sleeps the service, killing WS connections. The frontend's `useLiveFeed` hook auto-reconnects after 4s. Data will be stale during sleep periods but refreshes on wake.
 
-**Google Trends 429 errors:** Google aggressively rate-limits `pytrends` from cloud IPs. The circuit breaker opens after 2 failures (600s cooldown). Sentiment falls back to StockTwits + mock data. Not fixable without a proxy — harmless for a portfolio project.
+**Google Trends 429 errors:** Google aggressively rate-limits `pytrends` from cloud IPs. The circuit breaker opens after 2 failures (600s cooldown). Sentiment falls back to StockTwits + mock data. Not fixable without a proxy, harmless for a portfolio project.

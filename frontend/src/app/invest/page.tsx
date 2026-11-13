@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import {
   RealReturnsTab, LadderTab, SipVsLumpSum, SavedGoals, RatesNotice,
 } from "@/components/invest/SafeInvestTools";
+import { MutualFundTracker } from "@/components/invest/MutualFundTracker";
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 const fmt = (n: number, cur: string) =>
@@ -67,6 +68,7 @@ const TABS = [
   { id: "sip", label: "SIP Calculator", icon: Calculator },
   { id: "ladder", label: "Deposit Ladder", icon: Layers },
   { id: "goal", label: "Goals", icon: Target },
+  { id: "funds", label: "My Mutual Funds", icon: Wallet },
   { id: "advisor", label: "AI Advisor", icon: Bot },
 ] as const;
 
@@ -155,6 +157,9 @@ export default function SafeInvestPage() {
           {tab === "sip" && <div className="space-y-4"><SIPTab cur={cur} /><SipVsLumpSum key={cur} cur={cur} /></div>}
           {tab === "ladder" && <LadderTab country={country} cur={cur} />}
           {tab === "goal" && <div className="space-y-4"><SavedGoals key={cur} cur={cur} /><GoalTab cur={cur} /></div>}
+          {tab === "funds" && (country === "IN"
+            ? <MutualFundTracker />
+            : <p className="rounded-xl border border-white/10 p-6 text-center text-sm text-ink-400">Fund tracking uses India&apos;s AMFI NAV data. Switch to India to use it.</p>)}
           {tab === "advisor" && <AdvisorTab country={country} cur={cur} />}
         </motion.div>
       </AnimatePresence>
