@@ -188,5 +188,21 @@ async def compute(today: date | None = None) -> dict:
     }
 
 
+def refresh_countdown(data: dict, today: date | None = None) -> dict:
+    """The snapshot can be up to TTL old: recompute days_until from each date
+    and drop events that have already happened."""
+    today = today or datetime.now(timezone.utc).date()
+    events = []
+    for e in data.get("events", []):
+        try:
+            days = (date.fromisoformat(e["date"]) - today).days
+        except (KeyError, ValueError):
+            continue
+        if days >= 0:
+            events.append({**e, "days_until": days})
+    return {**data, "events": events}
+
+
 async def get_economic_calendar() -> dict:
-    return await snapshot.serve(KEY, compute, max_age=TTL, empty={"events": [], "categories": []})
+    data = await snapshot.serve(KEY, compute, max_age=TTL, empty={"events": [], "categories": []})
+    return refresh_countdown(data)

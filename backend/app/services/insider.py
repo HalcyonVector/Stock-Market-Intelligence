@@ -97,6 +97,25 @@ async def _fetch_finnhub(client: httpx.AsyncClient, symbol: str, since: date) ->
     return out
 
 
+def merge_same_day(txns: list[dict]) -> list[dict]:
+    """Combine lines for the same insider, stock, day and kind into one row
+    with total shares, total value and the volume-weighted price."""
+    merged: dict[tuple, dict] = {}
+    for t in txns:
+        key = (t["symbol"], t["name"], t["date"], t["kind"])
+        m = merged.get(key)
+        if m is None:
+            merged[key] = dict(t)
+            continue
+        m["shares"] += t["shares"]
+        if t.get("value") is not None:
+            m["value"] = round((m.get("value") or 0) + t["value"], 2)
+        if m.get("value") and m["shares"]:
+            m["price"] = round(m["value"] / m["shares"], 4)
+        m["lines"] = m.get("lines", 1) + 1
+    return list(merged.values())
+
+
 def rank(txns: list[dict], limit: int) -> list[dict]:
     """Open-market buys and sells first (the informative ones), newest first,
     at most two rows per symbol so one busy filer can't fill the card."""
@@ -173,7 +192,7 @@ async def compute_insider_activity(market: str = "GLOBAL", limit: int = 15) -> l
     cutoff = since.isoformat()
     kept = [t for t in previous if t.get("symbol") not in checked and t.get("date", "") >= cutoff
             and not t.get("sample")]
-    return rank(fresh + kept, max(limit, 30))
+    return rank(merge_same_day(fresh + kept), max(limit, 30))
 
 
 async def get_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[dict]:

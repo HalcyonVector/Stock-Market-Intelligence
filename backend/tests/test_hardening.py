@@ -38,7 +38,7 @@ def test_circuit_half_open_after_cooldown_then_success_closes():
     cb.record_failure()
     cb.record_failure()
     assert cb.allow() is False
-    time.sleep(0.06)
+    time.sleep(0.2)  # well past the 0.05 s cooldown; Windows timers are ~15 ms coarse
     assert cb.allow() is True          # half-open probe permitted
     cb.record_success()                # success closes it
     assert cb.allow() is True
