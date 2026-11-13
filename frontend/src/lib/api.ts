@@ -132,6 +132,8 @@ export const api = {
   earnings: () => get<any[]>(`/insights/earnings`),
   economicCalendar: () => get<any>(`/insights/economic-calendar`),
   insiderActivity: () => get<any[]>(`/insights/insider-activity`),
+  analystRatings: () => get<any[]>(`/insights/analyst-ratings`),
+  study: () => get<any>(`/insights/study`),
   backtestStrategies: () => get<any[]>(`/backtest/strategies`),
   backtest: (symbol: string, strategy: string, params?: any, capital?: number, lookback?: number) =>
     req<any>("/backtest", {

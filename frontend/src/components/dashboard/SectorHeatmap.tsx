@@ -13,13 +13,6 @@ function tileColor(momentum: number) {
   return { border: "border-l-crimson-400", bg: "bg-crimson-500/8", text: "text-crimson-300", glow: "hover:shadow-crimson-500/10" };
 }
 
-function formatFlow(value: number): string {
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return value.toFixed(0);
-}
 
 export function SectorHeatmap() {
   const market = useMarket();
@@ -30,13 +23,13 @@ export function SectorHeatmap() {
     <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Sector Rotation"
-      subtitle="Momentum & net institutional flow"
+      subtitle="Momentum score · today's average move · stocks up"
       icon={<Layers size={16} className="text-ink-500" />}
     >
       <div className="grid grid-cols-3 gap-2.5">
         {sectors.map((s: any, i: number) => {
           const c = tileColor(s.momentum);
-          const isInflow = s.direction === "inflow";
+          const up = (s.avg_change ?? 0) >= 0;
           return (
             <motion.div
               key={s.sector}
@@ -61,15 +54,19 @@ export function SectorHeatmap() {
                 <span className={cn("font-mono text-xl font-bold tracking-tight", c.text)}>
                   {s.momentum}
                 </span>
-                {isInflow ? (
-                  <ArrowUpRight size={14} className="text-emerald-400" />
+                {up ? (
+                  <ArrowUpRight size={14} className="text-emerald-400" aria-hidden />
                 ) : (
-                  <ArrowDownRight size={14} className="text-crimson-400" />
+                  <ArrowDownRight size={14} className="text-crimson-400" aria-hidden />
                 )}
               </div>
 
-              <p className="relative mt-1 font-mono text-[10px] text-ink-500">
-                {isInflow ? "+" : ""}{formatFlow(s.net_flow)}
+              <p className="relative mt-1 flex flex-col font-mono text-[10px] leading-tight text-ink-500"
+                title={`${s.advancers ?? 0} of ${s.constituents} stocks up today; momentum is a 0-100 score from recent price trend`}>
+                <span className={up ? "text-emerald-300/80" : "text-crimson-300/80"}>
+                  {up ? "+" : ""}{(s.avg_change ?? 0).toFixed(2)}%
+                </span>
+                <span>{s.advancers ?? 0}/{s.constituents} up</span>
               </p>
             </motion.div>
           );

@@ -23,6 +23,7 @@ import {
   X,
   Smartphone,
   BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { DeviceSyncDialog } from "./DeviceSync";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
       { href: "/heatmap", icon: Grid3x3, label: "Heatmap" },
       { href: "/screener", icon: Filter, label: "Screener" },
       { href: "/research", icon: Newspaper, label: "AI Research" },
+      { href: "/study", icon: BarChart3, label: "Market Study" },
     ],
   },
   {

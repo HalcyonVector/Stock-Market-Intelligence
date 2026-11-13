@@ -25,7 +25,7 @@ const CARDS = [
   { id: "sectors", label: "Sector Rotation", C: SectorHeatmap },
   { id: "sentiment", label: "Retail Sentiment", C: SentimentTrends },
   { id: "livefeed", label: "Live Feed", C: LiveFeed },
-  { id: "analysts", label: "Top Analyst Picks", C: TopAnalystsPicks },
+  { id: "analysts", label: "Analyst Consensus", C: TopAnalystsPicks },
   { id: "economic", label: "Economic Calendar", C: EconomicCalendar },
   { id: "insider", label: "Insider Activity", C: InsiderActivity },
 ] as const;

@@ -17,7 +17,8 @@ from app.services.heatmap import SECTOR_MAP
 
 log = get_logger("services.sector")
 
-SECTOR_CACHE_KEY = "sector:rotation:{market}"
+# v2: avg_change is the real day change (v1 stored the momentum score there).
+SECTOR_CACHE_KEY = "sector:rotation:v2:{market}"
 
 # Tracks markets currently being recomputed in the background so a burst of
 # cache-miss requests doesn't spawn duplicate heavy computations.
@@ -44,7 +45,7 @@ async def _fetch_symbol(s: str, sem: asyncio.Semaphore) -> dict | None:
             return {
                 "sector": SECTOR_MAP.get(s, "Other"),
                 "momentum": mom,
-                "flow": quote.change_pct * (quote.market_cap or 1) / 1e9,
+                "change_pct": quote.change_pct or 0.0,
             }
         except Exception as e:
             log.warning("sector.symbol.skip", symbol=s, error=str(e))
@@ -58,22 +59,28 @@ async def compute_rotation(market: str = "GLOBAL") -> list[dict]:
     results = await asyncio.gather(*(_fetch_symbol(s, sem) for s in syms))
 
     by_sector: dict[str, list[float]] = defaultdict(list)
-    flow: dict[str, float] = defaultdict(float)
+    changes: dict[str, list[float]] = defaultdict(list)
     for r in results:
         if r is None:
             continue
         by_sector[r["sector"]].append(r["momentum"])
-        flow[r["sector"]] += r["flow"]
+        changes[r["sector"]].append(r["change_pct"])
 
+    # Free quote sources don't report market cap, so the old "net flow"
+    # (change x market cap) was always ~0. Report what the data does support:
+    # the sector's average move today and how many of its stocks rose.
     out = []
     for sector, moms in by_sector.items():
+        ch = changes[sector]
+        avg = sum(ch) / len(ch)
         out.append({
             "sector": sector,
             "momentum": round(sum(moms) / len(moms), 1),
-            "net_flow": round(flow[sector], 2),
+            "avg_change": round(avg, 2),
+            "advancers": sum(1 for c in ch if c > 0),
+            "decliners": sum(1 for c in ch if c < 0),
             "constituents": len(moms),
-            "direction": "inflow" if flow[sector] >= 0 else "outflow",
-            "avg_change": round(sum(moms) / len(moms), 1),
+            "direction": "up" if avg >= 0 else "down",
         })
     out.sort(key=lambda x: x["momentum"], reverse=True)
 

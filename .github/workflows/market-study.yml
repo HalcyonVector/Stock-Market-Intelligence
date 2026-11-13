@@ -1,0 +1,36 @@
+# Weekly Market Study: recomputes the statistics behind the README Findings
+# and the /study page (returns, volatility, drawdowns, correlations, global
+# cues, fund plan gaps) and stores them as ONE Redis key.
+#
+# Free: public repos get unlimited Actions minutes (a run is ~3 min), and it
+# costs 1 Upstash command a week. Uses the same REDIS_URL secret as the
+# price-history sync.
+name: Market study
+
+on:
+  schedule:
+    - cron: "0 3 * * 6"   # Saturdays 03:00 UTC, after both markets' week ends
+  workflow_dispatch:
+
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATA_MODE: mock          # the script only borrows the symbol lists from the app
+      AI_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt && pip install -U "yfinance>=0.2.50"
+      - name: Compute and store
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: python -m scripts.market_findings --store

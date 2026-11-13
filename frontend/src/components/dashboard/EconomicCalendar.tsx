@@ -46,7 +46,9 @@ export function EconomicCalendar() {
     <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Economic Calendar"
-      subtitle="Key macro events ahead"
+      subtitle={data?.baseline_sp500_move != null
+        ? `US releases, next 60 days · S&P moves ±${data.baseline_sp500_move}% on a typical day`
+        : "US data releases and Fed meetings ahead"}
       icon={<Landmark size={14} className="text-crimson-400" />}
     >
       {isLoading ? (
@@ -117,12 +119,16 @@ export function EconomicCalendar() {
                       </div>
                     </div>
 
-                    {/* Avg S&P move stat */}
-                    {e.avg_sp500_move != null && (
-                      <p className="mt-0.5 text-[10px] text-ink-500 font-mono">
-                        Avg S&P move: <span className="text-ink-300">±{e.avg_sp500_move}%</span>
-                      </p>
-                    )}
+                    {/* Date, and how the S&P actually moved on past release days */}
+                    <p className="mt-0.5 font-mono text-[10px] text-ink-500">
+                      {new Date(e.date ?? e.estimated_date).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}
+                      {e.estimated && <span className="text-amber-300/80" title="No official schedule available; approximate date"> · estimated</span>}
+                      {e.avg_sp500_move != null && (
+                        <span title={`Mean absolute S&P 500 (SPY) daily move on the last ${e.sample_days} release days`}>
+                          {" "}· past days ±<span className={cn(data?.baseline_sp500_move != null && e.avg_sp500_move > data.baseline_sp500_move * 1.15 ? "text-amber-300" : "text-ink-300")}>{e.avg_sp500_move}%</span>
+                        </span>
+                      )}
+                    </p>
 
                     {/* Expandable description */}
                     <AnimatePresence>
@@ -135,6 +141,7 @@ export function EconomicCalendar() {
                           className="text-[10px] text-ink-500 mt-1 leading-relaxed overflow-hidden"
                         >
                           {e.description}
+                          {e.date_source && <span className="mt-0.5 block text-ink-600">Date: {e.date_source}</span>}
                         </motion.p>
                       )}
                     </AnimatePresence>
@@ -144,6 +151,11 @@ export function EconomicCalendar() {
             );
           })}
         </div>
+      )}
+      {data?.missing_releases && (
+        <p className="mt-auto pt-2 text-[10px] text-ink-500">
+          Showing Fed meetings only. CPI, jobs, GDP and other release dates appear once the server has a free FRED API key.
+        </p>
       )}
     </BentoCard>
   );

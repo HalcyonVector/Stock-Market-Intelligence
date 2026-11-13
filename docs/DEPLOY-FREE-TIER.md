@@ -110,6 +110,7 @@ In the Render dashboard under **Environment**, add these:
 | `ALPHAVANTAGE_API_KEY` | Your Alpha Vantage key (optional) |
 | `TWELVEDATA_API_KEY` | Free key from https://twelvedata.com (US price history backup; 800 credits/day) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Optional: turns on phone/desktop notifications for price alerts. Generate once with `cd backend && python -m scripts.gen_vapid` (keep the private key secret). |
+| `FRED_API_KEY` | Optional: official US release dates (CPI, jobs, GDP...) for the Economic Calendar. Free key from https://fred.stlouisfed.org/docs/api/api_key.html. Without it the card shows Fed meetings only. |
 | `SENTRY_DSN` | Optional: backend error tracking on Sentry's free tier (5K errors/month). Errors only, no tracing. |
 
 ### 4c. Prevent Sleep + Keep Data Warm (Critical)
@@ -148,7 +149,7 @@ Yahoo Finance blocks Render's IPs, so daily price history (charts, technicals, f
 - two benchmarks (SPY, Nifty 50) for the paper-trading comparison chart,
 - any stock outside the tracked list that someone added to a watchlist, alert or paper trade (up to 300; ones that fail three runs in a row are dropped).
 
-The evening run also stores upcoming earnings and dividend dates (`scripts/sync_events.py`) for the watchlist page. Cost: about one Upstash command per stock per run (~10K/month), ~3-5 MB of storage.
+The evening run also stores upcoming earnings and dividend dates (`scripts/sync_events.py`) for the watchlist page and the earnings card. A separate weekly workflow, **Market study** (`.github/workflows/market-study.yml`), recomputes the statistics for the `/study` page with the same `REDIS_URL` secret (1 Upstash command a week); run it once from the Actions tab after setting up. Cost: about one Upstash command per stock per run (~10K/month), ~3-5 MB of storage.
 
 1. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**
 2. Name `REDIS_URL`, value: the same `rediss://.../0` URL you set on Render.

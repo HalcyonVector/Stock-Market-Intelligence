@@ -46,6 +46,27 @@ async def economic_calendar():
     return {"data": await get_economic_calendar()}
 
 
+@router.get("/study")
+async def study():
+    """Market Study: returns, risk and cross-market statistics for the tracked
+    universe, recomputed weekly by the GitHub Actions job."""
+    from app.services.study import get_study
+
+    return {"data": await get_study()}
+
+
+@router.get("/analyst-ratings")
+async def analyst_ratings():
+    """Wall Street analyst consensus (Finnhub recommendation trends) for tracked US stocks."""
+    from app.services.analyst_ratings import get_ratings
+
+    try:
+        return {"data": await get_ratings()}
+    except Exception as e:  # noqa: BLE001
+        log.error("analyst.error", error=str(e))
+        return {"data": []}
+
+
 @router.get("/insider-activity")
 async def insider_activity(market: str = Depends(default_market), limit: int = 15):
     """Recent insider buys/sells from tracked universe."""

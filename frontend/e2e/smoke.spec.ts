@@ -19,6 +19,7 @@ const PAGES: [string, RegExp][] = [
   ["/portfolio", /Portfolio/i],
   ["/invest", /Safe Investment Guide/],
   ["/learn", /Learn the Basics/],
+  ["/study", /Market Study/],
   ["/stock/AAPL", /AAPL/],
 ];
 
