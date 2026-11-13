@@ -22,27 +22,27 @@ Built with Python (pandas, NumPy, SciPy, statsmodels), FastAPI, PostgreSQL, Redi
 
 ## Findings
 
-Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stated, using adjusted daily closes for the tracked universe. Medians are across stocks in each market.
+Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stated, using adjusted daily closes for the tracked universe. They match the weekly run stored on 13 Nov 2026; the [Market Study page](https://stock-market-intelligence-sable.vercel.app/study) always shows the latest week. Medians are across stocks in each market.
 
 **Markets**
 
 | Measure | US (97 stocks) | India (63 NSE stocks) |
 |---|---|---|
-| Median 1-year return | **+15.0%** | **+0.6%** |
-| Share of stocks that rose | 67% | 52% |
-| Median annualised volatility | 34.7% | 25.3% |
+| Median 1-year return | **+13.6%** | **+1.5%** |
+| Share of stocks that rose | 68% | 52% |
+| Median annualised volatility | 34.6% | 25.3% |
 | Median maximum drawdown | -28.9% | -25.5% |
-| Benchmark | S&P 500 ETF (SPY) +13.9% | Nifty 50 -3.1% |
+| Benchmark | S&P 500 ETF (SPY) +13.3% | Nifty 50 -2.2% |
 
-- **The year split sharply by market.** Two thirds of the US names rose and the median US stock slightly beat the S&P 500. In India the typical stock was flat and the Nifty 50 fell 3%, so a diversified Indian equity holder ended the year about where they started, before inflation.
-- **US stocks were riskier, not just better.** The median US stock swung 37% more than the median Indian one (34.7% vs 25.3% annualised) and had a deeper worst fall. Part of that is the tracked US list itself, which leans towards high-beta technology, crypto-linked and recent IPO names; see Honest Limitations.
+- **The year split sharply by market.** Two thirds of the US names rose and the median US stock slightly beat the S&P 500. In India the typical stock was flat and the Nifty 50 fell 2%, so a diversified Indian equity holder ended the year about where they started, before inflation.
+- **US stocks were riskier, not just better.** The median US stock swung 37% more than the median Indian one (34.6% vs 25.3% annualised) and had a deeper worst fall. Part of that is the tracked US list itself, which leans towards high-beta technology, crypto-linked and recent IPO names; see Honest Limitations.
 - **Even "good" years contain deep falls.** The median stock in both markets fell more than 25% from a peak at some point in the year. Anyone who sizes a position assuming a smooth ride will sell at the bottom.
-- **US and Indian stocks look unrelated on the same day, but not the next day.** Equal-weighted daily returns of the two markets correlate at just **0.03** on the same date, which looks like perfect diversification. Pair each US session with India's *next* session instead and the correlation rises to **0.30**, and on the 49 biggest US days (top fifth by size of move) Indian stocks moved the same way at their next session **75.5%** of the time. The NSE closes before New York opens, so US news reaches Indian prices a day later. The Market Study page charts this.
+- **US and Indian stocks look unrelated on the same day, but not the next day.** Equal-weighted daily returns of the two markets correlate at just **0.03** on the same date, which looks like perfect diversification. Pair each US session with India's *next* session instead and the correlation rises to **0.29**, and on the 49 biggest US days (top fifth by size of move) Indian stocks moved the same way at their next session **75.5%** of the time. The NSE closes before New York opens, so US news reaches Indian prices a day later. The Market Study page charts this.
 
 **Saving and investing in India**
 
 - **A 7% bank FD in the 30% slab loses money in real terms (-0.1% a year)** once 5% inflation is counted, while PPF at 7.1% tax-free keeps +2.0% a year. The headline rate ranks them almost equally; the after-tax, after-inflation rate does not. This is what the After Tax and Inflation tab computes for every instrument.
-- **Direct mutual fund plans beat Regular plans of the same fund by 0.5 to 0.95 percentage points a year**, measured from AMFI NAVs over five years: Parag Parikh Flexi Cap 11.79% vs 10.84%, HDFC Flexi Cap 16.80% vs 16.04%, UTI Nifty Next 50 Index 11.26% vs 10.76%. The fund and its holdings are identical; the gap is the distributor commission inside the Regular plan's expense ratio.
+- **Direct mutual fund plans beat Regular plans of the same fund by 0.5 to 0.85 percentage points a year**, measured from AMFI NAVs over five years: Parag Parikh Flexi Cap 11.69% vs 10.84%, HDFC Flexi Cap 16.80% vs 16.04%, UTI Nifty Next 50 Index 11.26% vs 10.76%. The fund and its holdings are identical; the gap is the distributor commission inside the Regular plan's expense ratio.
 
 **Data quality: what the pipeline had to fix**
 

@@ -90,7 +90,8 @@ def test_earnings_from_synced_events(monkeypatch):
     from app.services import earnings, events
 
     monkeypatch.setattr(earnings.settings, "DATA_MODE", "live")
-    today = date.today()
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date()  # the service works in UTC
     soon = date.fromordinal(today.toordinal() + 5).isoformat()
     far = date.fromordinal(today.toordinal() + 200).isoformat()
     monkeypatch.setattr(events, "_cache", {"at": time.monotonic(), "updated": "x", "data": {
@@ -100,3 +101,23 @@ def test_earnings_from_synced_events(monkeypatch):
     assert {r["symbol"] for r in out} == {"AAPL", "TCS"}
     tcs = next(r for r in out if r["symbol"] == "TCS")
     assert tcs["currency"] == "INR" and tcs["days_until"] == 5
+
+
+def test_insider_lines_for_one_trade_are_merged():
+    rows = [
+        {"symbol": "MSFT", "name": "Hood Amy", "date": "2026-11-09", "kind": "Sell", "shares": 5912, "value": 3217522.64, "price": 544.24},
+        {"symbol": "MSFT", "name": "Hood Amy", "date": "2026-11-09", "kind": "Sell", "shares": 1393, "value": 759110.75, "price": 544.95},
+        {"symbol": "MSFT", "name": "Hood Amy", "date": "2026-11-10", "kind": "Sell", "shares": 10, "value": 5000.0, "price": 500.0},
+    ]
+    out = insider.merge_same_day(rows)
+    assert len(out) == 2
+    day = next(r for r in out if r["date"] == "2026-11-09")
+    assert day["shares"] == 7305 and day["value"] == 3976633.39 and day["lines"] == 2
+    assert 544.2 < day["price"] < 544.4
+
+
+def test_calendar_countdown_is_refreshed_and_past_events_dropped():
+    data = {"events": [{"name": "PPI", "date": "2026-11-13", "days_until": 0},
+                       {"name": "Retail Sales", "date": "2026-11-17", "days_until": 4}]}
+    out = econ.refresh_countdown(data, today=date(2026, 11, 14))
+    assert [(e["name"], e["days_until"]) for e in out["events"]] == [("Retail Sales", 3)]
