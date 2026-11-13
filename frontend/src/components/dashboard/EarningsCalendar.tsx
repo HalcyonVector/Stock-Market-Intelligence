@@ -28,7 +28,7 @@ export function EarningsCalendar() {
     <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Upcoming Earnings"
-      subtitle="Next reporting dates"
+      subtitle="Next 45 days · US and NSE · synced daily"
       icon={<Calendar size={14} className="text-amber-400" />}
     >
       {isLoading ? (
@@ -68,7 +68,7 @@ export function EarningsCalendar() {
                     {e.eps_estimate != null && (
                       <div className="mt-0.5 flex items-center gap-1">
                         <span className="text-[10px] font-mono text-ink-300">
-                          EPS ${e.eps_estimate?.toFixed(2)}
+                          EPS est. {e.currency === "INR" ? "₹" : "$"}{e.eps_estimate?.toFixed(2)}
                         </span>
                         {e.eps_low != null && e.eps_high != null && (
                           <span className="text-[9px] text-ink-500">

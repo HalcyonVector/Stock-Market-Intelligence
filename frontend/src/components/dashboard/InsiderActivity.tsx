@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
-function formatValue(v: number): string {
+function formatValue(v: number | null | undefined): string {
+  if (v == null) return "n/a";
   if (v >= 1_000_000) return "$" + (v / 1_000_000).toFixed(1) + "M";
   if (v >= 1_000) return "$" + (v / 1_000).toFixed(0) + "K";
   return "$" + v.toFixed(0);
@@ -32,7 +33,7 @@ export function InsiderActivity() {
     <BentoCard error={isError && !data} onRetry={() => refetch()} updatedAt={dataUpdatedAt}
       span="col-span-12 lg:col-span-4"
       title="Insider Activity"
-      subtitle="Recent insider buys & sells"
+      subtitle="US insider filings (SEC Form 4), last 90 days"
       icon={<UserCheck size={14} className="text-amber-400" />}
     >
       {isLoading ? (
@@ -42,13 +43,16 @@ export function InsiderActivity() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-xs text-ink-500 py-6 text-center">
-          No insider data available
+        <p className="px-4 py-6 text-center text-xs leading-relaxed text-ink-500">
+          No insider filings found for the stocks checked so far. The list fills in over a few hours as each
+          tracked US stock is checked; Indian companies don&apos;t file Form 4.
         </p>
       ) : (
         <div className="space-y-0.5">
           {items.map((t: any, i: number) => {
-            const isBuy = t.transaction_type === "Buy";
+            const kind: string = t.kind ?? t.transaction_type;
+            const isBuy = kind === "Buy";
+            const isSell = kind === "Sell";
             return (
               <motion.div
                 key={`${t.symbol}-${t.name}-${i}`}
@@ -66,8 +70,11 @@ export function InsiderActivity() {
                       "flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-md",
                       isBuy
                         ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-crimson-500/15 text-crimson-400"
+                        : isSell
+                          ? "bg-crimson-500/15 text-crimson-400"
+                          : "bg-white/5 text-ink-400"
                     )}
+                    title={t.label}
                   >
                     {isBuy ? (
                       <ArrowUpRight size={11} />
@@ -83,9 +90,11 @@ export function InsiderActivity() {
 
                   {/* Name + title */}
                   <div className="flex-1 min-w-0">
-                    <span className="text-[10px] text-ink-400 truncate block">
-                      {t.name}
-                      {t.title ? ` · ${t.title}` : ""}
+                    <span className="block truncate text-[10px] text-ink-300">{t.name}</span>
+                    <span className="block truncate text-[9px] text-ink-500">
+                      {t.label ?? kind}
+                      {t.date ? ` · ${new Date(t.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}
+                      {t.sample ? " · sample" : ""}
                     </span>
                   </div>
 
@@ -100,8 +109,11 @@ export function InsiderActivity() {
                       "flex-shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold",
                       isBuy
                         ? "text-emerald-400 bg-emerald-500/10"
-                        : "text-crimson-400 bg-crimson-500/10"
+                        : isSell
+                          ? "text-crimson-400 bg-crimson-500/10"
+                          : "text-ink-400 bg-white/5"
                     )}
+                    title={t.value == null ? "No price on this filing (grants and exercises often have none)" : undefined}
                   >
                     {formatValue(t.value ?? 0)}
                   </span>

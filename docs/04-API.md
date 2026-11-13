@@ -18,6 +18,8 @@ All payloads wrap data as `{ "data": ... }`; insight endpoints add a `disclaimer
 | GET | `/sectors/rotation?market=` | Sector momentum + net flow |
 | GET | `/sentiment/trending?market=` | Attention-ranked tickers |
 | GET | `/insights/briefing?market=` | AI daily market briefing |
+| GET | `/insights/study` | Market Study statistics (recomputed weekly) |
+| GET | `/insights/analyst-ratings` | Analyst consensus for tracked US stocks (Finnhub recommendation trends) |
 | GET | `/insights/events?symbols=A,B&days=90` | Upcoming earnings / ex-dividend / dividend dates (synced daily) |
 | GET | `/health` | Liveness + data/AI mode + redis; `market.mock_recent` is true while sample data is being served |
 

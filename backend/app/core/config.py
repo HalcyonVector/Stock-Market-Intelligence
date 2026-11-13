@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     VAPID_PRIVATE_KEY: str = ""
     VAPID_SUBJECT: str = "https://stock-market-intelligence-sable.vercel.app"
 
+    # --- Economic calendar: official US release dates (free key from
+    # https://fred.stlouisfed.org/docs/api/api_key.html). Empty = estimated dates.
+    FRED_API_KEY: str = ""
+
     # --- Error tracking (optional, Sentry free tier: 5K errors/month) ---
     SENTRY_DSN: str = ""
 
