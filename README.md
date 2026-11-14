@@ -292,6 +292,7 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 ## Author
 
 **Sagnik**
+
 GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
