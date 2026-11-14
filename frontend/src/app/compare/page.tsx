@@ -7,6 +7,7 @@ import { GitCompare, Plus, X, Loader2 } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
+import { CompareRisk } from "@/components/compare/CompareRisk";
 import { cn, pct, changeColor } from "@/lib/utils";
 
 const COLORS = ["#ff3b5c", "#6ee7b7", "#fbbf24", "#8b5cf6", "#38bdf8", "#f472b6"];
@@ -179,6 +180,11 @@ export default function ComparePage() {
               </LineChart>
             </ResponsiveContainer>
           </BentoCard>
+
+          {/* Correlation and the market's worst week */}
+          <div className="bento">
+            <CompareRisk symbols={symbols} candles={candleQueries.map((q) => q.data as any)} />
+          </div>
 
           {/* Technical signals comparison */}
           <BentoCard span="col-span-12" title="Technical Signals">

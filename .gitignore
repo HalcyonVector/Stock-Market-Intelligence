@@ -60,3 +60,6 @@ docs/16-ROADMAP.md
 ROADMAP.md
 frontend/test-results/
 frontend/playwright-report/
+
+# Local Claude Code settings
+.claude/

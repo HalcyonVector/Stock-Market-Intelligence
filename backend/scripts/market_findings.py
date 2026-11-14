@@ -124,6 +124,37 @@ def global_cues(rets: pd.DataFrame, us: list[str], india: list[str]) -> dict:
     }
 
 
+def index_cues(close: pd.DataFrame) -> dict | None:
+    """S&P 500 (SPY) session vs the Nifty 50's next session: what the daily
+    Global Cues card compares last night's US move against."""
+    if "SPY" not in close.columns or "^NSEI" not in close.columns:
+        return None
+    spy = close["SPY"].dropna().pct_change().dropna() * 100
+    nifty = close["^NSEI"].dropna().pct_change().dropna() * 100
+    pairs = []
+    for d, v in spy.items():
+        nxt = nifty.index[nifty.index > d]
+        if len(nxt):
+            pairs.append((v, nifty[nxt[0]]))
+    df = pd.DataFrame(pairs, columns=["spy", "nifty_next"])
+    if len(df) < 30:
+        return None
+    threshold = float(df["spy"].abs().quantile(0.8))
+    big = df[df["spy"].abs() >= threshold]
+    same = lambda x: float((np.sign(x["spy"]) == np.sign(x["nifty_next"])).mean() * 100)
+    up, down = big[big["spy"] > 0], big[big["spy"] < 0]
+    return {
+        "next_day_corr": round(float(df["spy"].corr(df["nifty_next"])), 2),
+        "big_move_threshold_pct": round(threshold, 2),
+        "all_days_same_direction_pct": round(same(df), 1),
+        "big_days": int(len(big)),
+        "big_days_same_direction_pct": round(same(big), 1),
+        "after_big_up_avg_nifty_pct": round(float(up["nifty_next"].mean()), 2) if len(up) else None,
+        "after_big_down_avg_nifty_pct": round(float(down["nifty_next"].mean()), 2) if len(down) else None,
+        "sessions": int(len(df)),
+    }
+
+
 def build_report(period: str = "1y", with_stocks: bool = False) -> dict:
     close = load_closes(period)
     rets = close.pct_change(fill_method=None)
@@ -136,6 +167,7 @@ def build_report(period: str = "1y", with_stocks: bool = False) -> dict:
         "IN": market_stats(close, rets, india),
         "same_day_us_india_correlation": round(float(np.nanmean(cross)), 2),
         "global_cues": global_cues(rets, us, india),
+        "index_cues": index_cues(close),
         "benchmarks_pct": {b: round(float((close[b].dropna().iloc[-1] / close[b].dropna().iloc[0] - 1) * 100), 1)
                            for b in ("SPY", "^NSEI") if b in close.columns},
         "real_returns_pct": {"FD 7% at 30% slab": real_return(0.07, 0.30, 0.05),

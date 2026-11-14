@@ -49,6 +49,30 @@ _CODES = {
 }
 
 
+_ENTITY = {"INC", "LLC", "LP", "LLP", "TRUST", "FUND", "CORP", "CORPORATION", "LTD", "PARTNERS",
+           "CAPITAL", "HOLDINGS", "GROUP", "FOUNDATION", "MANAGEMENT", "&", "CO", "PLC", "NV", "SA"}
+
+
+_ABBREV = {"LLC", "LP", "LLP", "PLC", "NV", "SA", "II", "III", "IV", "JR", "SR"}
+_PARTICLES = {"de", "da", "das", "do", "dos", "del", "della", "di", "van", "von", "der", "den", "le", "la", "du", "st"}
+
+
+def display_name(raw: str) -> str:
+    """SEC filings list people as "LAST FIRST MIDDLE": show "First Middle Last".
+    Companies and funds are left as they are."""
+    parts = (raw or "").replace(",", " ").split()
+    if not parts:
+        return "Unknown insider"
+    tidy = [p if p.upper() in _ABBREV else (p.title() if (p.isupper() or p.islower()) else p) for p in parts]
+    if len(parts) < 2 or any(p.upper().strip(".") in _ENTITY for p in parts):
+        return " ".join(tidy)
+    # Surnames can span several words: "SANTOS DE AZEVEDO JULIANA M".
+    i = 1
+    while i < len(tidy) - 1 and tidy[i].lower() in _PARTICLES:
+        i += 2
+    return " ".join(tidy[i:] + tidy[:i])
+
+
 def classify(t: dict) -> dict | None:
     """One Finnhub insider row -> the card's shape, or None to drop it."""
     code = (t.get("transactionCode") or "").upper()
@@ -62,7 +86,7 @@ def classify(t: dict) -> dict | None:
     shares = abs(change)
     return {
         "symbol": t.get("symbol", ""),
-        "name": (t.get("name") or "Unknown insider").title(),
+        "name": display_name(t.get("name") or ""),
         "kind": kind,                      # Buy | Sell | Grant | Exercise | Tax | ...
         "label": label,
         "code": code,
@@ -154,7 +178,7 @@ def _mock_rows(limit: int) -> list[dict]:
 
 
 def _insider_key(market: str) -> str:
-    return f"insider:v2:{market}"
+    return f"insider:v3:{market}"  # v3: names shown first-name first
 
 
 async def compute_insider_activity(market: str = "GLOBAL", limit: int = 15) -> list[dict]:

@@ -60,7 +60,7 @@ export function EconomicCalendar() {
       ) : events.length === 0 ? (
         <p className="text-xs text-ink-500 py-8 text-center">No upcoming events</p>
       ) : (
-        <div className="space-y-1 max-h-[410px] overflow-y-auto scrollbar-thin">
+        <div className="space-y-1">
           {events.map((e: any, i: number) => {
             const impact = IMPACT_STYLES[e.impact as keyof typeof IMPACT_STYLES] || IMPACT_STYLES.low;
             const isExpanded = expandedIdx === i;

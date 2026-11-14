@@ -120,6 +120,7 @@ export const api = {
   trending: (market = "GLOBAL") => get<any[]>(`/sentiment/trending?market=${market}`),
   stock: (s: string) => get<any>(`/stocks/${s}`),
   search: (q: string) => get<any[]>(`/stocks/search?q=${encodeURIComponent(q)}`),
+  risk: (s: string) => get<any>(`/stocks/${encodeURIComponent(s)}/risk`),
   events: (symbols: string[], days = 90) =>
     get<any>(`/insights/events?symbols=${encodeURIComponent(symbols.join(","))}&days=${days}`),
   why: (s: string) => get<any>(`/stocks/${s}/why`),
