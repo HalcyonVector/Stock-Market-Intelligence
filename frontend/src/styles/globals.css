@@ -61,3 +61,18 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Dashboard cells (see components/dashboard/layout.ts). On large screens each
+   row has a set height: cards fill it, lists scroll inside their card, and
+   fixed cards (gauges, tile grids) sit centred when the row is taller. */
+@media (min-width: 1024px) {
+  .dash-row-fixed { height: var(--row-h); }
+  .dash-row-auto { min-height: var(--row-min); }
+  /* A list next to a gauge/grid/briefing must not make the row taller: it
+     takes the row's height (set by the others) and scrolls inside. */
+  .dash-contain { contain: size; }
+  .dash-cell > section { height: 100%; }
+  .dash-cell > section > div:last-child { min-height: 0; }
+  .dash-scroll > section > div:last-child { overflow-y: auto; overscroll-behavior: contain; }
+  .dash-center > section > div:last-child { justify-content: center; }
+}

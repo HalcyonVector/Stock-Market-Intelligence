@@ -30,6 +30,14 @@ async def overview(symbol: str):
     }}
 
 
+@router.get("/{symbol}/risk")
+async def risk(symbol: str):
+    """1-year return, volatility, drawdown, beta vs benchmark and sector medians."""
+    from app.services.risk import profile
+
+    return {"data": await profile(symbol)}
+
+
 @router.get("/{symbol}/why")
 async def why(symbol: str):
     """Flagship: Why is this stock moving?"""

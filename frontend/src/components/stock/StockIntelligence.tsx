@@ -13,6 +13,7 @@ import { DeepResearch } from "./DeepResearch";
 import { PriceForecast } from "./PriceForecast";
 import { StockActions } from "./StockActions";
 import { SourceBadge } from "@/components/ui/SourceBadge";
+import { RiskProfile } from "./RiskProfile";
 import { Term } from "@/components/ui/Term";
 import { pct, changeColor, cn, money, currencySymbol } from "@/lib/utils";
 
@@ -125,6 +126,9 @@ export function StockIntelligence({ symbol }: { symbol: string }) {
             ))}
           </div>
         </BentoCard>
+
+        {/* Risk vs benchmark and sector */}
+        <RiskProfile symbol={symbol} />
 
         {/* Technical indicators */}
         <TechnicalIndicators symbol={symbol} />

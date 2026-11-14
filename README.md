@@ -10,7 +10,7 @@ Built with Python (pandas, NumPy, SciPy, statsmodels), FastAPI, PostgreSQL, Redi
 
 ![Dashboard: AI market briefing generated from the day's movers, a fear and greed gauge built from breadth, momentum and sentiment, ranked movers and an opportunity radar](docs/screenshots/overview.png)
 
-![After Tax and Inflation: 100,000 rupees over five years across Indian instruments, sorted by real return after a 10% tax slab and 5% inflation](docs/screenshots/after-tax-returns.png)
+![Market Study: US vs India medians, the distribution of 1-year returns, a risk vs return scatter of all 160 stocks and the same-day vs next-session correlation between the two markets](docs/screenshots/market-study.png)
 
 ---
 
@@ -65,13 +65,17 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **Screener:** filter the universe by change, RSI, volume ratio, P/E and market cap, with preset strategies.
 - **Search any stock:** any US, NSE or BSE listing, not only the tracked 160; untracked stocks join the daily history sync once someone adds them to a watchlist.
 - **Data provenance on every price:** each quote is tagged live, delayed, end-of-day or sample, and the UI badges anything that is not live.
+- **Global Cues:** last night's S&P 500 move and how often the Nifty 50 followed at its next session after US days like it (from the weekly study).
+- **Adaptive dashboard:** eight cards by default and five more under Customize; whatever combination is chosen, cards are packed into balanced rows sized to their content, so nothing is cut off or left mostly empty.
 - **Context cards:** Wall Street analyst consensus (with monthly upgrades and downgrades), US insider filings classified by SEC transaction code, official US economic release dates with the S&P 500's measured average move on past release days, and sector rotation by momentum, average move and breadth.
 
 ### Stock Research
 
 - **"Why is it moving?":** an AI explanation of the day's move grounded in price, volume, technicals and recent headlines, with the evidence it used and a confidence level.
 - **Technicals, fundamentals and a SARIMA forecast** with 80% and 95% intervals (falls back to a linear and Holt smoothing ensemble when the fit doesn't converge).
-- **Upcoming earnings and dividend dates**, synced daily, and a side-by-side comparison of up to six stocks.
+- **Risk profile:** the stock's 1-year return, volatility and worst drawdown next to its benchmark and its sector's median stock, plus beta and correlation with the benchmark.
+- **Upcoming earnings and dividend dates**, synced daily.
+- **Compare up to six stocks:** relative performance, a correlation matrix of daily returns, how each did in the S&P 500's and Nifty's worst week, technicals and fundamentals.
 
 ### Portfolio Analysis
 
@@ -250,7 +254,8 @@ StockIntel/
 
 ## Testing
 
-- **Backend:** 116 pytest tests covering the scoring engine, optimiser, backtester, forecast fallback, safe-invest maths, provider fallbacks and source tagging, history snapshots, alerts, paper trading and its equity curve, push, search, mutual fund returns, broker holdings, device linking, insider classification, analyst consensus, the economic calendar and earnings dates.
+- **Backend:** 120 pytest tests covering the scoring engine, optimiser, backtester, forecast fallback, safe-invest maths, provider fallbacks and source tagging, history snapshots, alerts, paper trading and its equity curve, push, search, mutual fund returns, broker holdings, device linking, insider classification, analyst consensus, the economic calendar, earnings dates and the stock risk profile.
+- **Layout:** a test lays out all 8,191 possible dashboard card combinations and fails if any row doesn't fill its width, cuts a card off, leaves a card more than 120px blank or stretches a list across the page.
 - **Browser:** Playwright smoke tests (29 runs across desktop and phone sizes) that open every page, fail on any uncaught error or sideways scrolling, and walk through creating a watchlist, the after-tax table, saved goals, search, a broker CSV import and linking a second device.
 - **CI** runs both on every pull request, plus a type check, lint and production build.
 
@@ -275,7 +280,7 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 
 ## Suggested Future Features
 
-- A daily "global cues" card that uses last night's US session to frame the Indian open, with its historical hit rate.
+- Drag-to-reorder dashboard cards (the layout engine already handles any order).
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.

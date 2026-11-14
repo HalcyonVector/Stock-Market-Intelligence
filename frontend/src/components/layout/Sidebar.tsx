@@ -93,7 +93,7 @@ function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: ()
   return (
     <nav aria-label="Main" className="flex-1 overflow-y-auto px-2 py-3">
       {NAV_GROUPS.map((group, gi) => (
-        <div key={group.title} className={cn("space-y-1", gi > 0 && "mt-3")}>
+        <div key={group.title} className={cn("space-y-0.5", gi > 0 && "mt-2.5")}>
           {expanded ? (
             <p className="px-3 pb-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-600">{group.title}</p>
           ) : (
@@ -110,7 +110,7 @@ function NavLinks({ expanded, onNavigate }: { expanded: boolean; onNavigate?: ()
             aria-current={active ? "page" : undefined}
             title={expanded ? undefined : label}
             className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
+              "group flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm transition-all duration-200",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson-500/60",
               active
                 ? "bg-crimson-600/15 text-crimson-300 shadow-[0_0_12px_rgba(225,29,58,0.15)]"

@@ -21,7 +21,7 @@ def test_classify_uses_sec_codes_not_share_sign():
     assert grant["kind"] == "Grant" and grant["transaction_type"] == "Other" and grant["value"] is None
     buy = insider.classify({"symbol": "AAPL", "name": "JOHN ROE", "transactionCode": "P",
                             "change": 100, "transactionPrice": 200, "transactionDate": "2026-11-02"})
-    assert buy["kind"] == "Buy" and buy["value"] == 20000 and buy["name"] == "John Roe"
+    assert buy["kind"] == "Buy" and buy["value"] == 20000 and buy["name"] == "Roe John"
     assert insider.classify({"transactionCode": "S", "change": 0}) is None
     assert insider.classify({"transactionCode": "?", "change": 5}) is None
 
@@ -121,3 +121,32 @@ def test_calendar_countdown_is_refreshed_and_past_events_dropped():
                        {"name": "Retail Sales", "date": "2026-11-17", "days_until": 4}]}
     out = econ.refresh_countdown(data, today=date(2026, 11, 14))
     assert [(e["name"], e["days_until"]) for e in out["events"]] == [("Retail Sales", 3)]
+
+
+# ------------------------------------------------------------------ risk profile
+def test_risk_stats_and_beta():
+    from app.services import risk
+
+    s = risk.stats([100, 110, 99, 120])
+    assert s["return_pct"] == 20.0 and s["max_drawdown_pct"] == -10.0 and s["volatility_pct"] > 0
+    days = [f"2026-01-{d:02d}" for d in range(1, 41)] + [f"2026-02-{d:02d}" for d in range(1, 21)]
+    import random
+    rnd = random.Random(1)
+    bench, stock = {}, {}
+    b = st = 100.0
+    for d in days:  # stock's daily return is exactly twice the benchmark's
+        r = rnd.uniform(-0.02, 0.02)
+        b *= 1 + r
+        st *= 1 + 2 * r
+        bench[d], stock[d] = b, st
+    beta, corr = risk.beta_corr(stock, bench)
+    assert 1.8 < beta < 2.2 and corr > 0.95
+    assert risk.beta_corr({"2026-01-01": 1}, {"2026-01-01": 1}) == (None, None)
+
+
+def test_insider_display_names():
+    assert insider.display_name("HOOD AMY") == "Amy Hood"
+    assert insider.display_name("Wallace Richard P") == "Richard P Wallace"
+    assert insider.display_name("VANGUARD GROUP INC") == "Vanguard Group Inc"
+    assert insider.display_name("Santos De Azevedo Juliana M") == "Juliana M Santos De Azevedo"
+    assert insider.display_name("") == "Unknown insider"
