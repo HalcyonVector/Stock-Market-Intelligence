@@ -9,8 +9,8 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      {/* pt-14 clears the fixed mobile header; md+ uses the sticky sidebar instead */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden pt-14 md:pt-0">
+      {/* pt-14 and pb-tabbar clear the phone header and tab bar; md+ uses the sticky sidebar instead */}
+      <div className="pb-tabbar flex min-w-0 flex-1 flex-col overflow-hidden pt-14 md:pt-0">
         <ServerStatus />
         <TickerTape />
         <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">{children}</main>
@@ -18,7 +18,7 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
           <span className="font-medium text-ink-300">Educational and informational use only.</span>{" "}
           Not personalized investment advice. Nothing here is a recommendation to buy or sell any
           security. No brokerage credentials are stored and no trades are executed. Market data may be
-          delayed or inaccurate — verify independently before making any financial decision.
+          delayed or inaccurate, so verify independently before making any financial decision.
         </footer>
       </div>
       <AlertNotifier />

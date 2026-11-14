@@ -160,7 +160,7 @@ function Counter({ value, suffix = "", prefix = "" }: { value: number; suffix?: 
 const FEATURES = [
   {
     icon: BarChart3, title: "AI Dashboard",
-    desc: "Real-time market overview with fear/greed gauge, sector rotation, volume leaders, and AI briefings",
+    desc: "Market overview with a fear/greed gauge, sector rotation, global cues, analyst consensus and an AI briefing",
     color: "from-crimson-500/20 to-crimson-600/5", glow: "shadow-crimson-500/10",
   },
   {
@@ -170,7 +170,7 @@ const FEATURES = [
   },
   {
     icon: Brain, title: "AI Deep Research",
-    desc: "Ollama-powered comprehensive stock analysis combining technicals, fundamentals, sentiment, and news",
+    desc: "LLM-written stock analysis that combines technicals, fundamentals, sentiment and news",
     color: "from-purple-500/20 to-purple-600/5", glow: "shadow-purple-500/10",
   },
   {
@@ -180,7 +180,7 @@ const FEATURES = [
   },
   {
     icon: Filter, title: "Smart Screener",
-    desc: "Filter 50+ stocks by change%, RSI, volume ratio, P/E, market cap with presets for common strategies",
+    desc: "Filter the tracked US and Indian stocks by change, RSI, volume ratio, P/E and market cap, with presets",
     color: "from-amber-500/20 to-amber-600/5", glow: "shadow-amber-500/10",
   },
   {
@@ -217,7 +217,7 @@ function FeatureCard({ feature, index }: { feature: typeof FEATURES[0]; index: n
       animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-white/[0.06] p-6",
+        "group relative overflow-hidden rounded-2xl border border-white/[0.06] p-5 sm:p-6",
         "bg-gradient-to-br backdrop-blur-xl transition-all duration-500",
         "hover:border-white/[0.12] hover:shadow-2xl",
         feature.color, feature.glow
@@ -239,8 +239,8 @@ function FeatureCard({ feature, index }: { feature: typeof FEATURES[0]; index: n
 
 /* ── Stats bar ───────────────────────────────────────────────────── */
 const STATS = [
-  { value: 115, suffix: "+", label: "Stocks Tracked" },
-  { value: 15, suffix: "+", label: "AI-Powered Features" },
+  { value: 160, suffix: "", label: "US and Indian stocks" },
+  { value: 13, suffix: "", label: "Dashboard cards" },
   { value: 4, suffix: "", label: "Backtest Strategies" },
   { value: 16, suffix: "", label: "Indian Safe Instruments" },
 ];
@@ -248,8 +248,8 @@ const STATS = [
 /* ── Tech stack ──────────────────────────────────────────────────── */
 const TECH = [
   "Next.js 14", "FastAPI", "PostgreSQL", "Redis",
-  "Ollama AI", "yfinance", "scipy", "Recharts",
-  "Framer Motion", "TailwindCSS", "Docker", "Celery",
+  "Groq LLM", "yfinance", "scipy", "Recharts",
+  "Framer Motion", "TailwindCSS", "GitHub Actions", "Playwright",
 ];
 
 /* ── Main Landing Page ───────────────────────────────────────────── */
@@ -263,13 +263,13 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       <GlowOrbs />
 
       {/* ─── Hero Section ──────────────────────────────────────── */}
-      <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      <section className="relative z-10 flex min-h-[100svh] flex-col items-center justify-center px-5 py-16 text-center sm:px-6">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8 inline-flex items-center gap-2 rounded-full border border-crimson-500/20 bg-crimson-500/5 px-4 py-1.5 backdrop-blur-sm"
+          className="mb-6 inline-flex items-center gap-2 sm:mb-8 rounded-full border border-crimson-500/20 bg-crimson-500/5 px-4 py-1.5 backdrop-blur-sm"
         >
           <Sparkles size={14} className="text-crimson-400" />
           <span className="text-xs font-medium text-crimson-300">AI-Powered Market Intelligence</span>
@@ -280,7 +280,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="max-w-4xl text-5xl font-bold leading-[1.1] tracking-tight md:text-7xl"
+          className="max-w-4xl text-[2.6rem] font-bold leading-[1.08] tracking-tight sm:text-5xl md:text-7xl"
         >
           <span className="bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-transparent">
             Discover. Analyze.
@@ -296,10 +296,10 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-6 max-w-2xl text-lg text-white/40 md:text-xl"
+          className="mt-5 max-w-2xl text-base text-white/50 sm:mt-6 sm:text-lg md:text-xl"
         >
-          Full-stack market intelligence platform with AI research, portfolio optimization,
-          strategy backtesting, ML price forecasting, and a safe investment guide — all running locally.
+          A study of US and Indian stocks you can explore: how the two markets moved over the
+          past year, AI research, portfolio and strategy testing, and a safe investment guide.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -307,11 +307,11 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="mt-10 flex gap-4"
+          className="mt-8 flex w-full max-w-xs flex-col gap-3 sm:mt-10 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4"
         >
           <button
             onClick={onEnter}
-            className="group flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-10 py-4 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-all hover:shadow-xl hover:shadow-crimson-500/30 hover:scale-[1.02] active:scale-[0.98] min-w-[200px]"
+            className="group flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-crimson-600 to-crimson-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-crimson-500/25 transition-all hover:shadow-xl hover:shadow-crimson-500/30 hover:scale-[1.02] active:scale-[0.98] sm:min-w-[200px] sm:px-10 sm:py-4"
           >
             Launch Dashboard
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
@@ -320,7 +320,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
             onClick={() => {
               document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="group flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-10 py-4 text-sm font-semibold text-white/70 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white hover:scale-[1.02] active:scale-[0.98] min-w-[200px]"
+            className="group flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white/70 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white hover:scale-[1.02] active:scale-[0.98] sm:min-w-[200px] sm:px-10 sm:py-4"
           >
             Explore Features
           </button>
@@ -331,7 +331,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
-          className="absolute bottom-10"
+          className="absolute bottom-6 hidden sm:bottom-10 sm:block"
         >
           <motion.div
             animate={{ y: [0, 8, 0] }}
@@ -345,8 +345,8 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       </section>
 
       {/* ─── Stats Section ─────────────────────────────────────── */}
-      <section className="relative z-10 border-y border-white/[0.04] bg-crimson-600/[0.03] py-16 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-12 px-6 md:gap-20">
+      <section className="relative z-10 border-y border-white/[0.04] bg-crimson-600/[0.03] py-10 backdrop-blur-sm sm:py-16">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-8 px-6 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-12 md:gap-20">
           {STATS.map((s, i) => (
             <motion.div
               key={s.label}
@@ -359,14 +359,14 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
               <p className="text-3xl font-bold text-white md:text-4xl">
                 <Counter value={s.value} suffix={s.suffix} />
               </p>
-              <p className="mt-1 text-sm text-white/30">{s.label}</p>
+              <p className="mt-1 text-xs text-white/40 sm:text-sm">{s.label}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* ─── Features Section ──────────────────────────────────── */}
-      <section id="features" className="relative z-10 py-24 px-6">
+      <section id="features" className="relative z-10 px-5 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-6xl">
           <AnimatedSection>
             <div className="text-center">
@@ -387,12 +387,12 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
                 </span>
               </h2>
               <p className="mt-4 text-white/30">
-                From real-time market data to AI-powered research — built for learning, not gambling.
+                From delayed market data to AI research. Built for learning, not gambling.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-3 sm:mt-16 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
               <FeatureCard key={f.title} feature={f} index={i} />
             ))}
@@ -401,7 +401,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       </section>
 
       {/* ─── Tech Stack Section ────────────────────────────────── */}
-      <section className="relative z-10 py-20 px-6">
+      <section className="relative z-10 px-5 py-14 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-4xl text-center">
           <AnimatedSection>
             <h2 className="text-2xl font-bold text-white md:text-3xl">
@@ -430,13 +430,13 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
       </section>
 
       {/* ─── CTA Section ───────────────────────────────────────── */}
-      <section className="relative z-10 py-24 px-6">
+      <section className="relative z-10 px-5 py-16 sm:px-6 sm:py-24">
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 40 }}
           whileInView={{ opacity: 1, scale: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-crimson-500/10 bg-gradient-to-br from-crimson-600/15 via-crimson-900/5 to-transparent p-12 text-center backdrop-blur-xl"
+          className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-crimson-500/10 bg-gradient-to-br from-crimson-600/15 via-crimson-900/5 to-transparent p-8 text-center backdrop-blur-xl sm:p-12"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -463,7 +463,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="mt-4 text-white/40"
           >
-            Zero API keys needed. Runs entirely on your machine with Docker.
+            No sign-up. Open it and start exploring.
           </motion.p>
           <motion.button
             initial={{ opacity: 0, y: 20 }}
@@ -490,7 +490,7 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
         className="relative z-10 border-t border-white/[0.04] py-8 text-center"
       >
         <p className="text-xs text-white/20">
-          Stock Discovery & Intelligence — Educational use only. Not financial advice.
+          Stock Discovery & Intelligence. Educational use only. Not financial advice.
         </p>
       </motion.footer>
     </div>
