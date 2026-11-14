@@ -76,3 +76,18 @@ body {
   .dash-scroll > section > div:last-child { overflow-y: auto; overscroll-behavior: contain; }
   .dash-center > section > div:last-child { justify-content: center; }
 }
+
+/* Phones and tablets stack cards. Long lists fold to about half a screen with
+   a "Show all" button (see FoldCell in Dashboard.tsx) so the page stays short. */
+@media (max-width: 1023px) {
+  .dash-fold > section > div:last-child {
+    max-height: 340px;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
+    mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  }
+}
+
+/* Room for the phone tab bar and the iPhone home indicator. */
+.pb-tabbar { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) { .pb-tabbar { padding-bottom: 0; } }

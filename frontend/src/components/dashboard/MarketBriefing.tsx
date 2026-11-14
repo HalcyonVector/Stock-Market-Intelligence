@@ -1,5 +1,7 @@
 "use client";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
@@ -16,6 +18,10 @@ export function MarketBriefing() {
     refetchInterval: (query) =>
       query.state.data?.pending ? 5_000 : 30_000,
   });
+
+  // Phones show the first six lines; the rest is a tap away.
+  const [full, setFull] = useState(false);
+  const long = (data?.briefing?.length ?? 0) > 280;
 
   // Use the server's timestamp: the old code printed the browser's current
   // time, which looked fresh even when the briefing was hours old.
@@ -69,9 +75,16 @@ export function MarketBriefing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <p className="max-w-[72ch] text-[15px] font-light leading-[1.7] text-ink-300">
+              <p className={cn("max-w-[72ch] text-sm font-light leading-relaxed text-ink-300 sm:text-[15px] sm:leading-[1.7]",
+                !full && long && "max-lg:line-clamp-6")}>
                 {data.briefing}
               </p>
+              {long && (
+                <button onClick={() => setFull((v) => !v)} aria-expanded={full}
+                  className="mt-2 text-xs font-medium text-crimson-300 hover:text-crimson-200 lg:hidden">
+                  {full ? "Show less" : "Read more"}
+                </button>
+              )}
             </motion.div>
           ) : (
             <motion.div

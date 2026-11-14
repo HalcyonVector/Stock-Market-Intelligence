@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { SlidersHorizontal, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { SlidersHorizontal, Eye, EyeOff, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarketOverview } from "./MarketOverview";
 import { MarketBriefing } from "./MarketBriefing";
@@ -66,6 +66,50 @@ const SPAN: Record<number, string> = {
   9: "lg:col-span-9", 10: "lg:col-span-10", 11: "lg:col-span-11", 12: "lg:col-span-12",
 };
 
+/** A dashboard cell. Below lg, a list card folds to about half a screen and
+ *  offers "Show all" when its content is longer than that. */
+function FoldCell({ id, span, foldable, className, children }: {
+  id: string; span: number; foldable: boolean; className: string; children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const cell = ref.current;
+    if (!foldable || !cell) return;
+    const check = () => {
+      const body = cell.querySelector<HTMLElement>(":scope > section > div:last-child");
+      setOverflows(!!body && body.scrollHeight > body.clientHeight + 8);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(cell);
+    const mo = new MutationObserver(check);
+    mo.observe(cell, { childList: true, subtree: true });
+    return () => { ro.disconnect(); mo.disconnect(); };
+  }, [foldable, open]);
+
+  const folded = foldable && !open;
+  return (
+    <div ref={ref} data-card={id} data-span={span} className={cn(className, "relative", folded && "dash-fold", open && "max-lg:[&>section]:pb-14")}>
+      {children}
+      {foldable && (overflows || open) && (
+        <button
+          onClick={() => {
+            setOpen((v) => !v);
+            if (open) ref.current?.scrollIntoView({ block: "nearest" });
+          }}
+          aria-expanded={open}
+          className="absolute inset-x-4 bottom-3 flex items-center justify-center gap-1 rounded-lg bg-base-950/80 py-2 text-xs font-medium text-ink-300 backdrop-blur hover:text-ink-100 lg:hidden"
+        >
+          {open ? <>Show less <ChevronUp size={14} /></> : <>Show all <ChevronDown size={14} /></>}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Dashboard() {
   const [shown, setShown] = useState<Set<CardId>>(new Set(DEFAULT_SHOWN));
   const [editing, setEditing] = useState(false);
@@ -92,7 +136,7 @@ export function Dashboard() {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] text-ink-500">
-          Free data sources · quotes delayed ~15 min · cards refresh every 2 min
+          Free data sources · quotes delayed ~15 min<span className="hidden sm:inline"> · cards refresh every 2 min</span>
         </p>
         <button
           onClick={() => setEditing((v) => !v)}
@@ -166,10 +210,11 @@ export function Dashboard() {
               {row.cards.map(({ spec, span }) => {
                 const { C } = byId[spec.id];
                 return (
-                  <div
+                  <FoldCell
                     key={spec.id}
-                    data-card={spec.id}
-                    data-span={span}
+                    id={spec.id}
+                    span={span}
+                    foldable={spec.kind === "list"}
                     className={cn(
                       "dash-cell col-span-12 min-w-0", SPAN[span],
                       spec.kind === "list" && "dash-scroll",
@@ -178,7 +223,7 @@ export function Dashboard() {
                     )}
                   >
                     <C />
-                  </div>
+                  </FoldCell>
                 );
               })}
             </div>

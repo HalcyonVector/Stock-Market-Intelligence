@@ -19,11 +19,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
-  Menu,
   X,
   Smartphone,
   BookOpen,
   BarChart3,
+  Search,
+  MoreHorizontal,
 } from "lucide-react";
 import { DeviceSyncDialog } from "./DeviceSync";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,14 @@ const NAV_GROUPS = [
       { href: "/learn", icon: BookOpen, label: "Learn the Basics" },
     ],
   },
+];
+
+// The phone tab bar. Everything else is in the drawer behind "More".
+const TABS = [
+  { href: "/", icon: LayoutDashboard, label: "Home" },
+  { href: "/screener", icon: Filter, label: "Screener" },
+  { href: "/study", icon: BarChart3, label: "Study" },
+  { href: "/watchlists", icon: Star, label: "Watchlist" },
 ];
 
 const COLLAPSE_KEY = "si_sidebar_collapsed";
@@ -202,23 +211,41 @@ export function Sidebar() {
     <>
       {/* Mobile top bar (below md) */}
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/5 bg-base-950/90 px-4 backdrop-blur-xl md:hidden">
-        <button
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation"
-          aria-expanded={mobileOpen}
-          className="grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
-        >
-          <Menu size={20} />
-        </button>
         <Logo showText />
-        <button
-          onClick={() => setCmdOpen(true)}
-          aria-label="Search stocks and pages"
-          className="grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
-        >
-          <Command size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <MarketSwitch compact />
+          <button
+            onClick={() => setCmdOpen(true)}
+            aria-label="Search stocks and pages"
+            className="grid h-10 w-10 place-items-center rounded-lg text-ink-300 hover:bg-white/5"
+          >
+            <Search size={19} />
+          </button>
+        </div>
       </header>
+
+      {/* Phone tab bar: the pages people open most, plus everything else under More */}
+      <nav aria-label="Quick" className="fixed inset-x-0 bottom-0 z-50 border-t border-white/5 bg-base-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+        <div className="grid grid-cols-5">
+          {TABS.map(({ href, icon: Icon, label }) => {
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <Link key={href} href={href} aria-current={active ? "page" : undefined}
+                className={cn("flex h-14 flex-col items-center justify-center gap-0.5 text-[10px]",
+                  active ? "text-crimson-300" : "text-ink-500")}>
+                <Icon size={20} aria-hidden />
+                {label}
+              </Link>
+            );
+          })}
+          <button onClick={() => setMobileOpen(true)} aria-label="All pages" aria-expanded={mobileOpen}
+            className={cn("flex h-14 flex-col items-center justify-center gap-0.5 text-[10px]",
+              mobileOpen || !TABS.some((t) => (t.href === "/" ? pathname === "/" : pathname.startsWith(t.href))) ? "text-crimson-300" : "text-ink-500")}>
+            <MoreHorizontal size={20} aria-hidden />
+            More
+          </button>
+        </div>
+      </nav>
 
       {/* Mobile drawer */}
       <AnimatePresence>

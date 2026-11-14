@@ -12,7 +12,8 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "StockIntel", statusBarStyle: "black-translucent" },
 };
 
-export const viewport: Viewport = { themeColor: "#0b0709" };
+// viewportFit "cover" lets env(safe-area-inset-*) keep the phone tab bar above the home indicator.
+export const viewport: Viewport = { themeColor: "#0b0709", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

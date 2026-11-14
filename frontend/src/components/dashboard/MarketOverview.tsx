@@ -66,7 +66,7 @@ export function MarketOverview() {
     return () => clearInterval(id);
   }, []);
 
-  const stats = [
+  const stats: { icon: typeof Clock; label: string; value: string; sub: string; color: string; phone?: boolean }[] = [
     {
       icon: BarChart3,
       label: "Tracked",
@@ -77,6 +77,7 @@ export function MarketOverview() {
     {
       icon: avgChange >= 0 ? TrendingUp : TrendingDown,
       label: "Avg Change",
+      phone: true,
       value: `${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}%`,
       sub: "market-wide",
       color: avgChange >= 0 ? "text-emerald-400" : "text-crimson-400",
@@ -84,6 +85,7 @@ export function MarketOverview() {
     {
       icon: ArrowUpCircle,
       label: "Breadth",
+      phone: true,
       value: `${advancers}↑ / ${decliners}↓`,
       sub: advancers > decliners ? "bullish" : advancers < decliners ? "bearish" : "neutral",
       color: advancers > decliners ? "text-emerald-400" : advancers < decliners ? "text-crimson-400" : "text-ink-300",
@@ -91,6 +93,7 @@ export function MarketOverview() {
     {
       icon: TrendingUp,
       label: "Top Gainer",
+      phone: true,
       value: topGainer?.symbol ?? "—",
       sub: topGainer ? `+${topGainer.change_pct.toFixed(1)}%` : "",
       color: "text-emerald-400",
@@ -98,17 +101,19 @@ export function MarketOverview() {
     {
       icon: TrendingDown,
       label: "Top Loser",
+      phone: true,
       value: topLoser?.symbol ?? "—",
       sub: topLoser ? `${topLoser.change_pct.toFixed(1)}%` : "",
       color: "text-crimson-400",
     },
-    {
+    // Market cap only when the quotes carry it (free sources often don't).
+    ...(totalMcap > 0 ? [{
       icon: DollarSign,
       label: "Mkt Cap",
-      value: totalMcap > 0 ? "$" + formatLargeNumber(totalMcap) : "—",
+      value: "$" + formatLargeNumber(totalMcap),
       sub: "total",
       color: "text-ink-300",
-    },
+    }] : []),
     {
       icon: Activity,
       label: "Volume",
@@ -126,14 +131,16 @@ export function MarketOverview() {
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-6 rounded-2xl border border-white/5 bg-white/[0.02] px-5 py-3 backdrop-blur-xl">
+    // Phones get the four stats that say what the market did, in an even 2x2;
+    // wider screens get the full strip.
+    <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 backdrop-blur-xl sm:flex sm:flex-wrap sm:items-center sm:gap-6 sm:px-5">
       {stats.map((s) => (
-        <div key={s.label} className="flex items-center gap-2">
-          <s.icon size={14} className="text-ink-500" />
-          <div>
+        <div key={s.label} className={cn("min-w-0 items-center gap-2", s.phone ? "flex" : "hidden sm:flex")}>
+          <s.icon size={14} className="shrink-0 text-ink-500" />
+          <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-ink-500">{s.label}</p>
-            <p className={cn("font-mono text-sm font-semibold", s.color)}>
-              {s.value} <span className="text-[10px] font-normal text-ink-500">{s.sub}</span>
+            <p className={cn("truncate font-mono text-sm font-semibold", s.color)}>
+              {s.value} <span className="block text-[10px] font-normal text-ink-500 sm:inline">{s.sub}</span>
             </p>
           </div>
         </div>

@@ -34,12 +34,28 @@ for (const [path, heading] of PAGES) {
 
 test("no page scrolls sideways on a phone @phone", async ({ page, isMobile }) => {
   test.skip(!isMobile, "phone-only check");
-  for (const path of ["/", "/heatmap", "/invest", "/learn", "/watchlists"]) {
+  for (const path of ["/", "/heatmap", "/screener", "/study", "/stock/AAPL", "/invest", "/learn", "/watchlists"]) {
     await open(page, path);
     await page.waitForLoadState("networkidle").catch(() => {});
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `${path} is wider than the screen`).toBeLessThanOrEqual(1);
   }
+});
+
+test("phone tab bar, More drawer and folded cards @phone", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "phone-only check");
+  await open(page, "/");
+  const tabs = page.getByRole("navigation", { name: "Quick" });
+  await expect(tabs).toBeVisible();
+  // Long list cards fold on a phone and open with "Show all".
+  const showAll = page.getByRole("button", { name: /Show all/ }).first();
+  await expect(showAll).toBeVisible();
+  await showAll.click();
+  await expect(page.getByRole("button", { name: /Show less/ }).first()).toBeVisible();
+  // Every page is reachable from More.
+  await tabs.getByRole("button", { name: "All pages" }).click();
+  await page.getByRole("dialog", { name: "Navigation" }).getByRole("link", { name: "Compare Stocks" }).click();
+  await expect(page).toHaveURL(/\/compare/);
 });
 
 test("create a watchlist and add a stock", async ({ page }) => {
