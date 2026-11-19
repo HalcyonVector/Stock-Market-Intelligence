@@ -89,6 +89,7 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **45 instruments** (33 Indian, 12 US) with official government small-savings rates for the current quarter, a warning once that quarter has ended, and live trailing returns for 12 mutual fund categories from AMFI NAVs.
 - **After tax and inflation:** what each instrument returns after your tax slab and inflation, in today's money.
 - **My mutual funds:** track the funds you hold at the latest NAV, with 1, 3 and 5-year returns and a NAV history.
+- **XIRR from transactions:** read a fund transaction CSV in the browser (Date, Scheme or AMFI code, Amount, Units, Type), value each fund at the latest NAV and compute XIRR per fund and overall, so SIP returns account for when each instalment went in. A sample built from the monthly NAVs of two real funds shows how it works without a file.
 - **Calculators:** SIP with step-up, lump sum vs spreading out, FD or CD ladder, goal planner with saved goals and an emergency-fund preset, allocation builder, and an AI Q&A for beginners.
 - **Learn the basics:** six short lessons and a searchable glossary of every term the app uses.
 
@@ -283,7 +284,7 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - Drag-to-reorder dashboard cards (the layout engine already handles any order).
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
-- Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
+- Read the CAMS/KFintech Consolidated Account Statement PDF directly (the transaction CSV import already computes XIRR).
 - Backtests with brokerage, STT and capital-gains tax deducted.
 - A downloadable dataset and notebook that regenerate the Findings tables.
 

@@ -18,6 +18,7 @@ import {
   RealReturnsTab, LadderTab, SipVsLumpSum, SavedGoals, RatesNotice,
 } from "@/components/invest/SafeInvestTools";
 import { MutualFundTracker } from "@/components/invest/MutualFundTracker";
+import { FundTransactions } from "@/components/invest/FundTransactions";
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 const fmt = (n: number, cur: string) =>
@@ -158,7 +159,7 @@ export default function SafeInvestPage() {
           {tab === "ladder" && <LadderTab country={country} cur={cur} />}
           {tab === "goal" && <div className="space-y-4"><SavedGoals key={cur} cur={cur} /><GoalTab cur={cur} /></div>}
           {tab === "funds" && (country === "IN"
-            ? <MutualFundTracker />
+            ? <div className="space-y-4"><MutualFundTracker /><FundTransactions /></div>
             : <p className="rounded-xl border border-white/10 p-6 text-center text-sm text-ink-400">Fund tracking uses India&apos;s AMFI NAV data. Switch to India to use it.</p>)}
           {tab === "advisor" && <AdvisorTab country={country} cur={cur} />}
         </motion.div>

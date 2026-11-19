@@ -118,3 +118,20 @@ test("broker CSV import parses a Zerodha-style file", async ({ page }) => {
     await expect(page.locator("td", { hasText: sym }).first()).toBeVisible();
   }
 });
+
+test("mutual fund transaction file is read in the browser", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("si_market", "IN"));
+  await open(page, "/invest");
+  await page.getByRole("radio", { name: "India" }).first().click();
+  await page.getByRole("button", { name: "My Mutual Funds" }).click();
+  const csv = [
+    "Date,Scheme Name,Transaction Type,Amount,Units",
+    "05-Jan-2024,Parag Parikh Flexi Cap Fund - Direct Plan - Growth,SIP Purchase,\"5,000.00\",70.123",
+    "05-Feb-2024,Parag Parikh Flexi Cap Fund - Direct Plan - Growth,SIP Purchase,5000,68.917",
+    "10-Jun-2024,Parag Parikh Flexi Cap Fund - Direct Plan - Growth,Redemption,3000,40",
+  ].join("\n");
+  await page.locator('input[aria-label="Transaction file"]').setInputFiles({ name: "txns.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await expect(page.getByText("₹10,000").first()).toBeVisible();
+  await expect(page.getByText("₹3,000").first()).toBeVisible();
+  await expect(page.getByText(/3 transactions since Jan 2024 · 99.04 units/)).toBeVisible();
+});

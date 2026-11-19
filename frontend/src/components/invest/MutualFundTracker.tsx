@@ -30,7 +30,11 @@ export function MutualFundTracker() {
   const term = useDebounced(q.trim());
 
   useEffect(() => {
-    try { setHoldings(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch { /* ignore */ }
+    const load = () => { try { setHoldings(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch { /* ignore */ } };
+    load();
+    // The transaction import below can fill in holdings too.
+    window.addEventListener("si-mf-updated", load);
+    return () => window.removeEventListener("si-mf-updated", load);
   }, []);
   const save = (next: Holding[]) => {
     setHoldings(next);
