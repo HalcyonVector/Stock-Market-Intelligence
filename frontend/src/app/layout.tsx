@@ -8,7 +8,6 @@ import { ShellLayout } from "@/components/layout/ShellLayout";
 export const metadata: Metadata = {
   title: "Stock Discovery & Intelligence",
   description: "AI-powered market intelligence. Educational use only.",
-  icons: { apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "StockIntel", statusBarStyle: "black-translucent" },
 };
 
