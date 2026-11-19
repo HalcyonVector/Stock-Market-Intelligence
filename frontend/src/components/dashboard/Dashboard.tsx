@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { SlidersHorizontal, Eye, EyeOff, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { AnimatePresence, motion, Reorder, useDragControls } from "framer-motion";
+import { SlidersHorizontal, Eye, EyeOff, RotateCcw, ChevronDown, ChevronUp, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarketOverview } from "./MarketOverview";
 import { MarketBriefing } from "./MarketBriefing";
@@ -43,6 +43,21 @@ type CardId = (typeof CARDS)[number]["id"];
 export const DEFAULT_SHOWN: CardId[] = ["briefing", "feargreed", "cues", "movers", "news", "sectors", "analysts", "economic"];
 
 const SHOWN_KEY = "si_dashboard_cards";
+const ORDER_KEY = "si_dashboard_order";
+const DEFAULT_ORDER: CardId[] = CARDS.map((c) => c.id);
+
+/** Saved order, with any card added since appended in its default place. */
+function loadOrder(): CardId[] {
+  try {
+    const raw = localStorage.getItem(ORDER_KEY);
+    if (raw) {
+      const known = new Set<string>(DEFAULT_ORDER);
+      const saved = (JSON.parse(raw) as string[]).filter((id): id is CardId => known.has(id));
+      return [...saved, ...DEFAULT_ORDER.filter((id) => !saved.includes(id))];
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_ORDER;
+}
 const LEGACY_HIDDEN_KEY = "si_hidden_cards";
 
 function loadShown(): Set<CardId> {
@@ -110,11 +125,50 @@ function FoldCell({ id, span, foldable, className, children }: {
   );
 }
 
+/** One card in the Customize list: drag the grip (mouse or touch), or use the
+ *  arrow buttons, to move it; the eye shows or hides it. */
+function OrderItem({ id, label, on, first, last, onToggle, onMove }: {
+  id: CardId; label: string; on: boolean; first: boolean; last: boolean;
+  onToggle: () => void; onMove: (d: -1 | 1) => void;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item value={id} dragListener={false} dragControls={controls}
+      className={cn("flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs",
+        on ? "border-crimson-500/30 bg-crimson-600/10 text-ink-100" : "border-white/10 bg-base-950/60 text-ink-500")}>
+      <button onPointerDown={(e) => controls.start(e)} aria-label={`Drag ${label}`}
+        className="cursor-grab touch-none p-1 text-ink-500 hover:text-ink-300 active:cursor-grabbing">
+        <GripVertical size={14} />
+      </button>
+      <span className="flex-1 truncate">{label}</span>
+      <button onClick={() => onMove(-1)} disabled={first} aria-label={`Move ${label} up`}
+        className="rounded p-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"><ArrowUp size={13} /></button>
+      <button onClick={() => onMove(1)} disabled={last} aria-label={`Move ${label} down`}
+        className="rounded p-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"><ArrowDown size={13} /></button>
+      <button onClick={onToggle} aria-pressed={on} aria-label={on ? `Hide ${label}` : `Show ${label}`}
+        className="rounded p-1 hover:text-ink-200">{on ? <Eye size={13} /> : <EyeOff size={13} />}</button>
+    </Reorder.Item>
+  );
+}
+
 export function Dashboard() {
   const [shown, setShown] = useState<Set<CardId>>(new Set(DEFAULT_SHOWN));
+  const [order, setOrder] = useState<CardId[]>(DEFAULT_ORDER);
   const [editing, setEditing] = useState(false);
 
-  useEffect(() => { setShown(loadShown()); }, []);
+  useEffect(() => { setShown(loadShown()); setOrder(loadOrder()); }, []);
+
+  const saveOrder = (next: CardId[]) => {
+    setOrder(next);
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  };
+  const move = (id: CardId, d: -1 | 1) => {
+    const i = order.indexOf(id), j = i + d;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    saveOrder(next);
+  };
 
   const update = (next: Set<CardId>) => {
     setShown(next);
@@ -125,9 +179,10 @@ export function Dashboard() {
     if (next.has(id)) next.delete(id); else next.add(id);
     update(next);
   };
-  const isDefault = shown.size === DEFAULT_SHOWN.length && DEFAULT_SHOWN.every((id) => shown.has(id));
+  const isDefault = shown.size === DEFAULT_SHOWN.length && DEFAULT_SHOWN.every((id) => shown.has(id))
+    && order.every((id, i) => id === DEFAULT_ORDER[i]);
 
-  const rows = useMemo(() => layout(CARDS.filter((c) => shown.has(c.id)).map((c) => CARD_SPECS[c.id])), [shown]);
+  const rows = useMemo(() => layout(order.filter((id) => shown.has(id)).map((id) => CARD_SPECS[id])), [shown, order]);
   const byId = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 
   return (
@@ -155,30 +210,25 @@ export function Dashboard() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="glass flex flex-wrap items-center gap-2 p-3">
-              {CARDS.map(({ id, label }) => {
-                const on = shown.has(id);
-                return (
-                  <button
-                    key={id}
-                    onClick={() => toggle(id)}
-                    aria-pressed={on}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition",
-                      on ? "border-crimson-500/30 bg-crimson-600/10 text-ink-100" : "border-white/10 text-ink-500 hover:text-ink-300"
-                    )}
-                  >
-                    {on ? <Eye size={12} /> : <EyeOff size={12} />} {label}
+            <div className="glass space-y-2 p-3">
+              <Reorder.Group axis="y" values={order} onReorder={saveOrder} className="grid gap-1.5 sm:max-w-md">
+                {order.map((id, i) => (
+                  <OrderItem key={id} id={id} label={byId[id].label} on={shown.has(id)}
+                    first={i === 0} last={i === order.length - 1}
+                    onToggle={() => toggle(id)} onMove={(d) => move(id, d)} />
+                ))}
+              </Reorder.Group>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="flex-1 text-[10px] text-ink-500">
+                  Drag a card by its grip, or use the arrows, to change the order. The layout rearranges itself for whatever you pick. Hidden cards stop loading data.
+                </p>
+                {!isDefault && (
+                  <button onClick={() => { update(new Set(DEFAULT_SHOWN)); saveOrder(DEFAULT_ORDER); }}
+                    className="flex items-center gap-1 text-xs text-ink-500 hover:text-ink-300">
+                    <RotateCcw size={12} /> Reset to default
                   </button>
-                );
-              })}
-              {!isDefault && (
-                <button onClick={() => update(new Set(DEFAULT_SHOWN))}
-                  className="ml-auto flex items-center gap-1 text-xs text-ink-500 hover:text-ink-300">
-                  <RotateCcw size={12} /> Reset to default
-                </button>
-              )}
-              <p className="w-full text-[10px] text-ink-500">The layout rearranges itself for whatever you pick. Hidden cards stop loading data.</p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

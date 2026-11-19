@@ -118,3 +118,16 @@ test("broker CSV import parses a Zerodha-style file", async ({ page }) => {
     await expect(page.locator("td", { hasText: sym }).first()).toBeVisible();
   }
 });
+
+test("dashboard cards can be reordered and the order is kept", async ({ page }) => {
+  await open(page, "/");
+  const first = () => page.locator("[data-card]").first().getAttribute("data-card");
+  await page.locator("[data-card]").first().waitFor();
+  await page.getByRole("button", { name: "Customize" }).click();
+  await page.getByRole("button", { name: "Move Global Cues up" }).click();
+  await page.getByRole("button", { name: "Move Global Cues up" }).click();
+  await expect.poll(first).toBe("cues");
+  await page.reload();
+  await page.locator("[data-card]").first().waitFor();
+  await expect.poll(first).toBe("cues");
+});
