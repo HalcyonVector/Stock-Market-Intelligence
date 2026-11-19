@@ -8,6 +8,8 @@ const DATA: [string, string, string][] = [
   ["FRED", "https://fred.stlouisfed.org/docs/api/fred/", "US economic release calendar"],
   ["Federal Reserve", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", "FOMC meeting dates"],
   ["mfapi.in", "https://www.mfapi.in", "Indian mutual fund NAV history"],
+  ["NSE index constituents", "https://archives.nseindia.com/content/indices/ind_nifty50list.csv", "Nifty 50 members for the Market Study check"],
+  ["Wikipedia: S&P 100", "https://en.wikipedia.org/wiki/S%26P_100", "S&P 100 members for the same check"],
   ["US Treasury FiscalData", "https://fiscaldata.treasury.gov", "Treasury bill rates"],
   ["Groq", "https://console.groq.com/docs", "LLM for briefings and research summaries"],
 ];
