@@ -24,6 +24,8 @@ export default function BacktestPage() {
   });
 
   const result = mutation.data;
+  const cur = result?.costs?.currency === "INR" ? "₹" : "$";
+  const pct = (v: number) => `${v >= 0 ? "+" : ""}${v}%`;
   const tooltipStyle = {
     background: "rgba(10,5,6,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 11,
   };
@@ -34,7 +36,7 @@ export default function BacktestPage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <FlaskConical size={24} className="text-crimson-400" /> Strategy Backtester
         </h1>
-        <p className="text-sm text-ink-500">Test trading strategies against historical data</p>
+        <p className="text-sm text-ink-500">Test trading strategies against historical data, after trading costs and tax</p>
       </div>
 
       {/* Config */}
@@ -55,7 +57,7 @@ export default function BacktestPage() {
             </select>
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wider text-ink-500 mb-1">Initial Capital ($)</label>
+            <label className="block text-[10px] uppercase tracking-wider text-ink-500 mb-1">Initial Capital (stock currency)</label>
             <input type="number" value={capital} onChange={(e) => setCapital(e.target.value)}
               className="w-full rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-xs font-mono outline-none focus:border-crimson-500/40" />
           </div>
@@ -88,21 +90,33 @@ export default function BacktestPage() {
           {/* Performance metrics */}
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
             {[
-              { label: "Total Return", value: `${result.total_return_pct >= 0 ? "+" : ""}${result.total_return_pct}%`, color: result.total_return_pct >= 0 },
-              { label: "Benchmark", value: `${result.benchmark_return_pct >= 0 ? "+" : ""}${result.benchmark_return_pct}%`, color: result.benchmark_return_pct >= 0 },
-              { label: "Alpha", value: `${result.alpha >= 0 ? "+" : ""}${result.alpha}%`, color: result.alpha >= 0 },
+              { label: "Total Return", value: pct(result.total_return_pct), color: result.total_return_pct >= 0, before: result.gross && pct(result.gross.total_return_pct) },
+              { label: "Benchmark", value: pct(result.benchmark_return_pct), color: result.benchmark_return_pct >= 0, before: result.gross && pct(result.gross.benchmark_return_pct) },
+              { label: "Alpha", value: pct(result.alpha), color: result.alpha >= 0, before: result.gross && pct(result.gross.alpha) },
               { label: "Win Rate", value: `${result.win_rate}%`, color: result.win_rate > 50 },
               { label: "Sharpe", value: result.sharpe_ratio, color: result.sharpe_ratio > 1 },
               { label: "Max Drawdown", value: `-${result.max_drawdown_pct}%`, color: false },
-            ].map((m) => (
+            ].map((m: { label: string; value: any; color: boolean; before?: string }) => (
               <div key={m.label} className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
                 <p className="text-[9px] uppercase tracking-wider text-ink-500"><Term>{m.label}</Term></p>
                 <p className={cn("font-mono text-lg font-bold", m.color ? "text-emerald-400" : "text-crimson-400")}>
                   {m.value}
                 </p>
+                {m.before && <p className="text-[9px] text-ink-500">before costs {m.before}</p>}
               </div>
             ))}
           </div>
+
+          {result.costs && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-ink-400">
+              <p className="mb-1 text-ink-200">
+                Figures are after costs{result.tax_paid > 0 ? " and tax" : ""}, as if everything is sold on the last day (buy and hold too).
+                Costs paid <span className="font-mono text-ink-100">{cur}{result.costs_paid.toLocaleString()}</span>
+                {result.costs.market === "IN" && <> · tax <span className="font-mono text-ink-100">{cur}{result.tax_paid.toLocaleString()}</span></>}
+              </p>
+              <p className="text-[11px] text-ink-500">Assumed: {result.costs.notes.join("; ")}.</p>
+            </div>
+          )}
 
           {/* Equity curve */}
           <BentoCard span="col-span-12" title="Equity Curve vs Buy & Hold">
@@ -114,7 +128,8 @@ export default function BacktestPage() {
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend />
                 <ReferenceLine y={Number(capital)} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
-                <Line dataKey="value" stroke="#ff3b5c" strokeWidth={2} dot={false} name="Strategy" />
+                <Line dataKey="value" stroke="#ff3b5c" strokeWidth={2} dot={false} name="Strategy (after costs)" />
+                <Line dataKey="gross" stroke="#ff3b5c" strokeOpacity={0.35} strokeWidth={1} dot={false} name="Strategy (before costs)" />
                 <Line dataKey="benchmark" stroke="#6ee7b7" strokeWidth={1} dot={false} name="Buy & Hold" strokeDasharray="5 5" />
               </ComposedChart>
             </ResponsiveContainer>
@@ -130,7 +145,7 @@ export default function BacktestPage() {
                 <Row k="Win Rate" v={`${result.win_rate}%`} />
                 <Row k="Avg Win" v={`+${result.avg_win}%`} />
                 <Row k="Avg Loss" v={`${result.avg_loss}%`} />
-                <Row k="Final Value" v={`$${result.final_value.toLocaleString()}`} />
+                <Row k="Final Value" v={`${cur}${result.final_value.toLocaleString()}`} />
               </div>
             </BentoCard>
 
@@ -148,7 +163,7 @@ export default function BacktestPage() {
                       <span className="text-[10px] text-ink-500">{t.date}</span>
                     </div>
                     <div className="text-right text-[10px] font-mono">
-                      <span className="text-ink-100">${t.price}</span>
+                      <span className="text-ink-100">{cur}{t.price}</span>
                       {t.pnl_pct !== undefined && (
                         <span className={cn("ml-2", t.pnl_pct >= 0 ? "text-emerald-400" : "text-crimson-400")}>
                           {t.pnl_pct >= 0 ? "+" : ""}{t.pnl_pct}%

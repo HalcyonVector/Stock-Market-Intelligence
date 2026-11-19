@@ -81,7 +81,7 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 
 - **Import your holdings:** upload a broker CSV (Zerodha, Upstox, or any file with symbol, quantity and average cost). It is parsed in the browser; only tickers and quantities are sent to be priced, and nothing is stored.
 - **Optimizer:** mean-variance optimisation (SciPy SLSQP) with an efficient frontier, five allocation strategies, a 2,000-path Student-t Monte Carlo, a correlation matrix, six historical crash stress tests and a rebalancer.
-- **Strategy tester:** backtest RSI, MACD, moving-average and Bollinger rules with equity curves, Sharpe ratio, maximum drawdown and alpha against buy-and-hold.
+- **Strategy tester:** backtest RSI, MACD, moving-average and Bollinger rules with equity curves, Sharpe ratio, maximum drawdown and alpha against buy-and-hold. Results are shown after trading costs (STT, stamp duty, exchange and SEBI fees with GST for NSE stocks; slippage for both markets) and, for NSE stocks, Indian capital-gains tax, with the before-cost figures alongside.
 - **Paper trading:** virtual USD and INR accounts at real (delayed) prices, with a daily performance chart against the S&P 500 or Nifty 50 rebuilt from the trade log.
 
 ### Saving and Investing (India and US)
@@ -272,7 +272,7 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - **Prices are delayed, and Indian prices are not live.** US quotes are around 15 minutes delayed; NSE prices are the last close or a delayed midday snapshot, and the midday run depends on GitHub's scheduling, which can be hours late.
 - **Same-day correlations across time zones understate the link** between US and Indian markets (see Findings).
 - **Tax maths is simplified:** India's new regime only, interest taxed yearly, no surcharge or cess, one LTCG exemption per redemption. Treat it as a comparison tool, not a tax calculation.
-- **Models are deliberately simple.** The SARIMA forecast, discovery scores and fear and greed gauge are illustrations, not predictions; backtests ignore transaction costs, taxes and slippage.
+- **Models are deliberately simple.** The SARIMA forecast, discovery scores and fear and greed gauge are illustrations, not predictions; backtest costs use one discount broker's published NSE delivery charges and a flat 0.05% slippage, and US results deduct no tax because it depends on where the investor lives.
 - **Some cards depend on rate-limited or unofficial sources** (Google Trends, Reddit, StockTwits) and fall back to sample data when they fail; anything sample is labelled.
 - **Holdings and goals in Safe Invest live in the browser**, so they don't follow a linked device, and anonymous identities are lost if browser storage is cleared without linking another device first.
 
@@ -284,7 +284,6 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
-- Backtests with brokerage, STT and capital-gains tax deducted.
 - A downloadable dataset and notebook that regenerate the Findings tables.
 
 ---
