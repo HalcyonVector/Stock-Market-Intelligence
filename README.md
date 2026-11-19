@@ -288,11 +288,6 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
-<<<<<<< HEAD
-- A downloadable dataset and notebook that regenerate the Findings tables.
-=======
-- Backtests with brokerage, STT and capital-gains tax deducted.
->>>>>>> origin/main
 
 ---
 
