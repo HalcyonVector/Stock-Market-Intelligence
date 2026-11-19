@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, Reorder, useDragControls } from "framer-motion";
-import { SlidersHorizontal, Eye, EyeOff, RotateCcw, ChevronDown, ChevronUp, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { SlidersHorizontal, Eye, EyeOff, RotateCcw, ChevronDown, ChevronUp, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarketOverview } from "./MarketOverview";
 import { MarketBriefing } from "./MarketBriefing";
@@ -125,29 +125,35 @@ function FoldCell({ id, span, foldable, className, children }: {
   );
 }
 
-/** One card in the Customize list: drag the grip (mouse or touch), or use the
- *  arrow buttons, to move it; the eye shows or hides it. */
-function OrderItem({ id, label, on, first, last, onToggle, onMove }: {
-  id: CardId; label: string; on: boolean; first: boolean; last: boolean;
+/** One tile in the Customize grid. Drag the grip (mouse or touch) onto another
+ *  tile, or use the arrows, to move it; clicking the name shows or hides it. */
+function OrderTile({ id, n, label, on, first, last, dragging, onToggle, onMove, onGrab }: {
+  id: CardId; n: number; label: string; on: boolean; first: boolean; last: boolean; dragging: boolean;
   onToggle: () => void; onMove: (d: -1 | 1) => void;
+  onGrab: () => void;
 }) {
-  const controls = useDragControls();
   return (
-    <Reorder.Item value={id} dragListener={false} dragControls={controls}
-      className={cn("flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs",
-        on ? "border-crimson-500/30 bg-crimson-600/10 text-ink-100" : "border-white/10 bg-base-950/60 text-ink-500")}>
-      <button onPointerDown={(e) => controls.start(e)} aria-label={`Drag ${label}`}
-        className="cursor-grab touch-none p-1 text-ink-500 hover:text-ink-300 active:cursor-grabbing">
-        <GripVertical size={14} />
+    <motion.div layout transition={{ duration: 0.15 }} data-order-id={id}
+      className={cn("flex min-w-0 items-center gap-1 rounded-lg border py-1 pl-1 pr-1.5 text-xs",
+        on ? "border-crimson-500/30 bg-crimson-600/10 text-ink-100" : "border-white/10 bg-base-950/60 text-ink-500",
+        dragging && "z-10 ring-1 ring-crimson-400/60")}>
+      <button aria-label={`Drag ${label}`}
+        onPointerDown={(e) => { e.preventDefault(); onGrab(); }}
+        className="shrink-0 cursor-grab touch-none p-0.5 text-ink-500 hover:text-ink-300 active:cursor-grabbing">
+        <GripVertical size={13} />
       </button>
-      <span className="flex-1 truncate">{label}</span>
-      <button onClick={() => onMove(-1)} disabled={first} aria-label={`Move ${label} up`}
-        className="rounded p-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"><ArrowUp size={13} /></button>
-      <button onClick={() => onMove(1)} disabled={last} aria-label={`Move ${label} down`}
-        className="rounded p-1 text-ink-500 hover:text-ink-200 disabled:opacity-30"><ArrowDown size={13} /></button>
-      <button onClick={onToggle} aria-pressed={on} aria-label={on ? `Hide ${label}` : `Show ${label}`}
-        className="rounded p-1 hover:text-ink-200">{on ? <Eye size={13} /> : <EyeOff size={13} />}</button>
-    </Reorder.Item>
+      <span className="w-4 shrink-0 text-right font-mono text-[10px] text-ink-500">{n}</span>
+      <button onClick={onToggle} aria-pressed={on} title={on ? "Shown: click to hide" : "Hidden: click to show"}
+        aria-label={on ? `Hide ${label}` : `Show ${label}`}
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-ink-50">
+        <span className="truncate">{label}</span>
+        {on ? <Eye size={11} className="shrink-0 opacity-60" /> : <EyeOff size={11} className="shrink-0" />}
+      </button>
+      <button onClick={() => onMove(-1)} disabled={first} aria-label={`Move ${label} earlier`}
+        className="hidden shrink-0 rounded p-0.5 text-ink-500 hover:text-ink-200 disabled:opacity-25 sm:block"><ChevronLeft size={13} /></button>
+      <button onClick={() => onMove(1)} disabled={last} aria-label={`Move ${label} later`}
+        className="hidden shrink-0 rounded p-0.5 text-ink-500 hover:text-ink-200 disabled:opacity-25 sm:block"><ChevronRight size={13} /></button>
+    </motion.div>
   );
 }
 
@@ -155,8 +161,52 @@ export function Dashboard() {
   const [shown, setShown] = useState<Set<CardId>>(new Set(DEFAULT_SHOWN));
   const [order, setOrder] = useState<CardId[]>(DEFAULT_ORDER);
   const [editing, setEditing] = useState(false);
+  const [dragId, setDragId] = useState<CardId | null>(null);
+  // A ref as well, so pointer moves count before React re-renders.
+  const dragRef = useRef<CardId | null>(null);
+  const grab = (id: CardId) => { dragRef.current = id; setDragId(id); };
 
   useEffect(() => { setShown(loadShown()); setOrder(loadOrder()); }, []);
+
+  // While dragging, move the grabbed tile to wherever the pointer is.
+  const dragTo = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y)?.closest("[data-order-id]");
+    const target = el?.getAttribute("data-order-id") as CardId | null;
+    const moving = dragRef.current;
+    if (!moving || !target || target === moving) return;
+    setOrder((prev) => {
+      const next = prev.filter((id) => id !== moving);
+      next.splice(prev.indexOf(target), 0, moving);
+      return next;
+    });
+  };
+  const drop = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setDragId(null);
+    // Save the latest order, including a move still waiting to render.
+    setOrder((prev) => {
+      try { localStorage.setItem(ORDER_KEY, JSON.stringify(prev)); } catch { /* ignore */ }
+      return prev;
+    });
+  };
+  // Follow the pointer on the window: moving a tile in the DOM drops pointer
+  // capture, so listeners on the grip would miss the rest of the drag.
+  const dragging = dragId !== null;
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => dragTo(e.clientX, e.clientY);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", drop);
+    window.addEventListener("pointercancel", drop);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", drop);
+      window.removeEventListener("pointercancel", drop);
+    };
+    // dragTo and drop only read refs and state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging]);
 
   const saveOrder = (next: CardId[]) => {
     setOrder(next);
@@ -211,16 +261,17 @@ export function Dashboard() {
             className="overflow-hidden"
           >
             <div className="glass space-y-2 p-3">
-              <Reorder.Group axis="y" values={order} onReorder={saveOrder} className="grid gap-1.5 sm:max-w-md">
+              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:grid-cols-5">
                 {order.map((id, i) => (
-                  <OrderItem key={id} id={id} label={byId[id].label} on={shown.has(id)}
-                    first={i === 0} last={i === order.length - 1}
-                    onToggle={() => toggle(id)} onMove={(d) => move(id, d)} />
+                  <OrderTile key={id} id={id} n={i + 1} label={byId[id].label} on={shown.has(id)}
+                    first={i === 0} last={i === order.length - 1} dragging={dragId === id}
+                    onToggle={() => toggle(id)} onMove={(d) => move(id, d)}
+                    onGrab={() => grab(id)} />
                 ))}
-              </Reorder.Group>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="flex-1 text-[10px] text-ink-500">
-                  Drag a card by its grip, or use the arrows, to change the order. The layout rearranges itself for whatever you pick. Hidden cards stop loading data.
+                  Click a name to show or hide it. Drag by the grip<span className="hidden sm:inline"> or use the arrows</span> to change the order. The layout rearranges itself for whatever you pick, and hidden cards stop loading data.
                 </p>
                 {!isDefault && (
                   <button onClick={() => { update(new Set(DEFAULT_SHOWN)); saveOrder(DEFAULT_ORDER); }}
