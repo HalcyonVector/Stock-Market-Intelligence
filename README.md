@@ -285,7 +285,6 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
 - Backtests with brokerage, STT and capital-gains tax deducted.
-- A downloadable dataset and notebook that regenerate the Findings tables.
 
 ---
 
