@@ -135,3 +135,16 @@ test("mutual fund transaction file is read in the browser", async ({ page }) => 
   await expect(page.getByText("₹3,000").first()).toBeVisible();
   await expect(page.getByText(/3 transactions since Jan 2024 · 99.04 units/)).toBeVisible();
 });
+
+test("dashboard cards can be reordered and the order is kept", async ({ page }) => {
+  await open(page, "/");
+  const first = () => page.locator("[data-card]").first().getAttribute("data-card");
+  await page.locator("[data-card]").first().waitFor();
+  await page.getByRole("button", { name: "Customize" }).click();
+  await page.getByRole("button", { name: "Move Global Cues up" }).click();
+  await page.getByRole("button", { name: "Move Global Cues up" }).click();
+  await expect.poll(first).toBe("cues");
+  await page.reload();
+  await page.locator("[data-card]").first().waitFor();
+  await expect.poll(first).toBe("cues");
+});

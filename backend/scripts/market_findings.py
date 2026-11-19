@@ -7,7 +7,9 @@ Downloads adjusted daily closes for the tracked universe (97 US, 63 NSE) and
 the two benchmarks with yfinance, then reports per market: median 1-year
 return, share of stocks that rose, median annualised volatility, median
 maximum drawdown, average pairwise correlation of daily returns, and the
-same-day US vs India correlation. Also prints FD vs PPF real returns and
+same-day US vs India correlation, how a US session reaches the Nifty's
+next open, and the same statistics on today's S&P 100 and Nifty 50
+members as a check on the hand-picked list. Also prints FD vs PPF real returns and
 Direct vs Regular plan returns for a few mutual funds (AMFI NAVs, mfapi.in).
 
 Needs network access; uses no API keys and writes nothing.
@@ -155,6 +157,128 @@ def index_cues(close: pd.DataFrame) -> dict | None:
     }
 
 
+def _next_session_pairs(us: pd.Series, india_index: pd.DatetimeIndex) -> list[tuple]:
+    """(US date, US value, next Indian session date) for every US session."""
+    out = []
+    for d, v in us.items():
+        nxt = india_index[india_index > d]
+        if len(nxt):
+            out.append((d, v, nxt[0]))
+    return out
+
+
+def lag_study(spy_close: pd.Series, nifty: pd.DataFrame) -> dict | None:
+    """How a US session reaches the Nifty 50: split the Nifty's next session
+    into the opening gap (previous close to open) and the day itself (open to
+    close), and test whether the link held across the window.
+
+    ``nifty`` needs ``Open`` and ``Close`` columns. Returns None when there is
+    too little overlap to say anything.
+    """
+    spy = spy_close.dropna().pct_change().dropna() * 100
+    nf = nifty[["Open", "Close"]].dropna()
+    prev_close = nf["Close"].shift(1)
+    gap = (nf["Open"] / prev_close - 1) * 100
+    intraday = (nf["Close"] / nf["Open"] - 1) * 100
+    full = (nf["Close"] / prev_close - 1) * 100
+    rows = [{"date": d, "spy": v, "gap": gap.get(n), "intraday": intraday.get(n), "full": full.get(n)}
+            for d, v, n in _next_session_pairs(spy, nf.index)]
+    df = pd.DataFrame(rows).dropna()
+    if len(df) < 60:
+        return None
+    slope, _ = np.polyfit(df["spy"], df["full"], 1)
+    r = float(df["spy"].corr(df["full"]))
+    cov_full = float(df["spy"].cov(df["full"]))
+
+    # Quarter by quarter: did the link hold, or was it one episode?
+    df["quarter"] = pd.to_datetime(df["date"]).dt.to_period("Q")
+    quarters = []
+    for q, g in df.groupby("quarter"):
+        if len(g) >= 30:
+            quarters.append({"quarter": str(q), "sessions": int(len(g)),
+                             "corr": round(float(g["spy"].corr(g["full"])), 2)})
+    return {
+        "sessions": int(len(df)),
+        "next_day_corr": round(r, 2),
+        "r_squared_pct": round(r * r * 100, 1),
+        "beta": round(float(slope), 2),
+        "gap_corr": round(float(df["spy"].corr(df["gap"])), 2),
+        "intraday_corr": round(float(df["spy"].corr(df["intraday"])), 2),
+        # Share of the link (covariance with the US day) that sits in the
+        # opening gap. Gap and rest-of-day add up to the full move, so the
+        # two shares add up to 100.
+        "gap_share_pct": round(float(df["spy"].cov(df["gap"])) / cov_full * 100, 1) if cov_full else None,
+        "quarters": quarters,
+    }
+
+
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+NIFTY50_CSV = "https://archives.nseindia.com/content/indices/ind_nifty50list.csv"
+_UA = {"User-Agent": "StockIntel-study/1.0 (https://github.com/HalcyonVector/Stock-Market-Intelligence)"}
+
+
+def index_members() -> dict[str, list[str]]:
+    """Today's S&P 100 (Wikipedia, through its API) and Nifty 50 (NSE's own
+    list). Either may come back empty if its source is unreachable."""
+    import io
+
+    import httpx
+
+    out: dict[str, list[str]] = {"US": [], "IN": []}
+    try:
+        r = httpx.get(WIKI_API, params={"action": "parse", "page": "S&P 100", "prop": "text",
+                                        "format": "json", "formatversion": 2}, headers=_UA, timeout=30)
+        for t in pd.read_html(io.StringIO(r.json()["parse"]["text"])):
+            if "Symbol" in t.columns and len(t) > 90:
+                out["US"] = sorted({str(x).replace(".", "-") for x in t["Symbol"]})
+                break
+    except Exception as e:  # noqa: BLE001
+        print(f"S&P 100 list unavailable: {e}")
+    try:
+        r = httpx.get(NIFTY50_CSV, headers=_UA, timeout=30, follow_redirects=True)
+        out["IN"] = sorted(pd.read_csv(io.StringIO(r.text))["Symbol"].astype(str).str.strip())
+    except Exception as e:  # noqa: BLE001
+        print(f"Nifty 50 list unavailable: {e}")
+    return out
+
+
+def selection_check(period: str, tracked: dict[str, dict]) -> dict | None:
+    """Is the hand-picked list a fair sample? Recompute the market statistics
+    on today's S&P 100 and Nifty 50 members and set them beside the tracked
+    list. Today's members still carry survivorship bias (stocks that left the
+    index during the year are missing): this removes the hand-picking, not
+    the survivorship."""
+    members = index_members()
+    if not members["US"] and not members["IN"]:
+        return None
+    tickers = {f"US:{s}": s for s in members["US"]} | {f"IN:{s}": f"{s}.NS" for s in members["IN"]}
+    raw = yf.download(list(tickers.values()), period=period, interval="1d", auto_adjust=True,
+                      progress=False, threads=True, group_by="ticker")
+    have = set(raw.columns.get_level_values(0))
+    close = pd.DataFrame({k: raw[t]["Close"] for k, t in tickers.items() if t in have})
+    close = close.dropna(axis=1, thresh=int(len(close) * 0.8))
+    rets = close.pct_change(fill_method=None)
+    out = {}
+    for m, name in (("US", "S&P 100"), ("IN", "Nifty 50")):
+        cols = [c for c in close.columns if c.startswith(f"{m}:")]
+        if len(cols) < 20:
+            continue
+        idx = market_stats(close, rets, cols)
+        out[m] = {"index": name, "members": idx, "tracked": tracked[m],
+                  "median_return_gap_pts": round(tracked[m]["median_return_pct"] - idx["median_return_pct"], 1),
+                  "median_volatility_gap_pts": round(tracked[m]["median_volatility_pct"] - idx["median_volatility_pct"], 1)}
+    return out or None
+
+
+def _lag(close: pd.DataFrame, period: str) -> dict | None:
+    if "SPY" not in close.columns:
+        return None
+    nifty = yf.download("^NSEI", period=period, interval="1d", auto_adjust=True, progress=False)
+    if isinstance(nifty.columns, pd.MultiIndex):
+        nifty.columns = nifty.columns.get_level_values(0)
+    return lag_study(close["SPY"], nifty)
+
+
 def build_report(period: str = "1y", with_stocks: bool = False) -> dict:
     close = load_closes(period)
     rets = close.pct_change(fill_method=None)
@@ -168,12 +292,14 @@ def build_report(period: str = "1y", with_stocks: bool = False) -> dict:
         "same_day_us_india_correlation": round(float(np.nanmean(cross)), 2),
         "global_cues": global_cues(rets, us, india),
         "index_cues": index_cues(close),
+        "lag_study": _lag(close, period),
         "benchmarks_pct": {b: round(float((close[b].dropna().iloc[-1] / close[b].dropna().iloc[0] - 1) * 100), 1)
                            for b in ("SPY", "^NSEI") if b in close.columns},
         "real_returns_pct": {"FD 7% at 30% slab": real_return(0.07, 0.30, 0.05),
                              "PPF 7.1% tax-free": real_return(0.071, 0.0, 0.05)},
         "direct_vs_regular": asyncio.run(fund_gaps()),
     }
+    report["selection_check"] = selection_check(period, {"US": report["US"], "IN": report["IN"]})
     if with_stocks:
         report["stocks"] = per_stock(close, rets, us, "US") + per_stock(close, rets, india, "IN")
     return report
@@ -212,6 +338,17 @@ def main() -> None:
     print(f"US vs India correlation: same day {gc['same_day_corr']}, US day vs next Indian session {gc['next_day_corr']}; "
           f"on the {gc['big_us_days']} biggest US days India moved the same way next session "
           f"{gc['big_day_same_direction_pct']}% of the time")
+    ls = report.get("lag_study")
+    if ls:
+        print(f"S&P 500 day vs next Nifty session ({ls['sessions']} sessions): corr {ls['next_day_corr']}, "
+              f"explains {ls['r_squared_pct']}%, beta {ls['beta']}; opening gap corr {ls['gap_corr']} vs "
+              f"rest of day {ls['intraday_corr']} ({ls['gap_share_pct']}% of the link is in the gap); "
+              f"by quarter {[(q['quarter'], q['corr']) for q in ls['quarters']]}")
+    for m, sc in (report.get("selection_check") or {}).items():
+        print(f"{m} tracked list vs {sc['index']} members ({sc['members']['stocks']}): median return "
+              f"{sc['tracked']['median_return_pct']}% vs {sc['members']['median_return_pct']}%, median vol "
+              f"{sc['tracked']['median_volatility_pct']}% vs {sc['members']['median_volatility_pct']}%, "
+              f"share rose {sc['tracked']['share_rose_pct']}% vs {sc['members']['share_rose_pct']}%")
     print(f"Benchmarks: {report['benchmarks_pct']}")
     print(f"Real returns (5% inflation): {report['real_returns_pct']}")
     for f in report["direct_vs_regular"]:

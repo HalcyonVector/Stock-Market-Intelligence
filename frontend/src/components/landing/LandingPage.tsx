@@ -7,6 +7,7 @@ import {
   ChevronDown, ArrowRight, Sparkles, Globe, Lock, Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 /* ── Particle Background ─────────────────────────────────────────── */
 function ParticleField() {
@@ -481,18 +482,9 @@ export function LandingPage({ onEnter }: { onEnter: () => void }) {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <motion.footer
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 1 }}
-        className="relative z-10 border-t border-white/[0.04] py-8 text-center"
-      >
-        <p className="text-xs text-white/20">
-          Stock Discovery & Intelligence. Educational use only. Not financial advice.
-        </p>
-      </motion.footer>
+      <div className="relative z-10">
+        <SiteFooter />
+      </div>
     </div>
   );
 }

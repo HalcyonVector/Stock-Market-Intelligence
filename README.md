@@ -38,6 +38,8 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **US stocks were riskier, not just better.** The median US stock swung 37% more than the median Indian one (34.6% vs 25.3% annualised) and had a deeper worst fall. Part of that is the tracked US list itself, which leans towards high-beta technology, crypto-linked and recent IPO names; see Honest Limitations.
 - **Even "good" years contain deep falls.** The median stock in both markets fell more than 25% from a peak at some point in the year. Anyone who sizes a position assuming a smooth ride will sell at the bottom.
 - **US and Indian stocks look unrelated on the same day, but not the next day.** Equal-weighted daily returns of the two markets correlate at just **0.03** on the same date, which looks like perfect diversification. Pair each US session with India's *next* session instead and the correlation rises to **0.29**, and on the 49 biggest US days (top fifth by size of move) Indian stocks moved the same way at their next session **75.5%** of the time. The NSE closes before New York opens, so US news reaches Indian prices a day later. The Market Study page charts this.
+- **The US move lands at the Nifty's open, and only there.** Splitting the Nifty 50's next session at its open (250 sessions to 19 Nov 2026), the S&P 500 day correlates at **0.38** with the opening gap and **-0.09** with the rest of the day, so the whole link is priced in by the open and the rest of the session gives a little of it back. A 1% S&P 500 day moved the Nifty about **0.25%** the next session, which explains only **5.5%** of the Nifty's next-day moves.
+- **The link was strongest early in the year and has faded.** Quarter by quarter the next-session correlation went **0.59** (Q1 2026), 0.15, 0.15 and **-0.16** (Q4 so far). One full-year number hides that most of it came from one stretch, so the Market Study page shows it by quarter.
 
 **Saving and investing in India**
 
@@ -66,7 +68,7 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **Search any stock:** any US, NSE or BSE listing, not only the tracked 160; untracked stocks join the daily history sync once someone adds them to a watchlist.
 - **Data provenance on every price:** each quote is tagged live, delayed, end-of-day or sample, and the UI badges anything that is not live.
 - **Global Cues:** last night's S&P 500 move and how often the Nifty 50 followed at its next session after US days like it (from the weekly study).
-- **Adaptive dashboard:** eight cards by default and five more under Customize; whatever combination is chosen, cards are packed into balanced rows sized to their content, so nothing is cut off or left mostly empty.
+- **Adaptive dashboard:** eight cards by default and five more under Customize, where cards can be dragged (or moved with arrow buttons) into any order; whatever combination and order is chosen, cards are packed into balanced rows sized to their content, so nothing is cut off or left mostly empty.
 - **Context cards:** Wall Street analyst consensus (with monthly upgrades and downgrades), US insider filings classified by SEC transaction code, official US economic release dates with the S&P 500's measured average move on past release days, and sector rotation by momentum, average move and breadth.
 
 ### Stock Research
@@ -81,7 +83,7 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 
 - **Import your holdings:** upload a broker CSV (Zerodha, Upstox, or any file with symbol, quantity and average cost). It is parsed in the browser; only tickers and quantities are sent to be priced, and nothing is stored.
 - **Optimizer:** mean-variance optimisation (SciPy SLSQP) with an efficient frontier, five allocation strategies, a 2,000-path Student-t Monte Carlo, a correlation matrix, six historical crash stress tests and a rebalancer.
-- **Strategy tester:** backtest RSI, MACD, moving-average and Bollinger rules with equity curves, Sharpe ratio, maximum drawdown and alpha against buy-and-hold.
+- **Strategy tester:** backtest RSI, MACD, moving-average and Bollinger rules with equity curves, Sharpe ratio, maximum drawdown and alpha against buy-and-hold. Results are shown after trading costs (STT, stamp duty, exchange and SEBI fees with GST for NSE stocks; slippage for both markets) and, for NSE stocks, Indian capital-gains tax, with the before-cost figures alongside.
 - **Paper trading:** virtual USD and INR accounts at real (delayed) prices, with a daily performance chart against the S&P 500 or Nifty 50 rebuilt from the trade log.
 
 ### Saving and Investing (India and US)
@@ -116,6 +118,8 @@ Dark "terminal" layout with glass cards, a grouped sidebar, a US / India / Globa
 | [FRED](https://fred.stlouisfed.org/docs/api/fred/) (St. Louis Fed) | REST | Yes (free) | Official release calendar for CPI, jobs, GDP, PCE, PPI, retail sales, housing starts and jobless claims |
 | Federal Reserve | Published schedule | No | FOMC meeting dates (next year's marked tentative) |
 | [mfapi.in](https://www.mfapi.in) (AMFI NAV files) | REST | No | Daily NAV history for every Indian mutual fund scheme |
+| [NSE index constituents](https://archives.nseindia.com/content/indices/ind_nifty50list.csv) | CSV | No | Today's Nifty 50 members, for the selection check in the Market Study |
+| [Wikipedia: S&P 100](https://en.wikipedia.org/wiki/S%26P_100) (MediaWiki API) | REST | No | Today's S&P 100 members, for the same check |
 | [US Treasury FiscalData](https://fiscaldata.treasury.gov) | REST | No | Treasury bill rates |
 | India Ministry of Finance notifications | Curated quarterly | No | Small-savings rates (PPF, SCSS, SSY, NSC, KVP, POMIS and others) |
 | WSJ, CNBC, Economic Times, Mint, Business Standard, Moneycontrol | RSS | No | Market headlines with publish times |
@@ -269,11 +273,11 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 
 ## Honest Limitations
 
-- **Survivorship and selection bias.** The 160 tracked stocks are a hand-picked list of well-known names that exist today, not an index's historical membership. The US list leans towards volatile technology and crypto-linked stocks, which inflates both its returns and its volatility in Findings.
+- **Survivorship and selection bias.** The 160 tracked stocks are a hand-picked list of well-known names that exist today, not an index's historical membership. Measured against today's index members (19 Nov 2026), the hand-picking mainly inflates US volatility: the tracked US median is 35.3% against 30.2% for the S&P 100, while its median return is a little *lower* (12.4% vs 13.9%). The Indian list is close to the Nifty 50 (1.4% vs 2.6% median return, 26.0% vs 24.8% volatility). Index members still miss stocks that left the index during the year, so survivorship bias remains.
 - **Prices are delayed, and Indian prices are not live.** US quotes are around 15 minutes delayed; NSE prices are the last close or a delayed midday snapshot, and the midday run depends on GitHub's scheduling, which can be hours late.
 - **Same-day correlations across time zones understate the link** between US and Indian markets (see Findings).
 - **Tax maths is simplified:** India's new regime only, interest taxed yearly, no surcharge or cess, one LTCG exemption per redemption. Treat it as a comparison tool, not a tax calculation.
-- **Models are deliberately simple.** The SARIMA forecast, discovery scores and fear and greed gauge are illustrations, not predictions; backtests ignore transaction costs, taxes and slippage.
+- **Models are deliberately simple.** The SARIMA forecast, discovery scores and fear and greed gauge are illustrations, not predictions; backtest costs use one discount broker's published NSE delivery charges and a flat 0.05% slippage, and US results deduct no tax because it depends on where the investor lives.
 - **Some cards depend on rate-limited or unofficial sources** (Google Trends, Reddit, StockTwits) and fall back to sample data when they fail; anything sample is labelled.
 - **Holdings and goals in Safe Invest live in the browser**, so they don't follow a linked device, and anonymous identities are lost if browser storage is cleared without linking another device first.
 
@@ -281,12 +285,9 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 
 ## Suggested Future Features
 
-- Drag-to-reorder dashboard cards (the layout engine already handles any order).
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Read the CAMS/KFintech Consolidated Account Statement PDF directly (the transaction CSV import already computes XIRR).
-- Backtests with brokerage, STT and capital-gains tax deducted.
-- A downloadable dataset and notebook that regenerate the Findings tables.
 
 ---
 

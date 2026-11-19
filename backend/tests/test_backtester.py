@@ -119,3 +119,40 @@ def test_backtest_insufficient_data_returns_error(monkeypatch):
     monkeypatch.setattr(bt, "get_redis", lambda: _FakeRedis())
     out = asyncio.run(bt.backtest_strategy("AAPL", "rsi_oversold"))
     assert "error" in out
+
+
+# --------------------------------------------------------------------------- #
+# Costs and tax
+# --------------------------------------------------------------------------- #
+from app.services.backtester import IN_COSTS, US_COSTS, india_tax  # noqa: E402
+
+
+def test_india_tax_short_term_and_exemption():
+    assert india_tax([(10_000.0, 30)]) == 10_000 * 0.20 * 1.04
+    # Long-term gains under Rs 1.25 lakh are exempt.
+    assert india_tax([(100_000.0, 400)]) == 0
+    assert round(india_tax([(225_000.0, 400)]), 2) == round(100_000 * 0.125 * 1.04, 2)
+    # A short-term loss offsets a long-term gain.
+    assert india_tax([(-50_000.0, 30), (200_000.0, 400)]) == 25_000 * 0.125 * 1.04
+    assert india_tax([(-5_000.0, 30)]) == 0
+
+
+def test_costs_lower_the_result():
+    closes = np.array([100.0, 110.0, 121.0])
+    days = ["2026-01-01", "2026-02-01", "2026-03-01"]
+    gross = _simulate(closes, days, [1, -1, 0], 10000)
+    us = _simulate(closes, days, [1, -1, 0], 10000, US_COSTS)
+    ind = _simulate(closes, days, [1, -1, 0], 10000, IN_COSTS)
+    assert gross["final_value"] == 11000
+    assert ind["final_value"] < us["final_value"] < gross["final_value"]
+    assert us["tax_paid"] == 0 and ind["tax_paid"] > 0
+    assert us["costs_paid"] > 0
+
+
+def test_open_position_is_sold_on_the_last_day_with_costs():
+    closes = np.array([100.0, 100.0, 100.0])
+    res = _simulate(closes, ["2026-01-01", "2026-01-02", "2026-01-03"], [1, 0, 0], 10000, US_COSTS)
+    # Flat prices: only the two slippage charges are lost, same as buy and hold.
+    expected = 10000 / (1 + US_COSTS.buy) * (1 - US_COSTS.sell)
+    assert abs(res["final_value"] - expected) < 0.01
+    assert abs(res["alpha"]) < 0.01
