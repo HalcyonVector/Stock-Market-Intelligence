@@ -20,6 +20,7 @@ const REFS: [string, string][] = [
   ["The Sharpe Ratio, W. F. Sharpe (1994)", "https://web.stanford.edu/~wfsharpe/art/sr/sr.htm"],
   ["Maximum drawdown", "https://www.investopedia.com/terms/m/maximum-drawdown-mdd.asp"],
   ["Correlation coefficient", "https://www.investopedia.com/terms/c/correlationcoefficient.asp"],
+  ["Zerodha charges (NSE delivery costs used in backtests)", "https://zerodha.com/charges"],
   ["CNN Fear and Greed Index (gauge design)", "https://www.cnn.com/markets/fear-and-greed"],
 ];
 
