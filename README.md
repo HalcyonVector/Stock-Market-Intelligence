@@ -66,7 +66,7 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **Search any stock:** any US, NSE or BSE listing, not only the tracked 160; untracked stocks join the daily history sync once someone adds them to a watchlist.
 - **Data provenance on every price:** each quote is tagged live, delayed, end-of-day or sample, and the UI badges anything that is not live.
 - **Global Cues:** last night's S&P 500 move and how often the Nifty 50 followed at its next session after US days like it (from the weekly study).
-- **Adaptive dashboard:** eight cards by default and five more under Customize; whatever combination is chosen, cards are packed into balanced rows sized to their content, so nothing is cut off or left mostly empty.
+- **Adaptive dashboard:** eight cards by default and five more under Customize, where cards can be dragged (or moved with arrow buttons) into any order; whatever combination and order is chosen, cards are packed into balanced rows sized to their content, so nothing is cut off or left mostly empty.
 - **Context cards:** Wall Street analyst consensus (with monthly upgrades and downgrades), US insider filings classified by SEC transaction code, official US economic release dates with the S&P 500's measured average move on past release days, and sector rotation by momentum, average move and breadth.
 
 ### Stock Research
@@ -280,7 +280,6 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 
 ## Suggested Future Features
 
-- Drag-to-reorder dashboard cards (the layout engine already handles any order).
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
