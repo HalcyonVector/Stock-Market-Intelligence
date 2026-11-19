@@ -38,6 +38,8 @@ Numbers below are from 13 Nov 2025 to 13 Nov 2026 (260 trading days) unless stat
 - **US stocks were riskier, not just better.** The median US stock swung 37% more than the median Indian one (34.6% vs 25.3% annualised) and had a deeper worst fall. Part of that is the tracked US list itself, which leans towards high-beta technology, crypto-linked and recent IPO names; see Honest Limitations.
 - **Even "good" years contain deep falls.** The median stock in both markets fell more than 25% from a peak at some point in the year. Anyone who sizes a position assuming a smooth ride will sell at the bottom.
 - **US and Indian stocks look unrelated on the same day, but not the next day.** Equal-weighted daily returns of the two markets correlate at just **0.03** on the same date, which looks like perfect diversification. Pair each US session with India's *next* session instead and the correlation rises to **0.29**, and on the 49 biggest US days (top fifth by size of move) Indian stocks moved the same way at their next session **75.5%** of the time. The NSE closes before New York opens, so US news reaches Indian prices a day later. The Market Study page charts this.
+- **The US move lands at the Nifty's open, and only there.** Splitting the Nifty 50's next session at its open (250 sessions to 19 Nov 2026), the S&P 500 day correlates at **0.38** with the opening gap and **-0.09** with the rest of the day, so the whole link is priced in by the open and the rest of the session gives a little of it back. A 1% S&P 500 day moved the Nifty about **0.25%** the next session, which explains only **5.5%** of the Nifty's next-day moves.
+- **The link was strongest early in the year and has faded.** Quarter by quarter the next-session correlation went **0.59** (Q1 2026), 0.15, 0.15 and **-0.16** (Q4 so far). One full-year number hides that most of it came from one stretch, so the Market Study page shows it by quarter.
 
 **Saving and investing in India**
 
@@ -115,6 +117,8 @@ Dark "terminal" layout with glass cards, a grouped sidebar, a US / India / Globa
 | [FRED](https://fred.stlouisfed.org/docs/api/fred/) (St. Louis Fed) | REST | Yes (free) | Official release calendar for CPI, jobs, GDP, PCE, PPI, retail sales, housing starts and jobless claims |
 | Federal Reserve | Published schedule | No | FOMC meeting dates (next year's marked tentative) |
 | [mfapi.in](https://www.mfapi.in) (AMFI NAV files) | REST | No | Daily NAV history for every Indian mutual fund scheme |
+| [NSE index constituents](https://archives.nseindia.com/content/indices/ind_nifty50list.csv) | CSV | No | Today's Nifty 50 members, for the selection check in the Market Study |
+| [Wikipedia: S&P 100](https://en.wikipedia.org/wiki/S%26P_100) (MediaWiki API) | REST | No | Today's S&P 100 members, for the same check |
 | [US Treasury FiscalData](https://fiscaldata.treasury.gov) | REST | No | Treasury bill rates |
 | India Ministry of Finance notifications | Curated quarterly | No | Small-savings rates (PPF, SCSS, SSY, NSC, KVP, POMIS and others) |
 | WSJ, CNBC, Economic Times, Mint, Business Standard, Moneycontrol | RSS | No | Market headlines with publish times |
@@ -268,7 +272,7 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 
 ## Honest Limitations
 
-- **Survivorship and selection bias.** The 160 tracked stocks are a hand-picked list of well-known names that exist today, not an index's historical membership. The US list leans towards volatile technology and crypto-linked stocks, which inflates both its returns and its volatility in Findings.
+- **Survivorship and selection bias.** The 160 tracked stocks are a hand-picked list of well-known names that exist today, not an index's historical membership. Measured against today's index members (19 Nov 2026), the hand-picking mainly inflates US volatility: the tracked US median is 35.3% against 30.2% for the S&P 100, while its median return is a little *lower* (12.4% vs 13.9%). The Indian list is close to the Nifty 50 (1.4% vs 2.6% median return, 26.0% vs 24.8% volatility). Index members still miss stocks that left the index during the year, so survivorship bias remains.
 - **Prices are delayed, and Indian prices are not live.** US quotes are around 15 minutes delayed; NSE prices are the last close or a delayed midday snapshot, and the midday run depends on GitHub's scheduling, which can be hours late.
 - **Same-day correlations across time zones understate the link** between US and Indian markets (see Findings).
 - **Tax maths is simplified:** India's new regime only, interest taxed yearly, no surcharge or cess, one LTCG exemption per redemption. Treat it as a comparison tool, not a tax calculation.
@@ -284,7 +288,11 @@ cd frontend && npx playwright test   # with the API and `npm start` running
 - Index-membership history to remove survivorship bias from the market statistics.
 - Factor and sector attribution: how much of a portfolio's return came from market, sector and stock-specific moves.
 - Import a mutual fund Consolidated Account Statement (CAS) and compute XIRR for SIP investors.
+<<<<<<< HEAD
 - A downloadable dataset and notebook that regenerate the Findings tables.
+=======
+- Backtests with brokerage, STT and capital-gains tax deducted.
+>>>>>>> origin/main
 
 ---
 
