@@ -90,6 +90,8 @@ export default function StudyPage() {
 
   const [start, end, days] = data.window;
   const gc = data.global_cues ?? {};
+  const ls = data.lag_study;
+  const sc = data.selection_check;
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   const rows: [string, (m: any) => string][] = [
     ["Stocks", (m) => String(m.stocks)],
@@ -205,6 +207,68 @@ export default function StudyPage() {
             in each market. Correlation is not a trading signal.
           </p>
         </BentoCard>
+
+        {ls && (
+          <BentoCard span="col-span-12 lg:col-span-6" title="When US news reaches India"
+            subtitle="S&P 500 session vs the Nifty 50's next session, split at the Nifty's open">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Stat label="Opening gap" value={ls.gap_corr.toFixed(2)} hint="correlation, close to open" accent />
+              <Stat label="Rest of the day" value={ls.intraday_corr.toFixed(2)} hint="correlation, open to close" />
+              <Stat label="Beta" value={ls.beta.toFixed(2)} hint="Nifty % per 1% S&P day" />
+              <Stat label="Explained" value={`${ls.r_squared_pct}%`} hint="of the Nifty's next move" />
+            </div>
+            {ls.quarters?.length > 1 && (
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={ls.quarters} margin={{ top: 14, right: 8, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="quarter" tick={{ fill: "#8a7479", fontSize: 11 }} />
+                  <YAxis domain={[-1, 1]} ticks={[-1, -0.5, 0, 0.5, 1]} tick={{ fill: "#8a7479", fontSize: 11 }} />
+                  <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number, _k, p: any) => [`${v.toFixed(2)} over ${p.payload.sessions} sessions`, "Next-session correlation"]} />
+                  <Bar dataKey="corr" radius={[3, 3, 0, 0]}>
+                    {ls.quarters.map((q: any) => <Cell key={q.quarter} fill={q.corr >= 0 ? "#f59e0b" : "#e11d48"} fillOpacity={0.75} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
+              The US move is priced in at the Nifty&apos;s open; what happens after the open is unrelated to it. Bars show the next-session
+              correlation quarter by quarter, so you can see whether the link held. {ls.sessions} sessions. Correlation is not a trading signal.
+            </p>
+          </BentoCard>
+        )}
+
+        {sc && (
+          <BentoCard span="col-span-12 lg:col-span-6" title="Is the tracked list a fair sample?"
+            subtitle="The same statistics on today's index members">
+            <table className="w-full text-xs">
+              <thead><tr className="text-left text-[10px] uppercase tracking-wide text-ink-500">
+                <th className="py-1 font-medium" /><th className="py-1 text-right font-medium">Median return</th>
+                <th className="py-1 text-right font-medium">Rose</th><th className="py-1 text-right font-medium">Median volatility</th>
+              </tr></thead>
+              <tbody>
+                {(["US", "IN"] as const).filter((m) => sc[m]).flatMap((m) => [
+                  <tr key={m + "t"} className="border-t border-white/5">
+                    <td className="py-1.5 text-ink-300">{MKT[m]} tracked ({sc[m].tracked.stocks})</td>
+                    <td className="py-1.5 text-right font-mono">{signed(sc[m].tracked.median_return_pct)}</td>
+                    <td className="py-1.5 text-right font-mono">{sc[m].tracked.share_rose_pct}%</td>
+                    <td className="py-1.5 text-right font-mono">{sc[m].tracked.median_volatility_pct}%</td>
+                  </tr>,
+                  <tr key={m + "i"} className="text-ink-400">
+                    <td className="py-1.5 pl-3">{sc[m].index} ({sc[m].members.stocks})</td>
+                    <td className="py-1.5 text-right font-mono">{signed(sc[m].members.median_return_pct)}</td>
+                    <td className="py-1.5 text-right font-mono">{sc[m].members.share_rose_pct}%</td>
+                    <td className="py-1.5 text-right font-mono">{sc[m].members.median_volatility_pct}%</td>
+                  </tr>,
+                ])}
+              </tbody>
+            </table>
+            <p className="mt-3 text-[11px] leading-relaxed text-ink-500">
+              The tracked list is hand-picked. Comparing it with the S&amp;P 100 and Nifty 50 shows how much that choice moves the numbers.
+              Today&apos;s members still miss stocks that left the index during the year, so both rows keep some survivorship bias.
+            </p>
+          </BentoCard>
+        )}
 
         <BentoCard span="col-span-12 lg:col-span-6" title="Median return by sector" subtitle="Sectors with at least 3 stocks, in the markets selected above">
           <ResponsiveContainer width="100%" height={Math.max(200, sectors.length * 32 + 30)}>
