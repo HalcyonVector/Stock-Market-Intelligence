@@ -30,14 +30,55 @@ from app.services import mutual_funds as mf
 FUNDS = ["parag parikh flexi cap fund", "hdfc flexi cap fund", "uti nifty next 50 index fund"]
 
 
+def _close_of(raw: pd.DataFrame, ticker: str) -> pd.Series | None:
+    """The Close column for one ticker from a yf.download frame, or None if
+    the ticker is missing or has no prices."""
+    if isinstance(raw.columns, pd.MultiIndex):
+        if ticker not in raw.columns.get_level_values(0):
+            return None
+        col = raw[ticker]["Close"]
+    elif "Close" in raw.columns:
+        col = raw["Close"]
+    else:
+        return None
+    if isinstance(col, pd.DataFrame):
+        col = col.iloc[:, 0]
+    return col if col.notna().any() else None
+
+
+def download_closes(tickers: dict[str, str], period: str, retries: int = 2,
+                    download=None) -> pd.DataFrame:
+    """Daily closes keyed like ``tickers`` (key -> Yahoo ticker).
+
+    One threaded batch first. yfinance's threads share a SQLite cache, and
+    under load a thread can fail with "database is locked", which leaves
+    that ticker empty (Citigroup was lost this way on 19 Nov 2026). Any
+    ticker that comes back empty is fetched again on its own, without
+    threads, before it is given up on."""
+    download = download or yf.download
+    opts = dict(period=period, interval="1d", auto_adjust=True, progress=False)
+    raw = download(list(tickers.values()), threads=True, group_by="ticker", **opts)
+    series = {k: _close_of(raw, t) for k, t in tickers.items()}
+    missing = [k for k, v in series.items() if v is None]
+    for _ in range(retries):
+        if not missing:
+            break
+        for k in missing:
+            try:
+                series[k] = _close_of(download(tickers[k], threads=False, **opts), tickers[k])
+            except Exception:  # noqa: BLE001 - a failed retry just stays missing
+                series[k] = None
+        missing = [k for k in missing if series[k] is None]
+    if missing:
+        print(f"no prices after retries: {', '.join(tickers[k] for k in missing)}")
+    return pd.DataFrame({k: v for k, v in series.items() if v is not None})
+
+
 def load_closes(period: str) -> pd.DataFrame:
     us = sorted(set(_UNIVERSE["US"]))
     india = sorted(s for s in set(_UNIVERSE["IN"]) if s not in _UNIVERSE["US"])
     tickers = {s: s for s in us} | {s: f"{s}.NS" for s in india} | {"SPY": "SPY", "^NSEI": "^NSEI"}
-    raw = yf.download(list(tickers.values()), period=period, interval="1d", auto_adjust=True,
-                      progress=False, threads=True, group_by="ticker")
-    have = set(raw.columns.get_level_values(0))
-    close = pd.DataFrame({s: raw[t]["Close"] for s, t in tickers.items() if t in have})
+    close = download_closes(tickers, period)
     # Keep symbols with at least ~80% of the window (drops recent listings).
     return close.dropna(axis=1, thresh=int(len(close) * 0.8))
 
@@ -252,10 +293,7 @@ def selection_check(period: str, tracked: dict[str, dict]) -> dict | None:
     if not members["US"] and not members["IN"]:
         return None
     tickers = {f"US:{s}": s for s in members["US"]} | {f"IN:{s}": f"{s}.NS" for s in members["IN"]}
-    raw = yf.download(list(tickers.values()), period=period, interval="1d", auto_adjust=True,
-                      progress=False, threads=True, group_by="ticker")
-    have = set(raw.columns.get_level_values(0))
-    close = pd.DataFrame({k: raw[t]["Close"] for k, t in tickers.items() if t in have})
+    close = download_closes(tickers, period)
     close = close.dropna(axis=1, thresh=int(len(close) * 0.8))
     rets = close.pct_change(fill_method=None)
     out = {}
