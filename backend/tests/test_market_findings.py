@@ -48,3 +48,48 @@ def test_quarters_cover_the_window():
 def test_too_little_overlap_returns_none():
     spy, nifty = _frames(n=40)
     assert lag_study(spy, nifty) is None
+
+
+def _yf_frame(tickers: list[str], dates, skip: set[str] = frozenset()) -> pd.DataFrame:
+    """A yf.download-style frame: (ticker, field) columns. Tickers in
+    ``skip`` come back all-NaN, as a thread that hit a locked cache does."""
+    cols = {}
+    for i, t in enumerate(tickers):
+        cols[(t, "Close")] = np.nan if t in skip else np.arange(len(dates)) + 10.0 * (i + 1)
+    return pd.DataFrame(cols, index=dates)
+
+
+def test_download_closes_retries_tickers_the_batch_lost():
+    from scripts.market_findings import download_closes
+
+    dates = pd.bdate_range("2026-01-05", periods=5)
+    calls = []
+
+    def fake(tickers, threads, **_):
+        calls.append((tickers, threads))
+        if isinstance(tickers, list):
+            return _yf_frame(tickers, dates, skip={"C"})  # batch loses Citigroup
+        return pd.DataFrame({"Close": np.arange(5) + 1.0}, index=dates)  # single fetch works
+
+    out = download_closes({"AAPL": "AAPL", "C": "C", "TCS": "TCS.NS"}, "1y", download=fake)
+    assert list(out.columns) == ["AAPL", "C", "TCS"]
+    assert out["C"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+    assert calls[1] == ("C", False)  # retried alone, without threads
+    assert len(calls) == 2
+
+
+def test_download_closes_gives_up_after_retries():
+    from scripts.market_findings import download_closes
+
+    dates = pd.bdate_range("2026-01-05", periods=5)
+    calls = []
+
+    def fake(tickers, threads, **_):
+        calls.append(tickers)
+        if isinstance(tickers, list):
+            return _yf_frame(tickers, dates, skip={"DELISTED"})
+        raise RuntimeError("database is locked")
+
+    out = download_closes({"AAPL": "AAPL", "DELISTED": "DELISTED"}, "1y", retries=2, download=fake)
+    assert list(out.columns) == ["AAPL"]
+    assert calls[1:] == ["DELISTED", "DELISTED"]
