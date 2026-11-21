@@ -96,6 +96,20 @@ GROQ_PREFERRED_MODELS = [
 ]
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+# Pictographs, flags, dingbats, variation selectors and joiners. Models
+# sometimes decorate headings and bullets with them; the UI uses line icons.
+# Each emoji run takes one following space with it, so "📈 Markets" becomes
+# "Markets" and "rose 🚀 today" becomes "rose today".
+_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF☀-➿⬀-⯿⌀-⏿️‍⃣]+[ \t]?"
+)
+_TRAILING_RE = re.compile(r"[ \t]+$", re.MULTILINE)
+
+
+def strip_emoji(text: str) -> str:
+    """Remove emoji and the trailing spaces they leave behind; indentation
+    (nested lists) is left alone."""
+    return _TRAILING_RE.sub("", _EMOJI_RE.sub("", text))
 
 
 def _is_model_gone(err: Exception) -> bool:
@@ -147,7 +161,7 @@ class GroqAIProvider(AIProvider):
             ],
             extra_body=self._extra_body(model) or None,
         )
-        text = _THINK_RE.sub("", resp.choices[0].message.content or "").strip()
+        text = strip_emoji(_THINK_RE.sub("", resp.choices[0].message.content or "")).strip()
         if not text:
             raise RuntimeError(f"empty completion from {model}")
         return text

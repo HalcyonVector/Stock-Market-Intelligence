@@ -9,9 +9,9 @@ import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
 
 function sentimentBadge(score: number) {
-  if (score > 0.15) return { emoji: "🟢", label: "Bullish", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/20" };
-  if (score < -0.15) return { emoji: "🔴", label: "Bearish", cls: "bg-crimson-600/15 text-crimson-300 ring-crimson-500/20" };
-  return { emoji: "⚪", label: "Neutral", cls: "bg-white/5 text-ink-300 ring-white/10" };
+  if (score > 0.15) return { label: "Bullish", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/20" };
+  if (score < -0.15) return { label: "Bearish", cls: "bg-crimson-600/15 text-crimson-300 ring-crimson-500/20" };
+  return { label: "Neutral", cls: "bg-white/5 text-ink-300 ring-white/10" };
 }
 
 export function SentimentTrends() {
@@ -82,7 +82,7 @@ export function SentimentTrends() {
                     badge.cls,
                   )}
                 >
-                  {badge.emoji} {badge.label}
+                  {badge.label}
                 </span>
               </Link>
             </motion.li>

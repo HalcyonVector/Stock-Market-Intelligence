@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Landmark } from "lucide-react";
+import {
+  Landmark, Briefcase, TrendingUp, BarChart3, ShoppingCart, Factory, Home, CalendarDays, type LucideIcon,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { cn } from "@/lib/utils";
@@ -22,15 +24,20 @@ const IMPACT_STYLES = {
   },
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  monetary_policy: "\u{1F3DB}️",
-  employment: "\u{1F477}",
-  inflation: "\u{1F4C8}",
-  growth: "\u{1F4CA}",
-  consumer: "\u{1F6D2}",
-  manufacturing: "\u{1F3ED}",
-  housing: "\u{1F3E0}",
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  monetary_policy: Landmark,
+  employment: Briefcase,
+  inflation: TrendingUp,
+  growth: BarChart3,
+  consumer: ShoppingCart,
+  manufacturing: Factory,
+  housing: Home,
 };
+
+function CategoryIcon({ category }: { category: string }) {
+  const Icon = CATEGORY_ICONS[category] ?? CalendarDays;
+  return <Icon size={12} className="shrink-0 text-ink-500" aria-hidden />;
+}
 
 export function EconomicCalendar() {
   const { data, isLoading, dataUpdatedAt, isError, refetch } = useQuery({
@@ -88,9 +95,7 @@ export function EconomicCalendar() {
                     {/* Top row: name + impact + countdown */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs flex-shrink-0">
-                          {CATEGORY_ICONS[e.category] || "\u{1F4C5}"}
-                        </span>
+                        <CategoryIcon category={e.category} />
                         <span className="text-xs text-ink-100 font-medium truncate">
                           {e.name}
                         </span>

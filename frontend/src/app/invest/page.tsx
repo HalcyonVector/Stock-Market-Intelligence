@@ -12,6 +12,7 @@ import {
   Shield, Calculator, Target, Bot, TrendingUp, Landmark, Wallet, Sliders, Percent, Layers,
   ChevronRight, Send, Loader2, Info, ExternalLink, IndianRupee, DollarSign,
   ArrowRight, CheckCircle2, AlertTriangle, Lock, Zap, Plus, X, PieChart as PieIcon,
+  Plane, Bike, Heart, Home, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -262,7 +263,7 @@ function InstrumentCard({ inst, cur }: { inst: any; cur: string }) {
               className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-ink-400"
               title={cur === "₹" ? "India" : "United States"}
             >
-              {cur === "₹" ? "🇮🇳 IN" : "🇺🇸 US"}
+              {cur === "₹" ? "IN" : "US"}
             </span>
           </div>
           <h3 className="mt-1 text-sm font-semibold text-ink-100">{inst.name}</h3>
@@ -463,7 +464,7 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
                       <span>{cur}{Math.round(totalMonthly * alloc.pct / 100)}/mo</span>
                       {inst && (
                         <span className={RISK_COLORS[inst.risk]}>
-                          {inst.risk === "zero" && "🔒 "}{RISK_LABELS[inst.risk]} • {inst.current_rate}%
+                          {inst.risk === "zero" && <Lock size={9} className="mr-0.5 inline -mt-px" aria-hidden />}{RISK_LABELS[inst.risk]} • {inst.current_rate}%
                         </span>
                       )}
                     </div>
@@ -486,7 +487,7 @@ function AllocationTab({ country, cur }: { country: string; cur: string }) {
                   : "bg-red-500/10 border-red-500/20 text-red-300"
               )}>
                 <span>Total Allocation</span>
-                <span>{totalPct}% {totalPct === 100 ? "✓" : `(need ${100 - totalPct}% more)`}</span>
+                <span className="flex items-center gap-1">{totalPct}% {totalPct === 100 ? <CheckCircle2 size={13} aria-label="complete" /> : `(need ${100 - totalPct}% more)`}</span>
               </div>
             </div>
           </BentoCard>
@@ -799,12 +800,12 @@ function GoalTab({ cur }: { cur: string }) {
   });
 
   const goals = [
-    { label: "Emergency Fund", target: 100000, years: 2, icon: "🛡️" },
-    { label: "Vacation", target: 200000, years: 1, icon: "✈️" },
-    { label: "Bike", target: 150000, years: 3, icon: "🏍️" },
-    { label: "Wedding", target: 2000000, years: 5, icon: "💍" },
-    { label: "House Down Payment", target: 1500000, years: 7, icon: "🏠" },
-    { label: "Child Education", target: 5000000, years: 15, icon: "🎓" },
+    { label: "Emergency Fund", target: 100000, years: 2, icon: Shield },
+    { label: "Vacation", target: 200000, years: 1, icon: Plane },
+    { label: "Bike", target: 150000, years: 3, icon: Bike },
+    { label: "Wedding", target: 2000000, years: 5, icon: Heart },
+    { label: "House Down Payment", target: 1500000, years: 7, icon: Home },
+    { label: "Child Education", target: 5000000, years: 15, icon: GraduationCap },
   ];
 
   return (
@@ -817,7 +818,7 @@ function GoalTab({ cur }: { cur: string }) {
             onClick={() => { setTarget(g.target); setYears(g.years); }}
             className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center transition hover:bg-white/10"
           >
-            <span className="text-xl">{g.icon}</span>
+            <g.icon size={18} className="text-emerald-400" aria-hidden />
             <span className="text-xs font-medium text-ink-200">{g.label}</span>
             <span className="text-[10px] text-ink-500">{fmt(g.target, cur)}</span>
           </button>
